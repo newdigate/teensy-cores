@@ -37,6 +37,11 @@ MCU_DEF = ARDUINO_TEENSY40
 #MCU_LD = imxrt1062_t41.ld
 #MCU_DEF = ARDUINO_TEENSY41
 
+# Use these lines for NXP MIMXRT1060-EVKB
+#MCU = IMXRT1062
+#MCU_LD = imxrt1060_evkb.ld
+#MCU_DEF = ARDUINO_MIMXRT1060_EVKB
+
 # The name of your project (used to name the compiled .hex file)
 TARGET = main
 
