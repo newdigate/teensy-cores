@@ -39,6 +39,28 @@ static uint8_t analog_num_average = 4;
 
 
 const uint8_t pin_to_channel[] = { // pg 482
+#if defined(ARDUINO_MIMXRT1060_EVKB)
+	12,	// 0  D0  AD_B1_07
+	11,	// 1  D1  AD_B1_06
+	255,	// 2  D2  AD_B0_11 (not ADC)
+	13,	// 3  D3  AD_B1_08
+	255,	// 4  D4  AD_B0_09 (not ADC)
+	255,	// 5  D5  AD_B0_10 (not ADC)
+	7,	// 6  D6  AD_B1_02
+	8,	// 7  D7  AD_B1_03
+	255,	// 8  D8  AD_B0_03 (not ADC)
+	255,	// 9  D9  AD_B0_02 (not ADC)
+	255,	// 10 D10 SD_B0_01 (not ADC)
+	255,	// 11 D11 SD_B0_02 (not ADC)
+	255,	// 12 D12 SD_B0_03 (not ADC)
+	255,	// 13 D13 SD_B0_00 (not ADC)
+	15,	// 14 A0  AD_B1_10
+	0,	// 15 A1  AD_B1_11
+	9,	// 16 A2  AD_B1_04
+	10,	// 17 A3  AD_B1_05
+	6,	// 18 A4  AD_B1_01
+	5,	// 19 A5  AD_B1_00
+#else
 	7,	// 0/A0  AD_B1_02
 	8,	// 1/A1  AD_B1_03
 	12,	// 2/A2  AD_B1_07
@@ -82,6 +104,7 @@ const uint8_t pin_to_channel[] = { // pg 482
 	128+2,	// 39/A15 AD_B1_13 - only on ADC2, 2
 	9,	// 40/A16 AD_B1_04
 	10,	// 41/A17 AD_B1_05
+#endif
 #endif
 };
 
