@@ -31,9 +31,12 @@ correct by inspection against the UM.
 
 - **Scope:** "Just the listing" — appears + compiles cleanly; user handles
   flashing and bring-up.
-- **boards.txt delivery:** in-repo patch (a `boards.local.txt` snippet +
-  instructions), applied by the user to their Teensyduino install. Do **not**
-  edit the `/Applications/Teensyduino.app` bundle directly.
+- **boards.txt delivery:** edit `boards.txt` **directly** in the installed
+  Teensyduino bundle
+  (`/Applications/Teensyduino.app/Contents/Java/hardware/teensy/avr/boards.txt`)
+  to add the EVKB board stanza. No patch file / no `boards.local.txt`. The exact
+  stanza that is added is also recorded in-repo (`extras/mimxrt1060_evkb/`) for
+  reproducibility, since the install copy is overwritten on Teensyduino update.
 - **Pin-map fidelity:** accurate EVKB map now (real pad mapping + LED), not a
   Teensy-4.1 alias.
 - **Sub-40-pin handling:** add `#if CORE_NUM_DIGITAL > 20` guards around the
@@ -122,16 +125,23 @@ existing register facts, then cross-checking against `imxrt.h`.
 - `teensy4/imxrt1060_evkb.ld` — linker script, cloned from
   `imxrt1062_t41.ld`: FLASH 8 MB @ 0x60000000; ITCM/DTCM/OCRAM as RT1062; plus
   a defined-but-unused 32 MB SDRAM region @ 0x80000000 (SEMC) for later.
-- `extras/mimxrt1060_evkb/boards.local.txt` — the board stanza
-  (`mimxrt1060evkb.*`): `name`, `build.board=MIMXRT1060_EVKB`,
-  `build.core=teensy4`, `build.mcu=imxrt1062`,
+- `extras/mimxrt1060_evkb/README.md` — bring-up reference (not applied by the
+  user): a copy of the `boards.txt` stanza that was added (for reproducibility
+  after a Teensyduino update), the documented flashing options (DAPLink
+  drag-drop / pyOCD / OpenOCD via OpenSDA), and the "best-effort / verify on
+  hardware" caveats.
+
+### Direct edit to the Teensyduino install (not in this repo)
+- `/Applications/Teensyduino.app/Contents/Java/hardware/teensy/avr/boards.txt`
+  — append the EVKB board stanza (`mimxrt1060evkb.*`): `name`,
+  `build.board=MIMXRT1060_EVKB`, `build.core=teensy4`, `build.mcu=imxrt1062`,
   `build.flags.ld=... -T{build.core.path}/imxrt1060_evkb.ld`, and the
-  USB/Speed/Opt/Keys menus copied from the Teensy 4.x pattern. No HalfKay
-  upload tool wired.
-- `extras/mimxrt1060_evkb/README.md` — install instructions (where to place
-  `boards.local.txt`; fallback = append the stanza to `boards.txt`), the
-  documented flashing options (DAPLink drag-drop / pyOCD / OpenOCD via OpenSDA),
-  and the "best-effort / verify on hardware" caveats.
+  USB/Speed/Opt/Keys menus copied from the Teensy 4.x pattern.
+  `upload.tool=teensyloader` is referenced to satisfy the IDE (upload is not
+  used; the user flashes manually). `platform.txt` is unchanged.
+  Note: the install's `cores/teensy4` must also carry the core changes from
+  this repo (copy or symlink) for the IDE to build the new board; this repo's
+  `teensy4/Makefile` remains the authoritative compile gate.
 
 ### Board-specific data (new `#elif defined(ARDUINO_MIMXRT1060_EVKB)` blocks)
 - `teensy4/core_pins.h` — new ~250-line per-pin block: `CORE_NUM_TOTAL_PINS=20`,
@@ -202,10 +212,10 @@ No on-hardware test (per scope). Flashing instructions are documented for the
 user in `extras/mimxrt1060_evkb/README.md`.
 
 ## Risks / notes
-- **boards.local.txt new-board support** varies by Arduino IDE version; the
-  README gives the append-to-`boards.txt` fallback, and verification uses the
-  Makefile path (toolchain-only) so listing support doesn't block the build
-  gate.
+- **Direct `boards.txt` edit is overwritten on Teensyduino update** — the added
+  stanza is recorded in `extras/mimxrt1060_evkb/README.md` so it can be
+  re-applied. Verification uses the Makefile path (toolchain-only), so IDE
+  listing is independent of the build gate.
 - **FlexSPI config** for the IS25WP064A is correct-by-reference but unverified
   on hardware (user's bring-up).
 - **Peripheral pin accuracy** (which LPUART/LPSPI/LPI2C/FlexPWM instance, ALT
