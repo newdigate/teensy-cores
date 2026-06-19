@@ -72,7 +72,7 @@ uint32_t set_arm_clock(uint32_t frequency); // clockspeed.c
 extern void __libc_init_array(void); // C++ standard library
 
 uint8_t external_psram_size = 0;
-#ifdef ARDUINO_TEENSY41
+#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 struct smalloc_pool extmem_smalloc_pool;
 #endif
 
@@ -183,7 +183,7 @@ static void ResetHandler2(void)
 	}
 	SNVS_HPCR |= SNVS_HPCR_RTC_EN | SNVS_HPCR_HP_TS;
 
-#ifdef ARDUINO_TEENSY41
+#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 	configure_external_ram();
 #endif
 	analog_init();
@@ -350,7 +350,7 @@ FLASHMEM void configure_cache(void)
 	SCB_CCR |= (SCB_CCR_IC | SCB_CCR_DC);
 }
 
-#ifdef ARDUINO_TEENSY41
+#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 
 #define LUT0(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)))
 #define LUT1(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)) << 16)

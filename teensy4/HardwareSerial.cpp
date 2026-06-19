@@ -66,7 +66,7 @@ extern "C" {
     extern void xbar_connect(unsigned int input, unsigned int output);
 }
 
-#if defined(ARDUINO_TEENSY41)   
+#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 HardwareSerialIMXRT *HardwareSerialIMXRT::s_serials_with_serial_events[8];
 #else
 HardwareSerialIMXRT *HardwareSerialIMXRT::s_serials_with_serial_events[7];
@@ -731,7 +731,7 @@ const pin_to_xbar_info_t PROGMEM pin_to_xbar_info[] = {
 	{32, 10, 1, nullptr, 0},
 	{33,  9, 3, &IOMUXC_XBAR1_IN09_SELECT_INPUT, 0x0},
 
-#ifdef ARDUINO_TEENSY41
+#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 	{36, 16, 1, &IOMUXC_XBAR1_IN16_SELECT_INPUT, 0x1},
 	{37, 17, 1, &IOMUXC_XBAR1_IN17_SELECT_INPUT, 0x3},
 	{42,  7, 3, &IOMUXC_XBAR1_IN07_SELECT_INPUT, 0x1},

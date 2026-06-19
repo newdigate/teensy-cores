@@ -129,7 +129,7 @@ extern "C" {
 	extern void IRQHandler_Serial5();
 	extern void IRQHandler_Serial6();
 	extern void IRQHandler_Serial7();
-	#if defined(ARDUINO_TEENSY41)   
+	#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 	extern void IRQHandler_Serial8();
 	#endif
 }
@@ -339,7 +339,7 @@ private:
 	friend void IRQHandler_Serial5();
 	friend void IRQHandler_Serial6();
 	friend void IRQHandler_Serial7();
-	#if defined(ARDUINO_TEENSY41)   
+	#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 	friend void IRQHandler_Serial8();
 	static HardwareSerialIMXRT 	*s_serials_with_serial_events[8];
 	#else	
@@ -383,7 +383,7 @@ extern void serialEvent5(void) __attribute__((weak));
 extern void serialEvent6(void) __attribute__((weak));
 extern void serialEvent7(void) __attribute__((weak));
 
-#if defined(ARDUINO_TEENSY41)
+#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 // Serial8 hardware serial port for pins RX8 and TX8.  More detail at
 // https://www.pjrc.com/teensy/td_uart.html
 extern HardwareSerialIMXRT Serial8;

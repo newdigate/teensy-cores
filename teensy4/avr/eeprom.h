@@ -33,7 +33,7 @@
 
 #if defined(ARDUINO_TEENSY40)
 #define E2END 0x437
-#elif defined(ARDUINO_TEENSY41)
+#elif defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 #define E2END 0x10BB
 #elif defined(ARDUINO_TEENSY_MICROMOD)
 #define E2END 0x10BB

@@ -46,7 +46,7 @@ struct smalloc_pool {
 /* a default one which is initialised with sm_set_default_pool. */
 extern struct smalloc_pool smalloc_curr_pool;
 
-#ifdef ARDUINO_TEENSY41
+#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 extern struct smalloc_pool extmem_smalloc_pool;
 #endif
 
