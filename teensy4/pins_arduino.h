@@ -73,7 +73,11 @@ static const uint8_t A16 = PIN_A16;
 static const uint8_t A17 = PIN_A17;
 #endif
 
+#if defined(ARDUINO_MIMXRT1060_EVKB)
+#define LED_BUILTIN   (4)    // user LED D8 = GPIO_AD_B0_09 = Arduino D4
+#else
 #define LED_BUILTIN   (13)
+#endif
 
 #define PIN_SPI_SS    (10)
 #define PIN_SPI_MOSI  (11)
@@ -102,6 +106,9 @@ static const uint8_t SCL = 19;
 #elif defined(ARDUINO_TEENSY_MICROMOD)
   #define NUM_DIGITAL_PINS  46
   #define NUM_ANALOG_INPUTS 14
+#elif defined(ARDUINO_MIMXRT1060_EVKB)
+  #define NUM_DIGITAL_PINS  20
+  #define NUM_ANALOG_INPUTS 6
 #endif
 
 #define NOT_AN_INTERRUPT -1
@@ -118,6 +125,10 @@ static const uint8_t SCL = 19;
 #elif defined(__IMXRT1062__) && defined(ARDUINO_TEENSY_MICROMOD)
   #define analogInputToDigitalPin(p) (((p) <= 9) ? (p) + 14 : (( ((p) >= 14 && (p) <= 27)) ? (p) : -1))
   #define digitalPinHasPWM(p) ((p) <= 15 || (p) == 18 || (p) == 19 || ((p) >= 22 && (p) <= 25) || (p) == 28 || (p) == 29 || (p) == 33 || (p) == 40 || (p) == 41 || (p) == 45)
+
+#elif defined(__IMXRT1062__) && defined(ARDUINO_MIMXRT1060_EVKB)
+  #define analogInputToDigitalPin(p) (((p) <= 5) ? (p) + 14 : (((p) >= 14 && (p) <= 19) ? (p) : -1))
+  #define digitalPinHasPWM(p) ((p) == 3 || ((p) >= 6 && (p) <= 13) || (p) == 18 || (p) == 19)
 #endif
   #define digitalPinToInterrupt(p)  ((p) < NUM_DIGITAL_PINS ? (p) : -1)
 
