@@ -47,6 +47,28 @@ uint8_t analog_write_res = 8;
 #if defined(__IMXRT1062__)
 
 const struct pwm_pin_info_struct pwm_pin_info[] = {
+#if defined(ARDUINO_MIMXRT1060_EVKB)
+	{0, M(1, 0), 0, 0},  // 0  D0  AD_B1_07 - no PWM
+	{0, M(1, 0), 0, 0},  // 1  D1  AD_B1_06 - no PWM
+	{0, M(1, 0), 0, 0},  // 2  D2  AD_B0_11 - no PWM
+	{1, M(4, 0), 1, 1},  // 3  D3  AD_B1_08 - FlexPWM4_0_A
+	{0, M(1, 0), 0, 0},  // 4  D4  AD_B0_09 - no PWM (LED)
+	{0, M(1, 0), 0, 0},  // 5  D5  AD_B0_10 - no PWM (submodule unverified)
+	{2, M(3, 2), 0, 1},  // 6  D6  AD_B1_02 - QuadTimer3_2
+	{2, M(3, 3), 0, 1},  // 7  D7  AD_B1_03 - QuadTimer3_3
+	{1, M(1, 1), 0, 4},  // 8  D8  AD_B0_03 - FlexPWM1_1_X
+	{1, M(1, 0), 0, 4},  // 9  D9  AD_B0_02 - FlexPWM1_0_X
+	{1, M(1, 0), 2, 1},  // 10 D10 SD_B0_01 - FlexPWM1_0_B
+	{1, M(1, 1), 1, 1},  // 11 D11 SD_B0_02 - FlexPWM1_1_A
+	{1, M(1, 1), 2, 1},  // 12 D12 SD_B0_03 - FlexPWM1_1_B
+	{1, M(1, 0), 1, 1},  // 13 D13 SD_B0_00 - FlexPWM1_0_A
+	{0, M(1, 0), 0, 0},  // 14 A0  AD_B1_10 - no PWM
+	{0, M(1, 0), 0, 0},  // 15 A1  AD_B1_11 - no PWM
+	{0, M(1, 0), 0, 0},  // 16 A2  AD_B1_04 - no PWM
+	{0, M(1, 0), 0, 0},  // 17 A3  AD_B1_05 - no PWM
+	{2, M(3, 1), 0, 1},  // 18 A4  AD_B1_01 - QuadTimer3_1
+	{2, M(3, 0), 0, 1},  // 19 A5  AD_B1_00 - QuadTimer3_0
+#else
 	{1, M(1, 1), 0, 4},  // FlexPWM1_1_X   0  // AD_B0_03
 	{1, M(1, 0), 0, 4},  // FlexPWM1_0_X   1  // AD_B0_02
 	{1, M(4, 2), 1, 1},  // FlexPWM4_2_A   2  // EMC_04
@@ -125,6 +147,7 @@ const struct pwm_pin_info_struct pwm_pin_info[] = {
 	{0, M(1, 0), 0, 0},  // duplicate QuadTimer3_1
 	{0, M(1, 0), 0, 0},  // duplicate QuadTimer3_2
 	{2, M(4, 0), 0, 1},  // QuadTimer4_0  45  // B0_09
+#endif
 #endif
 };
 
