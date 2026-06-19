@@ -9,3 +9,8 @@ nbproject
 *.orig
 *.tmp
 *.TMP
+teensy4/_buildcheck_sketch.cpp
+teensy4/main.elf
+teensy4/main.hex
+teensy4/*.o
+teensy4/*.d
