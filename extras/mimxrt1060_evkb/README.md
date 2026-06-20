@@ -16,6 +16,31 @@ Adds the MIMXRT1060-EVKB (i.MX RT1062) as a board reusing the `teensy4` core.
 - Note: `LED_BUILTIN` is `GPIO_AD_B0_08` per the NXP SDK board files
   (`BOARD_USER_LED_GPIO_PIN 8`), **not** `_09` (which is Arduino header D4).
 
+## Gotchas (read these — they cost real debugging time)
+
+1. **The flash is ISSI, not Winbond.** The boot flash is an `IS25WP064AJBLE`,
+   so `bootdata.c` carries an EVKB-specific FlexSPI config (8 dummy cycles + a
+   `0xC0` read-register command, 120 MHz, generated from the MCUXpresso SDK).
+   The stock Teensy FlexSPI config is tuned for Teensy's Winbond part (6 dummy
+   cycles) and the boot ROM **will not read the IS25 with it** — the image
+   programs but never runs (dark LED, no crash). Don't revert that block.
+
+2. **User LED = `GPIO_AD_B0_08`, active-low.** Not `_09`. Use `LED_BUILTIN`
+   (pin 20); `digitalWrite(LED_BUILTIN, LOW)` turns it **on**.
+
+3. **Arduino's bundled `Blink` hard-codes `int led = 13;`** — it ignores
+   `LED_BUILTIN`, so it toggles D13/SCK (no LED) and looks dead. Use
+   `LED_BUILTIN` (or pin 20) in your sketch.
+
+4. **Serial to the on-board USB COM port is `Serial6`, not `Serial`.** The
+   EVKB's OpenSDA virtual COM is LPUART1 = `Serial6` (pins 21/22 here). Teensy's
+   `Serial` is USB-device CDC (separate connector, not the OpenSDA port).
+
+5. **Only use pins/peripherals that exist in the 23-pin map.** A `Serial`/`SPI`/
+   `Wire` object whose *default* Teensy pins fall outside 0–22 will index past
+   the pin table in `begin()` and write to a bad register (we hit `Serial6`'s
+   stock pins 24/25 → a fault near address `0x62`, caught by the MPU).
+
 ## Install into the platform the IDE actually compiles with
 
 > ⚠️ **Install location matters.** The Arduino IDE / `arduino-builder` loads
