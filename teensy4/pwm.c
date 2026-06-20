@@ -71,6 +71,14 @@ const struct pwm_pin_info_struct pwm_pin_info[] = {
 	{0, M(1, 0), 0, 0},  // 20 user LED   AD_B0_08 - no PWM
 	{0, M(1, 0), 0, 0},  // 21 LPUART1_TX  AD_B0_12 - no PWM
 	{0, M(1, 0), 0, 0},  // 22 LPUART1_RX  AD_B0_13 - no PWM
+	{0, M(1, 0), 0, 0},  // 23 SPI pad - no PWM
+	{0, M(1, 0), 0, 0},  // 24 SPI pad - no PWM
+	{0, M(1, 0), 0, 0},  // 25 SPI pad - no PWM
+	{0, M(1, 0), 0, 0},  // 26 SPI pad - no PWM
+	{0, M(1, 0), 0, 0},  // 27 SPI pad - no PWM
+	{0, M(1, 0), 0, 0},  // 28 SPI pad - no PWM
+	{0, M(1, 0), 0, 0},  // 29 SPI pad - no PWM
+	{0, M(1, 0), 0, 0},  // 30 SPI pad - no PWM
 #else
 	{1, M(1, 1), 0, 4},  // FlexPWM1_1_X   0  // AD_B0_03
 	{1, M(1, 0), 0, 4},  // FlexPWM1_0_X   1  // AD_B0_02

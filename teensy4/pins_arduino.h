@@ -107,7 +107,7 @@ static const uint8_t SCL = 19;
   #define NUM_DIGITAL_PINS  46
   #define NUM_ANALOG_INPUTS 14
 #elif defined(ARDUINO_MIMXRT1060_EVKB)
-  #define NUM_DIGITAL_PINS  23
+  #define NUM_DIGITAL_PINS  31
   #define NUM_ANALOG_INPUTS 6
 #endif
 

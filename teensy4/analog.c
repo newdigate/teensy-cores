@@ -63,6 +63,14 @@ const uint8_t pin_to_channel[] = { // pg 482
 	255,	// 20 user LED   AD_B0_08 (not ADC)
 	255,	// 21 LPUART1_TX  AD_B0_12 (not ADC)
 	255,	// 22 LPUART1_RX  AD_B0_13 (not ADC)
+	255,	// 23 SPI pad (not ADC)
+	255,	// 24 SPI pad (not ADC)
+	255,	// 25 SPI pad (not ADC)
+	255,	// 26 SPI pad (not ADC)
+	255,	// 27 SPI pad (not ADC)
+	255,	// 28 SPI pad (not ADC)
+	255,	// 29 SPI pad (not ADC)
+	255,	// 30 SPI pad (not ADC)
 #else
 	7,	// 0/A0  AD_B1_02
 	8,	// 1/A1  AD_B1_03
