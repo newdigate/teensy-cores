@@ -3,10 +3,18 @@
 Adds the MIMXRT1060-EVKB (i.MX RT1062) as a board reusing the `teensy4` core.
 
 ## Scope / status
-- Appears in Arduino IDE and **compiles cleanly**; accurate 20-pin Arduino map
-  (D0–D15, A0–A5), `LED_BUILTIN` = D4 (GPIO_AD_B0_09).
-- **Not** hardware-verified. Peripheral (UART/SPI/I2C/PWM) instance/mux is
-  best-effort ("pin numbers only"); SDRAM/USB bring-up deferred.
+- Appears in Arduino IDE and **compiles cleanly**; accurate Arduino map of 23
+  core pins: D0–D13 = pins 0–13, A0–A5 = pins 14–19, plus three non-header pads:
+    - pin 20 = `GPIO_AD_B0_08` — the on-board **user LED** (`LED_BUILTIN`,
+      **active low**: `digitalWrite(LED_BUILTIN, LOW)` turns it on),
+    - pin 21 = `GPIO_AD_B0_12` — **LPUART1_TX**, pin 22 = `GPIO_AD_B0_13` —
+      **LPUART1_RX**: `Serial6` is wired to these so it reaches the OpenSDA
+      virtual COM port (the EVKB's built-in USB serial).
+- **Hardware-verified:** boots from QSPI and blinks the user LED on a real
+  MIMXRT1060-EVKB. Other peripheral instance/mux (SPI/I2C/PWM, other UARTs)
+  remains best-effort; SDRAM/USB-device bring-up deferred.
+- Note: `LED_BUILTIN` is `GPIO_AD_B0_08` per the NXP SDK board files
+  (`BOARD_USER_LED_GPIO_PIN 8`), **not** `_09` (which is Arduino header D4).
 
 ## Install into the platform the IDE actually compiles with
 

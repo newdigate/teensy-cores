@@ -1769,9 +1769,9 @@
 
 #elif defined(__IMXRT1062__) && defined(ARDUINO_MIMXRT1060_EVKB)
 
-#define CORE_NUM_TOTAL_PINS	20
-#define CORE_NUM_DIGITAL	20
-#define CORE_NUM_INTERRUPT	20
+#define CORE_NUM_TOTAL_PINS	23
+#define CORE_NUM_DIGITAL	23
+#define CORE_NUM_INTERRUPT	23
 #define CORE_NUM_ANALOG		6
 #define CORE_NUM_PWM		11
 
@@ -1989,6 +1989,41 @@
 
 
 
+
+// Extra EVKB pads beyond the Arduino headers (added for LED_BUILTIN + Serial6):
+//   pin 20 = GPIO_AD_B0_08  user LED D8 (active low)
+//   pin 21 = GPIO_AD_B0_12  LPUART1_TX (OpenSDA debug UART)
+//   pin 22 = GPIO_AD_B0_13  LPUART1_RX (OpenSDA debug UART)
+#define CORE_PIN20_BIT		8
+#define CORE_PIN21_BIT		12
+#define CORE_PIN22_BIT		13
+#define CORE_PIN20_BITMASK	(1<<(CORE_PIN20_BIT))
+#define CORE_PIN21_BITMASK	(1<<(CORE_PIN21_BIT))
+#define CORE_PIN22_BITMASK	(1<<(CORE_PIN22_BIT))
+#define CORE_PIN20_PORTREG	GPIO6_DR
+#define CORE_PIN21_PORTREG	GPIO6_DR
+#define CORE_PIN22_PORTREG	GPIO6_DR
+#define CORE_PIN20_PORTSET	GPIO6_DR_SET
+#define CORE_PIN21_PORTSET	GPIO6_DR_SET
+#define CORE_PIN22_PORTSET	GPIO6_DR_SET
+#define CORE_PIN20_PORTCLEAR	GPIO6_DR_CLEAR
+#define CORE_PIN21_PORTCLEAR	GPIO6_DR_CLEAR
+#define CORE_PIN22_PORTCLEAR	GPIO6_DR_CLEAR
+#define CORE_PIN20_PORTTOGGLE	GPIO6_DR_TOGGLE
+#define CORE_PIN21_PORTTOGGLE	GPIO6_DR_TOGGLE
+#define CORE_PIN22_PORTTOGGLE	GPIO6_DR_TOGGLE
+#define CORE_PIN20_DDRREG	GPIO6_GDIR
+#define CORE_PIN21_DDRREG	GPIO6_GDIR
+#define CORE_PIN22_DDRREG	GPIO6_GDIR
+#define CORE_PIN20_PINREG	GPIO6_PSR
+#define CORE_PIN21_PINREG	GPIO6_PSR
+#define CORE_PIN22_PINREG	GPIO6_PSR
+#define CORE_PIN20_CONFIG	IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_B0_08
+#define CORE_PIN21_CONFIG	IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_B0_12
+#define CORE_PIN22_CONFIG	IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_B0_13
+#define CORE_PIN20_PADCONFIG	IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_B0_08
+#define CORE_PIN21_PADCONFIG	IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_B0_12
+#define CORE_PIN22_PADCONFIG	IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_B0_13
 #endif // __IMXRT1062__
 
 #ifdef __cplusplus
@@ -2061,6 +2096,8 @@ static inline void digitalWriteFast(uint8_t pin, uint8_t val)
 				CORE_PIN21_PORTSET = CORE_PIN21_BITMASK;
 			} else if (pin == 22) {
 				CORE_PIN22_PORTSET = CORE_PIN22_BITMASK;
+#endif
+#if CORE_NUM_DIGITAL > 23
 			} else if (pin == 23) {
 				CORE_PIN23_PORTSET = CORE_PIN23_BITMASK;
 			} else if (pin == 24) {
@@ -2179,6 +2216,8 @@ static inline void digitalWriteFast(uint8_t pin, uint8_t val)
 				CORE_PIN21_PORTCLEAR = CORE_PIN21_BITMASK;
 			} else if (pin == 22) {
 				CORE_PIN22_PORTCLEAR = CORE_PIN22_BITMASK;
+#endif
+#if CORE_NUM_DIGITAL > 23
 			} else if (pin == 23) {
 				CORE_PIN23_PORTCLEAR = CORE_PIN23_BITMASK;
 			} else if (pin == 24) {
@@ -2315,6 +2354,8 @@ static inline uint8_t digitalReadFast(uint8_t pin)
 			return (CORE_PIN21_PINREG & CORE_PIN21_BITMASK) ? 1 : 0;
 		} else if (pin == 22) {
 			return (CORE_PIN22_PINREG & CORE_PIN22_BITMASK) ? 1 : 0;
+#endif
+#if CORE_NUM_DIGITAL > 23
 		} else if (pin == 23) {
 			return (CORE_PIN23_PINREG & CORE_PIN23_BITMASK) ? 1 : 0;
 		} else if (pin == 24) {
@@ -2453,6 +2494,8 @@ static inline void digitalToggleFast(uint8_t pin)
 			CORE_PIN21_PORTTOGGLE = CORE_PIN21_BITMASK;
 		} else if (pin == 22) {
 			CORE_PIN22_PORTTOGGLE = CORE_PIN22_BITMASK;
+#endif
+#if CORE_NUM_DIGITAL > 23
 		} else if (pin == 23) {
 			CORE_PIN23_PORTTOGGLE = CORE_PIN23_BITMASK;
 		} else if (pin == 24) {

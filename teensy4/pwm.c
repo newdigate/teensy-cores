@@ -68,6 +68,9 @@ const struct pwm_pin_info_struct pwm_pin_info[] = {
 	{0, M(1, 0), 0, 0},  // 17 A3  AD_B1_05 - no PWM
 	{2, M(3, 1), 0, 1},  // 18 A4  AD_B1_01 - QuadTimer3_1
 	{2, M(3, 0), 0, 1},  // 19 A5  AD_B1_00 - QuadTimer3_0
+	{0, M(1, 0), 0, 0},  // 20 user LED   AD_B0_08 - no PWM
+	{0, M(1, 0), 0, 0},  // 21 LPUART1_TX  AD_B0_12 - no PWM
+	{0, M(1, 0), 0, 0},  // 22 LPUART1_RX  AD_B0_13 - no PWM
 #else
 	{1, M(1, 1), 0, 4},  // FlexPWM1_1_X   0  // AD_B0_03
 	{1, M(1, 0), 0, 4},  // FlexPWM1_0_X   1  // AD_B0_02

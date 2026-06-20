@@ -60,6 +60,9 @@ const uint8_t pin_to_channel[] = { // pg 482
 	10,	// 17 A3  AD_B1_05
 	6,	// 18 A4  AD_B1_01
 	5,	// 19 A5  AD_B1_00
+	255,	// 20 user LED   AD_B0_08 (not ADC)
+	255,	// 21 LPUART1_TX  AD_B0_12 (not ADC)
+	255,	// 22 LPUART1_RX  AD_B0_13 (not ADC)
 #else
 	7,	// 0/A0  AD_B1_02
 	8,	// 1/A1  AD_B1_03

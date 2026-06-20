@@ -53,8 +53,16 @@ static HardwareSerialIMXRT::hardware_t UART1_Hardware = {
 	5, IRQ_LPUART1, &IRQHandler_Serial6, 
 	&serialEvent6,
 	CCM_CCGR5, CCM_CCGR5_LPUART1(CCM_CCGR_ON),
+#if defined(ARDUINO_MIMXRT1060_EVKB)
+	{{22, 2, nullptr, 0}, {0xff, 0xff, nullptr, 0}}, // RX = pin 22 / GPIO_AD_B0_13 (LPUART1_RX)
+#else
 	{{25,2, nullptr, 0}, {0xff, 0xff, nullptr, 0}},
+#endif
+#if defined(ARDUINO_MIMXRT1060_EVKB)
+	{{21, 2, nullptr, 0}, {0xff, 0xff, nullptr, 0}}, // TX = pin 21 / GPIO_AD_B0_12 (LPUART1_TX)
+#else
 	{{24,2, nullptr, 0}, {0xff, 0xff, nullptr, 0}},
+#endif
 	0xff, // No CTS pin
 	0, // No CTS
 	IRQ_PRIORITY, 38, 24, // IRQ, rts_low_watermark, rts_high_watermark
