@@ -41,6 +41,48 @@ Adds the MIMXRT1060-EVKB (i.MX RT1062) as a board reusing the `teensy4` core.
    the pin table in `begin()` and write to a bad register (we hit `Serial6`'s
    stock pins 24/25 → a fault near address `0x62`, caught by the MPU).
 
+## Peripheral notes — SPI, I2C (Wire), SD (SdFat)
+
+The EVKB is a densely-populated EVK: almost every pad has a dedicated function,
+so unlike a Teensy there is **no free, header-dedicated SPI bus**.
+
+### SPI shares pins with the microSD slot — by board design
+The only pads the EVKB labels as SPI are `GPIO_SD_B0_02`/`_03`
+(`SD1_D0/J24[4]/SPI_MOSI` and `SD1_D1/J24[5]/SPI_MISO`). So the default `SPI`
+(LPSPI1 on `SD_B0_00–03`, core pins 10–13) **is** the board's SPI — and it is
+the **same J24 pins as the microSD card**. You cannot use the default `SPI` and
+the microSD at the same time. This is the EVKB-correct mapping, not a porting
+bug, so the SPI library is left on LPSPI1/SD_B0. Every other LPSPI pad set also
+steals an on-board peripheral, so there is no conflict-free default SPI:
+
+| LPSPI pads | steals |
+|---|---|
+| LPSPI1 / SD_B0 (default `SPI`) | microSD card (J24) |
+| LPSPI1 / EMC_27–30 | SDRAM (SEMC) |
+| LPSPI3 / AD_B1_12–15 (`SPI1`) | camera CSI + audio SAI1 (J35) |
+| LPSPI4 / B0_00–03 (`SPI2`) | parallel LCD (LCDIF) |
+| LPSPI3 / AD_B0_00–03 | **USB OTG1** (`USB_OTG1_PWR/ID/OC`, J24) — do **not** use: breaks USB |
+
+To run SPI + microSD together you must move the default `SPI` onto one of the
+"optional peripheral" buses above (e.g. LPSPI3/AD_B1_12–15, sacrificing the
+camera) — not done by default.
+
+### Wire (I2C)
+`Wire` = LPI2C1 on pins 18/19 (`AD_B1_01/00`) — the Arduino I2C header, also the
+on-board accelerometer/codec/camera bus; works as-is. `Wire1` (LPI2C3) and
+`Wire2` (LPI2C4) are remapped for the EVKB to pins 1/0 and 22/21 (alternate-
+function pads; `Wire2` shares the `Serial6` pins).
+
+### SD card / SdFat
+The built-in SDIO path needs **no SdFat change**: the `SdioTeensy` driver
+already targets **uSDHC1 on `SD_B0_00–05`**, exactly the EVKB microSD wiring.
+One EVKB-only addition: the microSD is powered by a load switch on
+`GPIO_AD_B1_03` (**core pin 7**), which the NXP SDK enables by driving the pad
+**LOW**; the Teensy boards have no such switch, so the EVKB build of SdFat drives
+pin 7 in `SdioCard::begin()`. **Pin 7 is therefore reserved for SD power when
+using SdFat.** (Verified end-to-end in QEMU except the power switch, which QEMU
+does not model — confirm the polarity on real hardware.)
+
 ## Install into the platform the IDE actually compiles with
 
 > ⚠️ **Install location matters.** The Arduino IDE / `arduino-builder` loads
