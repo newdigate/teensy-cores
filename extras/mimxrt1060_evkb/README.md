@@ -49,6 +49,13 @@ Adds the MIMXRT1060-EVKB (i.MX RT1062) as a board reusing the `teensy4` core.
    only in polling mode (it needs `read()` called often enough to not miss
    edges); with them it catches every edge.
 
+7. **Serial-MIDI: pick the port explicitly.** The MIDI library needs no EVKB
+   changes (it's transport-agnostic), but `MIDI_CREATE_DEFAULT_INSTANCE()`
+   binds to `Serial1`. For the OpenSDA virtual COM use
+   `MIDI_CREATE_INSTANCE(HardwareSerial, Serial6, MIDI)` (`Serial6` = LPUART1,
+   see gotcha 4); for a DIN-5 MIDI jack, pick whichever UART you wire it to.
+   Either way it's a constructor argument, not a library change.
+
 ## Install into the platform the IDE actually compiles with
 
 > ⚠️ **Install location matters.** The Arduino IDE / `arduino-builder` loads
