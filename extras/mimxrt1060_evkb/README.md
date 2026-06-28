@@ -41,6 +41,14 @@ Adds the MIMXRT1060-EVKB (i.MX RT1062) as a board reusing the `teensy4` core.
    the pin table in `begin()` and write to a bad register (we hit `Serial6`'s
    stock pins 24/25 → a fault near address `0x62`, caught by the MPU).
 
+6. **All 31 digital pins are interrupt-capable** (each pad is a GPIO6/7/8 bit
+   dispatched by `attachInterrupt()`'s `IRQ_GPIO6789` handler). The EVKB block
+   defines `CORE_INT0_PIN … CORE_INT30_PIN` (== the pin number) so libraries
+   that gate on those macros — e.g. **Encoder** — attach a real ISR instead of
+   silently falling back to polling. Without them Encoder still *works*, but
+   only in polling mode (it needs `read()` called often enough to not miss
+   edges); with them it catches every edge.
+
 ## Install into the platform the IDE actually compiles with
 
 > ⚠️ **Install location matters.** The Arduino IDE / `arduino-builder` loads
