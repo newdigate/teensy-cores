@@ -56,6 +56,15 @@ Adds the MIMXRT1060-EVKB (i.MX RT1062) as a board reusing the `teensy4` core.
    see gotcha 4); for a DIN-5 MIDI jack, pick whichever UART you wire it to.
    Either way it's a constructor argument, not a library change.
 
+8. **USB host: use connector `J47`, and don't add a VBUS-enable.** USBHost_t36
+   needs no EVKB changes — it runs on the same USB2/USB_OTG2 controller, which
+   the EVKB brings out on **`J47`** (the designated Host port; `J48` is OTG1 =
+   Device). Host 5V comes from a dedicated `USB_OTG2_VBUS` hardware rail (EVKB
+   UM Tables 12/18 — no GPIO switch or jumper), so **do not** port Teensy 4.1's
+   `#ifdef ARDUINO_TEENSY41` VBUS code: it drives `EMC_40`, which here is part
+   of the SDRAM (SEMC) bus and would clash with it. (Note: QEMU can't exercise
+   this — its i.MX RT USB model is device-mode only, no EHCI host.)
+
 ## Install into the platform the IDE actually compiles with
 
 > ⚠️ **Install location matters.** The Arduino IDE / `arduino-builder` loads
