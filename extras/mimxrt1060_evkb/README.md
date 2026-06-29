@@ -41,6 +41,29 @@ Adds the MIMXRT1060-EVKB (i.MX RT1062) as a board reusing the `teensy4` core.
    the pin table in `begin()` and write to a bad register (we hit `Serial6`'s
    stock pins 24/25 → a fault near address `0x62`, caught by the MPU).
 
+6. **All 31 digital pins are interrupt-capable** (each pad is a GPIO6/7/8 bit
+   dispatched by `attachInterrupt()`'s `IRQ_GPIO6789` handler). The EVKB block
+   defines `CORE_INT0_PIN … CORE_INT30_PIN` (== the pin number) so libraries
+   that gate on those macros — e.g. **Encoder** — attach a real ISR instead of
+   silently falling back to polling. Without them Encoder still *works*, but
+   only in polling mode (it needs `read()` called often enough to not miss
+   edges); with them it catches every edge.
+
+7. **Serial-MIDI: pick the port explicitly.** The MIDI library needs no EVKB
+   changes (it's transport-agnostic), but `MIDI_CREATE_DEFAULT_INSTANCE()`
+   binds to `Serial1`. For the OpenSDA virtual COM use
+   `MIDI_CREATE_INSTANCE(HardwareSerial, Serial6, MIDI)` (`Serial6` = LPUART1,
+   see gotcha 4); for a DIN-5 MIDI jack, pick whichever UART you wire it to.
+   Either way it's a constructor argument, not a library change.
+
+8. **USB host: use connector `J47`, and don't add a VBUS-enable.** USBHost_t36
+   needs no EVKB changes — it runs on the same USB2/USB_OTG2 controller, which
+   the EVKB brings out on **`J47`** (the designated Host port; `J48` is OTG1 =
+   Device). Host 5V comes from a dedicated `USB_OTG2_VBUS` hardware rail (EVKB
+   UM Tables 12/18 — no GPIO switch or jumper), so **do not** port Teensy 4.1's
+   `#ifdef ARDUINO_TEENSY41` VBUS code: it drives `EMC_40`, which here is part
+   of the SDRAM (SEMC) bus and would clash with it. (Note: QEMU can't exercise
+   this — its i.MX RT USB model is device-mode only, no EHCI host.)
 ## Peripheral notes — SPI, I2C (Wire), SD (SdFat)
 
 The EVKB is a densely-populated EVK: almost every pad has a dedicated function,
