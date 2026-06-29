@@ -44,7 +44,7 @@ Some carry a `newdigate` fork that only adds a short README/usage note.
 | **NativeEthernet** | [newdigate/NativeEthernet](https://github.com/newdigate/NativeEthernet) | Transport over FNET; all EVKB ENET specifics live in the FNET fork | **HW (DHCP)** + QEMU |
 | **MIDI** | [newdigate/MIDI](https://github.com/newdigate/MIDI) | Transport-agnostic. Note: `MIDI_CREATE_DEFAULT_INSTANCE()` binds `Serial1`; use `Serial6` for the OpenSDA COM | QEMU (TX bytes) |
 | **arm_math** (CMSIS-DSP) | [newdigate/arm_math](https://github.com/newdigate/arm_math) | CPU-only; selects target from `ARM_MATH_CMx`/FPU macros. Same Cortex-M7 lib as Teensy 4.x | QEMU (compute) |
-| **USBHost_t36** | [newdigate/USBHost_t36](https://github.com/newdigate/USBHost_t36) | USB host = USB2/OTG2 on connector **J47**; host VBUS is a dedicated board rail (no software enable). Do **not** port the Teensy `EMC_40` VBUS code (= EVKB ENET/SDRAM pin) | compile (host mode not modelled) |
+| **USBHost_t36** | [newdigate/USBHost_t36](https://github.com/newdigate/USBHost_t36) | USB host = USB2/OTG2 on connector **J47**; host VBUS is a dedicated board rail (no software enable). Do **not** port the Teensy `EMC_40` VBUS code (= EVKB ENET/SDRAM pin) | **HW (mouse)** |
 | **WDT_T4** | [newdigate/WDT_T4](https://github.com/newdigate/WDT_T4) | WDOG/RTWDOG/EWM are silicon-level; no board code | QEMU (fire/feed/reset for WDOG1, EWM, RTWDOG) |
 | **EEPROM** | PaulStoffregen/EEPROM (upstream) | Uses the core's `eepromemu_flash_*` (EVKB region at 0x607C0000 in the core) | QEMU (RW) |
 | **Encoder** | PaulStoffregen/Encoder (upstream) | Board-agnostic (core pin macros). Interrupt mode needs the core's `CORE_INTn_PIN` (in the cores fork); else auto-falls-back to polling | QEMU (ISR via core) |
@@ -61,8 +61,11 @@ Some carry a `newdigate` fork that only adds a short README/usage note.
   `IMXRT_LPSPI4_S` fast path (ST7735_t3, ILI9341_t3, ssd1351) needed the EVKB
   LPSPI1 fix; those that derive the base from the `SPI` object (ILI9488_t3,
   ST7735_t3 after fix) or use only the SPI library (RA8875, XPT2046) were fine.
-- **Not EVKB-portable in emulation:** USB *host* (no EHCI host model) and
-  CAN-FD (`FlexCAN_T4FD` — FD not modelled). FlexIO has only a shallow model.
+- **Not modelled in emulation (so verified on real hardware, or compile-only):**
+  USB *host* — no EHCI host model in QEMU, but **hardware-verified**: a USB mouse
+  enumerates on **J47** and reports motion / all buttons / scroll wheel through the
+  unmodified USBHost_t36. CAN-FD (`FlexCAN_T4FD` — FD not modelled) and FlexIO
+  (shallow model only) remain compile-checked.
 - Several QEMU peripheral-model fixes were made along the way to enable the
   runtime verification above (FlexSPI program, FlexCAN MAXMB, FEC checksums,
   NVIC byte reads, PIT clock frequency, watchdog warm-reset).
