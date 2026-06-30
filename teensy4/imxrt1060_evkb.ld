@@ -1,15 +1,15 @@
 /* NXP MIMXRT1060-EVKB - i.MX RT1062, 8 MB QSPI NOR (IS25WP064A) on FlexSPI.
- * Memory map identical to Teensy 4.1 (8 MB flash). NOTE: the board also has
- * 32 MB SDRAM on SEMC @ 0x80000000; SDRAM bring-up is deferred. The ERAM
- * region below is left as the Teensy-4.1 FlexSPI2 layout for compile
- * compatibility with extmem.c and is unused unless code places .externalram. */
+ * Memory map identical to Teensy 4.1 (8 MB flash), except ERAM points at the
+ * board's 32 MB SDRAM on SEMC @ 0x80000000. The core brings it up in
+ * configure_external_ram() (startup.c -> extram_semc_init() in semc.c), so the
+ * ERAM region and .bss.extram / _extram_start / _extram_end land in real SDRAM. */
 MEMORY
 {
 	ITCM (rx):  ORIGIN = 0x00000000, LENGTH = 512K
 	DTCM (rw):  ORIGIN = 0x20000000, LENGTH = 512K
 	RAM (rw):   ORIGIN = 0x20200000, LENGTH = 512K
 	FLASH (rx): ORIGIN = 0x60000000, LENGTH = 7936K
-	ERAM (rw):  ORIGIN = 0x70000000, LENGTH = 32768K
+	ERAM (rw):  ORIGIN = 0x80000000, LENGTH = 32768K
 }
 
 ENTRY(ImageVectorTable)
