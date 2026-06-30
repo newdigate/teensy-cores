@@ -40,7 +40,7 @@ extern unsigned long _flashimagelen;
 
 __attribute__ ((section(".bootdata"), used))
 const uint32_t BootData[3] = {
-	0x60000000,
+	0x30000000,		// flash base for NXP MIMXRT1170-EVKB (RT1176)
 	(uint32_t)&_flashimagelen,
 	0
 };
@@ -52,230 +52,206 @@ const uint32_t hab_csf[768];	// placeholder for HAB signature
 
 __attribute__ ((section(".ivt"), used))
 const uint32_t ImageVectorTable[8] = {
-	0x432000D1,		// header
+	0x412000D1,		// header: tag=0xD1, length=0x0020, version=0x41
 	(uint32_t)&ResetHandler,// program entry
 	0,			// reserved
-	0,			// dcd
+	0,			// dcd (must be 0 for XIP boot)
 	(uint32_t)BootData,	// abs address of boot data
-	(uint32_t)ImageVectorTable, // self
+	(uint32_t)ImageVectorTable, // self = 0x30001000
 	(uint32_t)hab_csf,	// command sequence file
 	0			// reserved
 };
 
+/*
+ * FlexSPI NOR Configuration Block (FCB) for NXP MIMXRT1170-EVKB
+ * Flash: ISSI IS25WP128 quad SPI NOR (128 Mbit / 16 MB)
+ *
+ * These exact bytes are taken from the proven-working Zephyr boot image for
+ * the EVKB (build-hello/zephyr/zephyr.bin at offset 0x400, 512 bytes).
+ * They have been verified to boot on real hardware and in QEMU with
+ * -global fsl-imxrt1170.boot-xip=on.
+ *
+ * Key FCB fields (little-endian uint32):
+ *   [0]  0x42464346  tag 'FCFB'
+ *   [1]  0x56010400  version
+ *   [3]  0x00030301  readSampleClkSrc=1, dataHoldTime=3, dataSetupTime=3
+ *   [7]  0x00000001  configCmdEnable=1
+ *   [8]  0x00000C01  configCmdSeq[0]
+ *   [12] 0x00000030  cfgCmdArgs[0]
+ *   [16] 0x00000010  controllerMiscOption (SafeConfigFreq enabled)
+ *   [17] 0x00070401  deviceType=1 (serial NOR), sflashPadType=4 (quad),
+ *                    serialClkFreq=7 (133 MHz), lutCustomSeqEnable=0
+ *   [20] 0x04000000  sflashA1Size (as used by Zephyr for this board)
+ *   LUT entries for quad read (0xEB), status read, write enable, etc.
+ *   [112] 0x00010000  pageSize=256
+ *   [113] 0x00001000  sectorSize=4096
+ *   [114] 0x00000001  ipCmdSerialClkFreq
+ *   [116] 0x00010000  blockSize=65536
+ */
 __attribute__ ((section(".flashconfig"), used))
-#if defined(ARDUINO_MIMXRT1060_EVKB)
-// NXP MIMXRT1060-EVKB IS25WP064AJBLE QSPI NOR boot config, generated from the
-// MCUXpresso SDK (evkbmimxrt1060_flexspi_nor_config.c): 8 dummy cycles + 0xC0
-// read-register config cmd, 120 MHz, SafeConfigFreqEnable. Matches the ISSI flash.
 uint32_t FlexSPI_NOR_Config[128] = {
-	0x42464346,	0x56010400,	0x00000000,	0x00030301,
-	0x00000000,	0x00000000,	0x00000000,	0x00000001,
-	0x00000c01,	0x00000000,	0x00000000,	0x00000000,
-	0x00000040,	0x00000000,	0x00000000,	0x00000000,
-	0x00000010,	0x00070401,	0x00000000,	0x00000000,
-	0x00800000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x0a1804eb,	0x26043208,	0x00000000,	0x00000000,
-	0x24040405,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000406,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x08180420,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x081804d8,	0x00000000,	0x00000000,	0x00000000,
-	0x08180402,	0x00002004,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000460,	0x00000000,	0x00000000,	0x00000000,
-	0x200104c0,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000100,	0x00001000,	0x00000001,	0x00000000,
-	0x00010000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
-	0x00000000,	0x00000000,	0x00000000,	0x00000000,
+	/* ---- common FlexSPI configuration block (offset 0x000..0x1BF) ---- */
+	0x42464346,	/* [0]   tag 'FCFB'                                    */
+	0x56010400,	/* [1]   version 0x56010400                            */
+	0x00000000,	/* [2]   reserved                                      */
+	0x00030301,	/* [3]   readSampleClkSrc=1,dataHold=3,dataSetup=3     */
+
+	0x00000000,	/* [4]   waitTimeCfgCommands / deviceModeCfgEnable     */
+	0x00000000,	/* [5]   deviceModeSeq                                 */
+	0x00000000,	/* [6]   deviceModeArg                                 */
+	0x00000001,	/* [7]   configCmdEnable=1                             */
+
+	0x00000C01,	/* [8]   configCmdSeqs[0]                              */
+	0x00000000,	/* [9]   configCmdSeqs[1]                              */
+	0x00000000,	/* [10]  configCmdSeqs[2]                              */
+	0x00000000,	/* [11]  configCmdSeqs[3]                              */
+
+	0x00000030,	/* [12]  cfgCmdArgs[0]                                 */
+	0x00000000,	/* [13]  cfgCmdArgs[1]                                 */
+	0x00000000,	/* [14]  cfgCmdArgs[2]                                 */
+	0x00000000,	/* [15]  cfgCmdArgs[3]                                 */
+
+	0x00000010,	/* [16]  controllerMiscOption (SafeConfigFreqEnable)   */
+	0x00070401,	/* [17]  deviceType=1,sflashPadType=4,serialClkFreq=7 */
+	0x00000000,	/* [18]  reserved                                      */
+	0x00000000,	/* [19]  reserved                                      */
+
+	0x04000000,	/* [20]  sflashA1Size (from Zephyr FCB)                */
+	0x00000000,	/* [21]  sflashA2Size                                  */
+	0x00000000,	/* [22]  sflashB1Size                                  */
+	0x00000000,	/* [23]  sflashB2Size                                  */
+
+	0x00000000,	/* [24]  csPadSettingOverride                          */
+	0x00000000,	/* [25]  sclkPadSettingOverride                        */
+	0x00000000,	/* [26]  dataPadSettingOverride                        */
+	0x00000000,	/* [27]  dqsPadSettingOverride                         */
+
+	0x00000000,	/* [28]  timeoutInMs                                   */
+	0x00000000,	/* [29]  commandInterval                               */
+	0x00000000,	/* [30]  dataValidTime                                 */
+	0x00000000,	/* [31]  busyBitPolarity / busyOffset                  */
+
+	/* LUT table (lookupTable[0..63]) */
+	0x0A2004EC,	/* [32]  LUT[0]  CMD_SDR(0xEB,1pad) RADDR_SDR(0x20,4pad) */
+	0x26043208,	/* [33]  LUT[1]  DUMMY_SDR(8,4pad) READ_SDR(4,4pad)    */
+	0x00000000,	/* [34]  LUT[2]                                        */
+	0x00000000,	/* [35]  LUT[3]                                        */
+
+	0x24040405,	/* [36]  LUT[4]  (ReadStatus)                          */
+	0x00000000,	/* [37]  LUT[5]                                        */
+	0x00000000,	/* [38]  LUT[6]                                        */
+	0x00000000,	/* [39]  LUT[7]                                        */
+
+	0x00000000,	/* [40]  LUT[8]                                        */
+	0x00000000,	/* [41]  LUT[9]                                        */
+	0x00000000,	/* [42]  LUT[10]                                       */
+	0x00000000,	/* [43]  LUT[11]                                       */
+
+	0x00000406,	/* [44]  LUT[12] (WriteEnable)                         */
+	0x00000000,	/* [45]  LUT[13]                                       */
+	0x00000000,	/* [46]  LUT[14]                                       */
+	0x00000000,	/* [47]  LUT[15]                                       */
+
+	0x00000000,	/* [48]  LUT[16]                                       */
+	0x00000000,	/* [49]  LUT[17]                                       */
+	0x00000000,	/* [50]  LUT[18]                                       */
+	0x00000000,	/* [51]  LUT[19]                                       */
+
+	0x08200421,	/* [52]  LUT[20] (EraseSector)                         */
+	0x00000000,	/* [53]  LUT[21]                                       */
+	0x00000000,	/* [54]  LUT[22]                                       */
+	0x00000000,	/* [55]  LUT[23]                                       */
+
+	0x00000000,	/* [56]  LUT[24]                                       */
+	0x00000000,	/* [57]  LUT[25]                                       */
+	0x00000000,	/* [58]  LUT[26]                                       */
+	0x00000000,	/* [59]  LUT[27]                                       */
+
+	0x00000000,	/* [60]  LUT[28]                                       */
+	0x00000000,	/* [61]  LUT[29]                                       */
+	0x00000000,	/* [62]  LUT[30]                                       */
+	0x00000000,	/* [63]  LUT[31]                                       */
+
+	0x081804D8,	/* [64]  LUT[32] (Read JEDEC ID)                       */
+	0x00000000,	/* [65]  LUT[33]                                       */
+	0x00000000,	/* [66]  LUT[34]                                       */
+	0x00000000,	/* [67]  LUT[35]                                       */
+
+	0x08200412,	/* [68]  LUT[36] (PageProgram)                         */
+	0x00002004,	/* [69]  LUT[37]                                       */
+	0x00000000,	/* [70]  LUT[38]                                       */
+	0x00000000,	/* [71]  LUT[39]                                       */
+
+	0x00000000,	/* [72]  LUT[40]                                       */
+	0x00000000,	/* [73]  LUT[41]                                       */
+	0x00000000,	/* [74]  LUT[42]                                       */
+	0x00000000,	/* [75]  LUT[43]                                       */
+
+	0x00000460,	/* [76]  LUT[44] (ChipErase)                           */
+	0x00000000,	/* [77]  LUT[45]                                       */
+	0x00000000,	/* [78]  LUT[46]                                       */
+	0x00000000,	/* [79]  LUT[47]                                       */
+
+	0x200104C0,	/* [80]  LUT[48]                                       */
+	0x00000000,	/* [81]  LUT[49]                                       */
+	0x00000000,	/* [82]  LUT[50]                                       */
+	0x00000000,	/* [83]  LUT[51]                                       */
+
+	0x00000000,	/* [84]  LUT[52]                                       */
+	0x00000000,	/* [85]  LUT[53]                                       */
+	0x00000000,	/* [86]  LUT[54]                                       */
+	0x00000000,	/* [87]  LUT[55]                                       */
+
+	0x00000000,	/* [88]  LUT[56]                                       */
+	0x00000000,	/* [89]  LUT[57]                                       */
+	0x00000000,	/* [90]  LUT[58]                                       */
+	0x00000000,	/* [91]  LUT[59]                                       */
+
+	0x00000000,	/* [92]  LUT[60]                                       */
+	0x00000000,	/* [93]  LUT[61]                                       */
+	0x00000000,	/* [94]  LUT[62]                                       */
+	0x00000000,	/* [95]  LUT[63]                                       */
+
+	/* LUT custom sequences (lutCustomSeq[0..11]) */
+	0x00000000,	/* [96]  lutCustomSeq[0]                               */
+	0x00000000,	/* [97]  lutCustomSeq[1]                               */
+	0x00000000,	/* [98]  lutCustomSeq[2]                               */
+	0x00000000,	/* [99]  lutCustomSeq[3]                               */
+
+	0x00000000,	/* [100] lutCustomSeq[4]                               */
+	0x00000000,	/* [101] lutCustomSeq[5]                               */
+	0x00000000,	/* [102] lutCustomSeq[6]                               */
+	0x00000000,	/* [103] lutCustomSeq[7]                               */
+
+	0x00000000,	/* [104] lutCustomSeq[8]                               */
+	0x00000000,	/* [105] lutCustomSeq[9]                               */
+	0x00000000,	/* [106] lutCustomSeq[10]                              */
+	0x00000000,	/* [107] lutCustomSeq[11]                              */
+
+	/* reserved */
+	0x00000000,	/* [108] reserved                                      */
+	0x00000000,	/* [109] reserved                                      */
+	0x00000000,	/* [110] reserved                                      */
+	0x00000000,	/* [111] reserved                                      */
+
+	/* ---- Serial NOR configuration block (offset 0x1C0..0x1FF) ---- */
+	0x00010000,	/* [112] pageSize=256 (0x100)                          */
+	0x00001000,	/* [113] sectorSize=4096 (0x1000)                      */
+	0x00000001,	/* [114] ipCmdSerialClkFreq=1                          */
+	0x00000000,	/* [115] reserved                                      */
+
+	0x00010000,	/* [116] blockSize=65536 (0x10000)                     */
+	0x00000000,	/* [117] reserved                                      */
+	0x00000000,	/* [118] reserved                                      */
+	0x00000000,	/* [119] reserved                                      */
+
+	0x00000000,	/* [120] reserved                                      */
+	0x00000000,	/* [121] reserved                                      */
+	0x00000000,	/* [122] reserved                                      */
+	0x00000000,	/* [123] reserved                                      */
+
+	0x00000000,	/* [124] reserved                                      */
+	0x00000000,	/* [125] reserved                                      */
+	0x00000000,	/* [126] reserved                                      */
+	0x00000000,	/* [127] reserved                                      */
 };
-#else
-uint32_t FlexSPI_NOR_Config[128] = {
-	// 448 byte common FlexSPI configuration block, 9.6.3.1 page 222 (RT1060 rev 3)
-	// MCU_Flashloader_Reference_Manual.pdf, 8.2.1, Table 8-2, page 72-75
-	0x42464346,		// Tag				0x00
-	0x56010000,		// Version
-	0,			// reserved
-	0x00020101,		// columnAdressWidth,dataSetupTime,dataHoldTime,readSampleClkSrc
-
-	0x00000000,		// waitTimeCfgCommands,-,deviceModeCfgEnable
-	0,			// deviceModeSeq
-	0, 			// deviceModeArg
-	0x00000000,		// -,-,-,configCmdEnable
-
-	0,			// configCmdSeqs		0x20
-	0,
-	0,
-	0,
-
-	0,			// cfgCmdArgs			0x30
-	0,
-	0,
-	0,
-
-	0x00000000,		// controllerMiscOption		0x40
-	0x01060401,		// lutCustomSeqEnable,serialClkFreq,sflashPadType,deviceType
-	0,			// reserved
-	0,			// reserved
-
-#if defined(ARDUINO_TEENSY40)
-	0x00200000,		// sflashA1Size			0x50
-#elif defined(ARDUINO_TEENSY41)
-	0x00800000,		// sflashA1Size			0x50
-#elif defined(ARDUINO_MIMXRT1060_EVKB)
-	0x00800000,		// sflashA1Size 8MB (IS25WP064A QSPI NOR)
-#elif defined(ARDUINO_TEENSY_MICROMOD)
-	0x01000000,		// sflashA1Size			0x50
-#else
-#error "Unknow flash chip size";
-#endif
-	0,			// sflashA2Size
-	0,			// sflashB1Size
-	0,			// sflashB2Size
-
-	0,			// csPadSettingOverride		0x60
-	0,			// sclkPadSettingOverride
-	0,			// dataPadSettingOverride
-	0,			// dqsPadSettingOverride
-
-	0,			// timeoutInMs			0x70
-	0,			// commandInterval
-	0,			// dataValidTime
-	0x00000000,		// busyBitPolarity,busyOffset
-
-	0x0A1804EB,		// lookupTable[0]  CMD_SDR(0xEB,pins1) RADDR_SDR(24,pins4)
-	0x32041EFF,		// lookupTable[1]  MODE8_SDR(0xFF,pins4) DUMMY_SDR(4,pins4)
-	0x00002601,		// lookupTable[2]  READ_SDR(1,pins4)
-	0,			// lookupTable[3]
-
-	0,			// lookupTable[4]		0x90
-	0,			// lookupTable[5]
-	0,			// lookupTable[6]
-	0,			// lookupTable[7]
-
-	0,			// lookupTable[8]		0xA0
-	0,			// lookupTable[9]
-	0,			// lookupTable[10]
-	0,			// lookupTable[11]
-
-	0,			// lookupTable[12]		0xB0
-	0,			// lookupTable[13]
-	0,			// lookupTable[14]
-	0,			// lookupTable[15]
-
-	0,			// lookupTable[16]		0xC0
-	0,			// lookupTable[17]
-	0,			// lookupTable[18]
-	0,			// lookupTable[19]
-
-	0,			// lookupTable[20]		0xD0
-	0,			// lookupTable[21]
-	0,			// lookupTable[22]
-	0,			// lookupTable[23]
-
-	0,			// lookupTable[24]		0xE0
-	0,			// lookupTable[25]
-	0,			// lookupTable[26]
-	0,			// lookupTable[27]
-
-	0,			// lookupTable[28]		0xF0
-	0,			// lookupTable[29]
-	0,			// lookupTable[30]
-	0,			// lookupTable[31]
-
-	0,			// lookupTable[32]		0x100
-	0,			// lookupTable[33]
-	0,			// lookupTable[34]
-	0,			// lookupTable[35]
-
-	0,			// lookupTable[36]		0x110
-	0,			// lookupTable[37]
-	0,			// lookupTable[38]
-	0,			// lookupTable[39]
-
-	0,			// lookupTable[40]		0x120
-	0,			// lookupTable[41]
-	0,			// lookupTable[42]
-	0,			// lookupTable[43]
-
-	0,			// lookupTable[44]		0x130
-	0,			// lookupTable[45]
-	0,			// lookupTable[46]
-	0,			// lookupTable[47]
-
-	0,			// lookupTable[48]		0x140
-	0,			// lookupTable[49]
-	0,			// lookupTable[50]
-	0,			// lookupTable[51]
-
-	0,			// lookupTable[52]		0x150
-	0,			// lookupTable[53]
-	0,			// lookupTable[54]
-	0,			// lookupTable[55]
-
-	0,			// lookupTable[56]		0x160
-	0,			// lookupTable[57]
-	0,			// lookupTable[58]
-	0,			// lookupTable[59]
-
-	0,			// lookupTable[60]		0x170
-	0,			// lookupTable[61]
-	0,			// lookupTable[62]
-	0,			// lookupTable[63]
-
-	0,			// LUT 0: Read			0x180
-	0,			// LUT 1: ReadStatus
-	0,			// LUT 3: WriteEnable
-	0,			// LUT 5: EraseSector
-
-	0,			// LUT 9: PageProgram		0x190
-	0,			// LUT 11: ChipErase
-	0,			// LUT 15: Dummy
-	0,			// LUT unused?
-
-	0,			// LUT unused?			0x1A0
-	0,			// LUT unused?
-	0,			// LUT unused?
-	0,			// LUT unused?
-
-	0,			// reserved			0x1B0
-	0,			// reserved
-	0,			// reserved
-	0,			// reserved
-
-	// 64 byte Serial NOR configuration block, 8.6.3.2, page 346
-
-	256,			// pageSize			0x1C0
-	4096,			// sectorSize
-	1,			// ipCmdSerialClkFreq
-	0,			// reserved
-
-	0x00010000,		// block size			0x1D0
-	0,			// reserved
-	0,			// reserved
-	0,			// reserved
-
-	0,			// reserved			0x1E0
-	0,			// reserved
-	0,			// reserved
-	0,			// reserved
-
-	0,			// reserved			0x1F0
-	0,			// reserved
-	0,			// reserved
-	0			// reserved
-};
-#endif
-
