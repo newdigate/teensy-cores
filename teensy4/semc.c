@@ -18,7 +18,7 @@ static void semc_ipcmd(uint32_t addr, uint32_t cmd, uint32_t data)
 	uint32_t m = cmd & 0xF;
 	if (m == 0xA || m == 0x9) SEMC_IPTXDAT = data;   // mode-set / write carry data
 	SEMC_IPCMD = cmd | (0xA55Au << 16);    // SEMC_IPCMD magic key
-	uint32_t guard = 2000000;
+	uint32_t guard = 100000;
 	while (!(SEMC_INTR & 0x1) && --guard) { }
 }
 
@@ -32,13 +32,13 @@ FLASHMEM void extram_semc_init(void)
 	// Clock: SEMC = PLL2 PFD2 / 3 = 132 MHz. PFD2 untouched. SEMC_PODF needs the handshake.
 	CCM_CBCDR = (CCM_CBCDR & ~CCM_CBCDR_SEMC_ALT_CLK_SEL) | CCM_CBCDR_SEMC_CLK_SEL; // alt=PFD2
 	CCM_CBCDR = (CCM_CBCDR & ~CCM_CBCDR_SEMC_PODF(7)) | CCM_CBCDR_SEMC_PODF(2);     // /3
-	uint32_t hg = 2000000;
+	uint32_t hg = 100000;
 	while ((CCM_CDHIPR & CCM_CDHIPR_SEMC_PODF_BUSY) && --hg) { }
 	CCM_CCGR3 |= CCM_CCGR3_SEMC(3);                                                 // gate on
 
 	// Soft reset (SWRST=bit0), then configure disabled (MDIS=1) and enable (MDIS=0); DQSMD=0.
 	SEMC_MCR = 0x1u;
-	uint32_t guard = 2000000;
+	uint32_t guard = 100000;
 	while ((SEMC_MCR & 0x1u) && --guard) { }
 	SEMC_MCR   = 0x1FFF0002;   // MDIS=1, DQSMD=0, BTO/CTO
 	SEMC_BMCR0 = 0x00104085;
