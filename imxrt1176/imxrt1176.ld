@@ -26,6 +26,7 @@ SECTIONS
 	} > FLASH
 
 	.text.code : {
+		KEEP(*(.vectors))
 		KEEP(*(.startup))
 		*(.flashmem*)
 		. = ALIGN(4);
