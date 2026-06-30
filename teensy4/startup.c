@@ -431,7 +431,10 @@ FLASHMEM void configure_external_ram()
 	// EVKB: 32 MB SDRAM on SEMC @ 0x80000000 (NOT FlexSPI2 PSRAM).
 	extram_semc_init();
 	uint32_t extram_bytes = (uint32_t)&_extram_end - (uint32_t)&_extram_start;
-	if (extram_bytes) memset(&_extram_start, 0, extram_bytes); // zero EXTMEM .bss globals
+	if (extram_bytes) {
+		memset(&_extram_start, 0, extram_bytes);               // zero EXTMEM .bss globals
+		arm_dcache_flush_delete(&_extram_start, extram_bytes); // push zeros to SDRAM (DMA-safe)
+	}
 	external_psram_size = 32;
 	sm_set_pool(&extmem_smalloc_pool, &_extram_end,
 		32 * 0x100000 - extram_bytes, 1, NULL);
