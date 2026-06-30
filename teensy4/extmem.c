@@ -36,9 +36,14 @@
 #include "wiring.h"
 
 #if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
-// Teensy 4.1 external RAM address range is 0x70000000 to 0x7FFFFFFF
 #define HAS_EXTRAM
+#if defined(ARDUINO_MIMXRT1060_EVKB)
+// EVKB external RAM is 32 MB SEMC SDRAM at 0x80000000..0x81FFFFFF
+#define IS_EXTMEM(addr) (((uint32_t)(addr) >> 28) == 8)
+#else
+// Teensy 4.1 external RAM (FlexSPI2 PSRAM) is 0x70000000..0x7FFFFFFF
 #define IS_EXTMEM(addr) (((uint32_t)(addr) >> 28) == 7)
+#endif
 #endif
 
 

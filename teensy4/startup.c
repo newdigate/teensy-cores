@@ -33,6 +33,7 @@
 #include "usb_dev.h"
 #include "avr/pgmspace.h"
 #include "smalloc.h"
+#include "semc.h"
 #include <string.h>
 
 #include "debug/printf.h"
@@ -352,6 +353,9 @@ FLASHMEM void configure_cache(void)
 
 #if defined(ARDUINO_TEENSY41) || defined(ARDUINO_MIMXRT1060_EVKB)
 
+// FlexSPI2 PSRAM helpers are Teensy-4.1-only; the EVKB uses SEMC SDRAM (see semc.c).
+#if defined(ARDUINO_TEENSY41)
+
 #define LUT0(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)))
 #define LUT1(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)) << 16)
 #define CMD_SDR         FLEXSPI_LUT_OPCODE_CMD_SDR
@@ -418,10 +422,23 @@ FLASHMEM static uint8_t flexspi2_psram_size(uint32_t addr)
 
 	return result;
 }
+#endif // ARDUINO_TEENSY41 (FlexSPI2 PSRAM helpers)
 
 
 FLASHMEM void configure_external_ram()
 {
+#if defined(ARDUINO_MIMXRT1060_EVKB)
+	// EVKB: 32 MB SDRAM on SEMC @ 0x80000000 (NOT FlexSPI2 PSRAM).
+	extram_semc_init();
+	uint32_t extram_bytes = (uint32_t)&_extram_end - (uint32_t)&_extram_start;
+	if (extram_bytes) {
+		memset(&_extram_start, 0, extram_bytes);               // zero EXTMEM .bss globals
+		arm_dcache_flush_delete(&_extram_start, extram_bytes); // push zeros to SDRAM (DMA-safe)
+	}
+	external_psram_size = 32;
+	sm_set_pool(&extmem_smalloc_pool, &_extram_end,
+		32 * 0x100000 - extram_bytes, 1, NULL);
+#else
 	// initialize pins
 	IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_22 = 0x1B0F9; // 100K pullup, strong drive, max speed, hyst
 	IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_23 = 0x110F9; // keeper, strong drive, max speed, hyst
@@ -556,6 +573,7 @@ FLASHMEM void configure_external_ram()
 		external_psram_size = 0;
 		memset(&extmem_smalloc_pool, 0, sizeof(extmem_smalloc_pool));
 	}
+#endif // ARDUINO_MIMXRT1060_EVKB (else: Teensy 4.1 FlexSPI2 PSRAM)
 }
 
 #endif // ARDUINO_TEENSY41
