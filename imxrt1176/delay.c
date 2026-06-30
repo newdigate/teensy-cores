@@ -1,181 +1,113 @@
-/* Teensyduino Core Library
- * http://www.pjrc.com/teensy/
- * Copyright (c) 2019 PJRC.COM, LLC.
+/* Teensyduino Core Library — MIMXRT1176-EVKB Phase-0 timing primitives.
  *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
+ * Provides millis(), micros(), delay(), and delayMicroseconds() for the
+ * NXP i.MX RT1176 (Cortex-M7) port.  SysTick is configured for 1 kHz by
+ * systick_init() in startup.c; DWT CYCCNT is enabled there too.
  *
- * 1. The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * 2. If the Software is incorporated into a build system that allows
- * selection among a list of target devices, then similar target
- * devices manufactured by PJRC.COM must be included in the list of
- * target devices and selectable in the same manner.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * systick_millis_count: strong (non-weak) definition here overrides the weak
+ * placeholder in startup.c so the linker resolves a single symbol in DTCM.
  */
 
-#include "core_pins.h"
-#include "arm_math.h"	// micros() synchronization
+#include <stdint.h>
+#include "imxrt1176.h"
 
-//volatile uint32_t F_CPU = 396000000;
-//volatile uint32_t F_BUS = 132000000;
+/* -----------------------------------------------------------------------
+ * Millisecond counter — incremented by systick_isr() in startup.c.
+ * The STRONG definition here wins over the __attribute__((weak)) placeholder
+ * in startup.c; there must be exactly one copy in the final binary.
+ * --------------------------------------------------------------------- */
 volatile uint32_t systick_millis_count = 0;
-volatile uint32_t systick_cycle_count = 0;
-volatile uint32_t scale_cpu_cycles_to_microseconds = 0;
-uint32_t systick_safe_read;	 // micros() synchronization
 
-//The 24 MHz XTALOSC can be the external clock source of SYSTICK. 
-//Hardware devides this down to 100KHz. (RM Rev2, 13.3.21 PG 986)
-#define SYSTICK_EXT_FREQ 100000
+/* Variables referenced by core_pins.h inlines (delayMicroseconds,
+ * delayNanoseconds).  F_CPU_ACTUAL tracks the live core clock; it is set to
+ * 996 MHz here and may be updated by set_arm_clock_rt1176() in startup.c if
+ * clock reconfiguration is performed at runtime. */
+volatile uint32_t F_CPU_ACTUAL  = 996000000u;
+volatile uint32_t F_BUS_ACTUAL  = 996000000u;   /* placeholder; bus != core on RT1176 */
+volatile uint32_t scale_cpu_cycles_to_microseconds = 0; /* not used by Phase-0 micros() */
 
-#if 0
-// moved to EventResponder.cpp
-void systick_isr(void)
+/* -----------------------------------------------------------------------
+ * millis() — returns the number of milliseconds since boot.
+ * Defined in core_pins.h as a static inline that reads systick_millis_count,
+ * so no out-of-line body is needed here.  Provided as a non-inline fallback
+ * for translation units that include only this header or link against the
+ * compiled object directly.
+ * --------------------------------------------------------------------- */
+uint32_t millis(void)
 {
-	systick_millis_count++;
-	// MillisTimer::runFromTimer();
-	//digitalWriteFast(12, HIGH);
-	//delayMicroseconds(1);
-	//digitalWriteFast(12, LOW);
+    return systick_millis_count;
 }
-#endif
 
-#if 0
-void millis_init(void)
+/* -----------------------------------------------------------------------
+ * micros() — microseconds since boot, composed from the 1 kHz SysTick
+ * millisecond counter and the SysTick current-value register (SYST_CVR).
+ *
+ * Algorithm (Teensy idiom):
+ *   1. Disable interrupts, snapshot CVR and millis counter, check if a
+ *      SysTick interrupt is pending (i.e. the counter wrapped to 0 and
+ *      the ISR hasn't run yet), then re-enable interrupts.
+ *   2. If the pending bit is set and CVR is not very close to zero (which
+ *      would mean the ISR is about to run), bump ms by 1 to account for
+ *      the unserviced tick.
+ *   3. Ticks elapsed = (reload_value - CVR), where reload = 996000-1.
+ *      Divide by 996 to convert to microseconds (996 ticks/us @ 996 MHz).
+ *
+ * This gives ~1 µs resolution with no 64-bit multiply in the fast path.
+ * --------------------------------------------------------------------- */
+uint32_t micros(void)
 {
-	//printf("millis_init %08lX\n", SYST_CALIB);
-	_VectorsRam[15] = systick_isr;
-#ifdef SYSTICK_EXT_FREQ
-	SYST_RVR = (SYSTICK_EXT_FREQ / 1000) - 1;
-	SYST_CVR = 0;
-	SYST_CSR = SYST_CSR_TICKINT | SYST_CSR_ENABLE;
-#else
-	SYST_RVR = (F_CPU / 1000) - 1;
-	SYST_CVR = 0;
-	SYST_CSR = SYST_CSR_CLKSOURCE | SYST_CSR_TICKINT | SYST_CSR_ENABLE;
-#endif
-	//SCB_SHPR3 = 0x20200000;  // Systick = priority 32
-	//printf("RVR=%lu\r\n", SYST_RVR);
+    uint32_t ms, cvr, istatus;
+
+    __asm__ volatile("cpsid i" ::: "memory");   /* disable interrupts */
+    cvr     = SYST_CVR;
+    ms      = systick_millis_count;
+    istatus = SCB_ICSR;
+    __asm__ volatile("cpsie i" ::: "memory");   /* re-enable interrupts */
+
+    /* If a SysTick interrupt is pending (PENDSTSET) and CVR != 0 the tick
+     * has not yet been serviced — treat it as the next millisecond. */
+    if ((istatus & SCB_ICSR_PENDSTSET) && cvr != 0) {
+        ms++;
+    }
+
+    /* elapsed_ticks counts down from RVR to 0; convert to elapsed. */
+    uint32_t elapsed_ticks = (996000u - 1u) - cvr;   /* = SYST_RVR - cvr */
+    uint32_t us_frac = elapsed_ticks / 996u;           /* 996 ticks per µs */
+    return ms * 1000u + us_frac;
 }
-#endif
 
-/*void yield(void)
-{
+/* -----------------------------------------------------------------------
+ * delay() — spin for the requested number of milliseconds.
+ *
+ * Phase-0 implementation: simple millis()-based spin loop.  yield() is
+ * provided as a weak no-op stub below so this file links standalone.
+ * Later phases will override yield() with the EventResponder dispatcher.
+ * --------------------------------------------------------------------- */
+__attribute__((weak)) void yield(void) {}
 
-}*/
-
-// Wait for a number of milliseconds.  During this time, interrupts remain
-// active, but the rest of your program becomes effectively stalled.  Usually
-// delay() is used in very simple programs.  To achieve delay without waiting
-// use millis() or elapsedMillis.  For shorter delay, use delayMicroseconds()
-// or delayNanoseconds().
 void delay(uint32_t msec)
 {
-	uint32_t start;
-
-	if (msec == 0) return;
-	start = micros();
-	while (1) {
-		while ((micros() - start) >= 1000) {
-			if (--msec == 0) return;
-			start += 1000;
-		}
-		yield();
-	}
-	// TODO...
+    uint32_t start;
+    if (msec == 0) return;
+    start = millis();
+    while ((millis() - start) < msec) {
+        yield();
+    }
 }
 
-// Returns the number of microseconds since your program started running.
-// This 32 bit number will roll back to zero after about 71 minutes and
-// 35 seconds.  For a simpler way to build delays or timeouts, consider
-// using elapsedMicros.
-uint32_t micros(void)
+/* -----------------------------------------------------------------------
+ * delayMicroseconds() — busy-wait using DWT CYCCNT.
+ *
+ * Defined as a static inline in core_pins.h (uses F_CPU_ACTUAL).  This
+ * out-of-line version is a fallback for C translation units that do not
+ * include core_pins.h (or that include it without __IMXRT1062__/__IMXRT1176__
+ * defined so the inline is not emitted).
+ * --------------------------------------------------------------------- */
+void delayMicroseconds(uint32_t us)
 {
-	uint32_t smc, scc;
-	do {
-		__LDREXW(&systick_safe_read);
-		smc = systick_millis_count;
-		scc = systick_cycle_count;
-	} while ( __STREXW(1, &systick_safe_read));
-	uint32_t cyccnt = ARM_DWT_CYCCNT;
-	asm volatile("" : : : "memory");
-	uint32_t ccdelta = cyccnt - scc;
-	uint32_t frac = ((uint64_t)ccdelta * scale_cpu_cycles_to_microseconds) >> 32;
-	if (frac > 1000) frac = 1000;
-	uint32_t usec = 1000*smc + frac;
-	return usec;
+    uint32_t begin  = ARM_DWT_CYCCNT;
+    uint32_t cycles = (F_CPU_ACTUAL / 1000000u) * us;
+    while ((ARM_DWT_CYCCNT - begin) < cycles) {
+        /* busy wait */
+    }
 }
-
-#if 0 // kept to compare test to cycle count micro()
-uint32_t micros(void)
-{
-	uint32_t msec, tick, elapsed, istatus, usec;
-	//static uint32_t prev_msec=0;
-	//static uint32_t prev_istatus=0;
-	//static uint32_t prev_tick=0;
-	//static uint32_t prev_elapsed=0;
-	static uint32_t prev_usec=0;
-	static int doprint=180;
-
-	__disable_irq();
-	tick = SYST_CVR;
-	msec = systick_millis_count;
-	istatus = SCB_ICSR;     // bit 26 indicates if systick exception pending
-#ifndef SYSTICK_EXT_FREQ
-	const uint32_t fcpu = F_CPU;
-#endif
-	__enable_irq();
-	istatus &= SCB_ICSR_PENDSTSET;
-#ifdef SYSTICK_EXT_FREQ
-	if ((istatus & SCB_ICSR_PENDSTSET) && (tick == 0 || tick > (SYSTICK_EXT_FREQ / 2000))) {
-#else
-	if ((istatus & SCB_ICSR_PENDSTSET) && (tick == 0 || tick > (fcpu / 2000))) {
-#endif
-		// systick generated an interrupt at the 1 -> 0 transition, and
-		// we read it before an ISR could increment systick_millis_count
-		msec++;
-	}
-#if defined(SYSTICK_EXT_FREQ) && SYSTICK_EXT_FREQ <= 1000000
-	elapsed = (SYSTICK_EXT_FREQ / 1000) - tick;
-	if (tick == 0) elapsed = 0;
-	usec = msec * 1000 + elapsed * (1000000 / SYSTICK_EXT_FREQ);
-#elif defined(SYSTICK_EXT_FREQ) && SYSTICK_EXT_FREQ > 1000000
-	elapsed = (SYSTICK_EXT_FREQ / 1000) - tick;
-	if (tick == 0) elapsed = 0;
-	usec = msec * 1000 + elapsed / (SYSTICK_EXT_FREQ / 1000000);
-#else
-	elapsed = (fcpu / 1000) - tick;
-	if (tick == 0) elapsed = 0;
-	usec = msec * 1000 + elapsed / (fcpu / 1000000);
-#endif
-	//if (doprint) printf("%lu  %lu\r\n", msec, systick);
-	if (usec < prev_usec && doprint) {
-		//print("opps\r\n");
-		//printf("opps then: msec=%lu, systick=%lu, elapsed=%lu, usec=%lu, i=%lx\n",
-			//prev_msec, prev_tick, prev_elapsed, prev_usec, prev_istatus);
-		//printf("      now: msec=%lu, systick=%lu, elapsed=%lu, usec=%lu, i=%lx\n",
-			//msec, tick, elapsed, usec, istatus);
-		if (doprint > 0) doprint--;
-	}
-	//prev_msec = msec;
-	//prev_elapsed = elapsed;
-	//prev_tick = tick;
-	//prev_istatus = istatus;
-	prev_usec = usec;
-	return usec;
-}
-#endif

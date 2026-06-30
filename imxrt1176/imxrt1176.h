@@ -127,6 +127,8 @@
 #define SYST_CSR   (*(volatile uint32_t *)0xE000E010u)
 #define SYST_RVR   (*(volatile uint32_t *)0xE000E014u)
 #define SYST_CVR   (*(volatile uint32_t *)0xE000E018u)
+#define SCB_ICSR   (*(volatile uint32_t *)0xE000ED04u)
+#define SCB_ICSR_PENDSTSET (1u << 26)
 #define SCB_VTOR   (*(volatile uint32_t *)0xE000ED08u)
 #define ARM_DWT_CYCCNT (*(volatile uint32_t *)0xE0001004u)
 #define ARM_DWT_CTRL   (*(volatile uint32_t *)0xE0001000u)
