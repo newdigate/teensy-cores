@@ -65,6 +65,26 @@ Adds the MIMXRT1060-EVKB (i.MX RT1062) as a board reusing the `teensy4` core.
    of the SDRAM (SEMC) bus and would clash with it. (Note: QEMU can't exercise
    this — its i.MX RT USB model is device-mode only, no EHCI host.)
 
+## SDRAM (32 MB, EXTMEM)
+
+The EVKB's 32 MB SDRAM (SEMC @ `0x80000000`) is brought up by the core at boot
+(`configure_external_ram()` → `extram_semc_init()` in `semc.c`), so it works like
+Teensy 4.1 PSRAM: the `EXTMEM` attribute places globals in SDRAM (zero-initialized
+at boot, then flushed to SDRAM so DMA/direct reads see the zeros) and
+`extmem_malloc()/free()/calloc()/realloc()` allocate from it; `external_psram_size`
+reads `32`.
+
+Notes:
+- SEMC runs at 132 MHz (PLL2 PFD2 / 3). PFD2 is shared with the boot flash and is
+  **not** reprogrammed. The read strobe uses internal loopback (SEMC `MCR.DQSMD = 0`);
+  the NXP SDK's DQS-pad loopback (`DQSMD = 1`) returns all-zero reads on this board.
+- `EXTMEM` globals with explicit initializers (`EXTMEM int x = 5;`) are zeroed, not
+  value-initialized — same limitation as upstream Teensy 4.1 (copy-from-flash is an
+  unfinished upstream TODO).
+- Hardware-verified: full 32 MB memtest and an `EXTMEM` + `extmem_malloc()` parity
+  test both pass (see `sdram_parity_test/`). QEMU backs this region with plain RAM and
+  stubs SEMC, so emulation exercises the API/boot but not the real SEMC timing.
+
 ## Install into the platform the IDE actually compiles with
 
 > ⚠️ **Install location matters.** The Arduino IDE / `arduino-builder` loads
