@@ -28,47 +28,8 @@
  * SOFTWARE.
  */
 
-#include <Arduino.h>
-#include "EventResponder.h"
-
-uint8_t yield_active_check_flags = 0;
-
-
-void yield(void) __attribute__ ((weak));
-void yield(void)
-{
-	const uint8_t check_flags = yield_active_check_flags;
-	if (!check_flags) return;	// nothing to do
-
-	// TODO: do nothing if called from interrupt
-
-	static uint8_t running=0;
-	if (running) return; // TODO: does this need to be atomic?
-	running = 1;
-
-	// USB Serial - Add hack to minimize impact...
-	if (check_flags & YIELD_CHECK_USB_SERIAL) {
-		if (Serial.available()) serialEvent();
-	}
-
-#if defined(USB_DUAL_SERIAL) || defined(USB_TRIPLE_SERIAL)
-	if (check_flags & YIELD_CHECK_USB_SERIALUSB1) {
-		if (SerialUSB1.available()) serialEventUSB1();
-	}
-#endif
-#ifdef USB_TRIPLE_SERIAL
-	if (check_flags & YIELD_CHECK_USB_SERIALUSB2) {
-		if (SerialUSB2.available()) serialEventUSB2();
-	}
-#endif
-
-	// Current workaround until integrate with EventResponder.
-	if (check_flags & YIELD_CHECK_HARDWARE_SERIAL) {
-		HardwareSerialIMXRT::processSerialEventsList();
-	}
-
-	running = 0;
-	if (check_flags & YIELD_CHECK_EVENT_RESPONDER) {
-		EventResponder::runFromYield();
-	}
-};
+// Phase-0 (imxrt1176): the full Teensy 4 yield() dispatches USB Serial,
+// HardwareSerial and the EventResponder, none of which are ported yet. For
+// blink, yield() is a no-op. delay.c already provides a weak empty yield(),
+// so this translation unit is intentionally empty for Phase 0. Restore the
+// real dispatcher when Serial / EventResponder land.

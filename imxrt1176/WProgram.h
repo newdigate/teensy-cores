@@ -36,38 +36,16 @@
 #include <math.h>
 #include <time.h>
 
-// some libraries and sketches depend on this
-// AVR stuff, assuming Arduino.h or WProgram.h
-// automatically includes it...
-#include <avr/pgmspace.h>
-#include <avr/interrupt.h>
-
-#include "avr_functions.h"
+// Phase-0 (imxrt1176) trim: the full Teensy 4 WProgram.h pulls in the AVR
+// emulation, HardwareSerial, the whole usb_* stack, WString, IntervalTimer,
+// CrashReport, etc. None of those headers/sources exist yet in the minimal
+// imxrt1176 core, and the blink sketch needs none of them. We include only
+// wiring.h (-> core_pins.h: pinMode/digitalWrite/delay/millis, pin defines)
+// and pins_arduino.h (LED_BUILTIN). Restore the rest as later phases land
+// (Serial, USB, String, ...).
 #include "wiring.h"
-#include "HardwareSerial.h"
 
 #ifdef __cplusplus
-
-#include "inplace_function.h"
-#include "avr_emulation.h"
-#include "usb_serial.h"
-#include "usb_seremu.h"
-#include "usb_keyboard.h"
-#include "usb_mouse.h"
-#include "usb_joystick.h"
-#include "usb_midi.h"
-#include "usb_rawhid.h"
-#include "usb_flightsim.h"
-#include "MTP_Teensy.h"
-#include "usb_audio.h"
-#include "usb_touch.h"
-//#include "usb_undef.h" // do not allow usb_desc.h stuff to leak to user programs
-
-#include "WCharacter.h"
-#include "WString.h"
-#include "elapsedMillis.h"
-#include "IntervalTimer.h"
-#include "CrashReport.h"
 
 uint16_t makeWord(uint16_t w);
 uint16_t makeWord(byte h, byte l);

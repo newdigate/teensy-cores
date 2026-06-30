@@ -34,8 +34,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "binary.h"
-#include "core_id.h"
+// Phase-0 (imxrt1176) trim: binary.h and core_id.h are not yet ported to the
+// minimal imxrt1176 core. core_pins.h (pin I/O + timing) is all blink needs.
 #include "core_pins.h"
 
 // type_traits interferes with min() and other defines
