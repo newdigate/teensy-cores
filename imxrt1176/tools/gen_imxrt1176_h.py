@@ -30,6 +30,16 @@ CCM_CLOCK_ROOTS = {0: "M7", 2: "BUS", 8: "M7_SYSTICK"}
 ANADIG_PLL_REGS = {"ARM_PLL_CTRL": 0x200}   # ARM_PLL_CTRL_REGISTER, offset 0x200
 ANADIG_OSC_REGS = {"OSC_24M_CTRL": 0x020}   # 24MHz OSC Control,      offset 0x020
 
+# --- IOMUXC per-pad mux / pad-control registers (Task 11: EVKB pin table) -----
+# Offsets from IOMUXC_BASE (0x400E8000), derived from the SDK's pin-mux macros
+# in fsl_iomuxc.h.  Each macro `IOMUXC_<PAD>_<SIGNAL>` expands to
+#   muxRegister, muxMode, inputRegister, inputDaisy, configRegister
+# e.g. IOMUXC_GPIO_AD_04_GPIO9_IO03 = 0x400E811C, 0xA, 0, 0, 0x400E8360
+# so SW_MUX_CTL_PAD_GPIO_AD_04 @ +0x11C, SW_PAD_CTL_PAD_GPIO_AD_04 @ +0x360.
+# muxMode 0xA (ALT10) selects GPIO9_IO03 (the EVKB User LED D6, GPIO9 bit 3).
+IOMUXC_MUX_CTL_REGS = {"GPIO_AD_04": 0x11C}
+IOMUXC_PAD_CTL_REGS = {"GPIO_AD_04": 0x360}
+
 def parse_bases(txt):
     bases = {}
     for m in re.finditer(r'#define\s+(\w+)_BASE\s+\(([0-9a-fA-Fxu]+)\)', txt):
@@ -87,6 +97,16 @@ def main():
         L += ["#define ANADIG_OSC_OSC_24M_CTRL_OSC_EN          (1u << 4)",
               "#define ANADIG_OSC_OSC_24M_CTRL_LP_EN           (1u << 2)",
               "#define ANADIG_OSC_OSC_24M_CTRL_OSC_24M_STABLE  (1u << 30)"]
+
+    # --- IOMUXC per-pad mux / pad-ctl registers (Task 11) --------------------
+    iomuxc = bases.get("IOMUXC")
+    if iomuxc is not None and (IOMUXC_MUX_CTL_REGS or IOMUXC_PAD_CTL_REGS):
+        L.append("")
+        L.append("/* IOMUXC per-pad mux/pad-control regs (offsets from fsl_iomuxc.h) */")
+        for pad, off in sorted(IOMUXC_MUX_CTL_REGS.items()):
+            L.append(f"#define IOMUXC_SW_MUX_CTL_PAD_{pad} (*(volatile uint32_t *)0x{iomuxc+off:08X}u)")
+        for pad, off in sorted(IOMUXC_PAD_CTL_REGS.items()):
+            L.append(f"#define IOMUXC_SW_PAD_CTL_PAD_{pad} (*(volatile uint32_t *)0x{iomuxc+off:08X}u)")
 
     L += ["", "#define SYST_CSR   (*(volatile uint32_t *)0xE000E010u)",
           "#define SYST_RVR   (*(volatile uint32_t *)0xE000E014u)",

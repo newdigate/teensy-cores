@@ -2166,6 +2166,15 @@ static inline void digitalWriteFast(uint8_t pin, uint8_t val) __attribute__((alw
 // digitalWrite has minimal overhead when the pin number is a
 // constant.  Successive digitalWriteFast without delays can be
 // too quick in many applications!
+#if defined(__IMXRT1176__)
+// Phase 0 EVKB (RT1176): the teensy4 per-pin CORE_PINn_* fast-GPIO macros
+// are not defined for this board's pin table yet, so digitalWriteFast()
+// simply defers to the out-of-line digitalWrite() in digital.c.
+static inline void digitalWriteFast(uint8_t pin, uint8_t val)
+{
+	digitalWrite(pin, val);
+}
+#else
 static inline void digitalWriteFast(uint8_t pin, uint8_t val)
 {
 	if (__builtin_constant_p(pin)) {
@@ -2419,6 +2428,7 @@ static inline void digitalWriteFast(uint8_t pin, uint8_t val)
 		else *portClearRegister(pin) = digitalPinToBitMask(pin);
 	}
 }
+#endif // __IMXRT1176__
 
 // Read the signal at a digital pin.  The pin must have previously been
 // configured with pinMode() as INPUT, INPUT_PULLUP, or INPUT_PULLDOWN.
@@ -2429,6 +2439,13 @@ static inline uint8_t digitalReadFast(uint8_t pin) __attribute__((always_inline,
 // configured with pinMode() as INPUT, INPUT_PULLUP, or INPUT_PULLDOWN.  The
 // return value is either HIGH or LOW.  This fast version of digitalRead()
 // has minimal overhead when the pin number is a constant.
+#if defined(__IMXRT1176__)
+// Phase 0 EVKB (RT1176): defer to the out-of-line digitalRead() in digital.c.
+static inline uint8_t digitalReadFast(uint8_t pin)
+{
+	return digitalRead(pin);
+}
+#else
 static inline uint8_t digitalReadFast(uint8_t pin)
 {
 	if (__builtin_constant_p(pin)) {
@@ -2561,6 +2578,7 @@ static inline uint8_t digitalReadFast(uint8_t pin)
 		return 0;
 	}
 }
+#endif // __IMXRT1176__
 
 // Cause a digital pin's output to change state.  If it was HIGH,
 // the pin outputs LOW, and if it was LOW the pin outputs HIGH.  The
@@ -2571,6 +2589,14 @@ static inline void digitalToggleFast(uint8_t pin) __attribute__((always_inline, 
 // of digitalToggle() has minimal overhead when the pin number is a
 // constant.  Without additional delay, successive digitalToggleFast()
 // can cause the pin to oscillate too quickly for many applications.
+#if defined(__IMXRT1176__)
+// Phase 0 EVKB (RT1176): no per-pin fast-GPIO macros yet; implement via the
+// out-of-line digitalRead()/digitalWrite() in digital.c.
+static inline void digitalToggleFast(uint8_t pin)
+{
+	digitalWrite(pin, digitalRead(pin) ? 0 : 1);
+}
+#else
 static inline void digitalToggleFast(uint8_t pin)
 {
 	if (__builtin_constant_p(pin)) {
@@ -2699,6 +2725,7 @@ static inline void digitalToggleFast(uint8_t pin)
 		*portToggleRegister(pin) = digitalPinToBitMask(pin);
 	}
 }
+#endif // __IMXRT1176__
 
 // Configure a digital pin.  The mode can be INPUT, INPUT_PULLUP,
 // INPUT_PULLDOWN, OUTPUT, OUTPUT_OPENDRAIN or INPUT_DISABLE. Use

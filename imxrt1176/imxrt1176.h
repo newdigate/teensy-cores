@@ -124,6 +124,10 @@
 #define ANADIG_OSC_OSC_24M_CTRL_LP_EN           (1u << 2)
 #define ANADIG_OSC_OSC_24M_CTRL_OSC_24M_STABLE  (1u << 30)
 
+/* IOMUXC per-pad mux/pad-control regs (offsets from fsl_iomuxc.h) */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_04 (*(volatile uint32_t *)0x400E811Cu)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_04 (*(volatile uint32_t *)0x400E8360u)
+
 #define SYST_CSR   (*(volatile uint32_t *)0xE000E010u)
 #define SYST_RVR   (*(volatile uint32_t *)0xE000E014u)
 #define SYST_CVR   (*(volatile uint32_t *)0xE000E018u)
