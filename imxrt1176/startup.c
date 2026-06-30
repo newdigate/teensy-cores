@@ -53,8 +53,7 @@
  * ========================================================================== */
 
 #include <stdint.h>
-
-#define SCB_VTOR (*(volatile uint32_t *)0xE000ED08u)
+#include "imxrt1176.h"   /* CCM clock-root, ANADIG PLL/OSC, SysTick, DWT regs */
 
 /* ---- symbols exported by imxrt1176.ld ---- */
 extern uint32_t _stext;       /* ITCM .text.itcm VMA start                  */
@@ -70,15 +69,23 @@ extern uint32_t _estack;      /* top of stack (DTCM)                        */
 extern int main(void);
 extern void __libc_init_array(void); /* C++ static constructors            */
 
-/* Provisional core clock. The QEMU boot-ROM leaves the part at its default
- * clock tree; the real CCM bring-up (and a correct SystemCoreClock) is Task 9.
- * Declared/defined here so timing code that links against it has a symbol. */
-volatile uint32_t SystemCoreClock = 528000000u;
+/* Core clock. Task 9 brings the ARM PLL up to 996 MHz and routes it to the M7
+ * CLOCK_ROOT; set_arm_clock_rt1176() re-affirms this at runtime. Defined here as
+ * the single source of truth so timing code (delay.c, Task 10) links against it. */
+volatile uint32_t SystemCoreClock = 996000000u;
+
+/* Millisecond tick counter incremented by systick_isr(). DEFINED in delay.c
+ * (Task 10); a weak placeholder here lets Task 9 link/run standalone and is
+ * silently overridden by delay.c's strong definition once it lands. */
+__attribute__((weak)) volatile uint32_t systick_millis_count = 0;
 
 static void memory_copy(uint32_t *dest, const uint32_t *src, uint32_t *dest_end);
 static void memory_clear(uint32_t *dest, uint32_t *dest_end);
 
 void ResetHandler(void);
+void set_arm_clock_rt1176(void);
+void systick_init(void);
+void systick_isr(void);
 static void fault_isr(void);
 static void unused_isr(void);
 
@@ -109,7 +116,7 @@ void (* const _VectorsFlash[16 + 16])(void) =
 	unused_isr,                           /* 12 DebugMonitor                 */
 	unused_isr,                           /* 13 reserved                     */
 	unused_isr,                           /* 14 PendSV                       */
-	unused_isr,                           /* 15 SysTick                      */
+	systick_isr,                          /* 15 SysTick (Task 9)             */
 	/* small NVIC tail — Phase 0 uses no peripheral interrupts */
 	unused_isr, unused_isr, unused_isr, unused_isr,
 	unused_isr, unused_isr, unused_isr, unused_isr,
@@ -142,14 +149,146 @@ void ResetHandler(void)
 	/* zero .bss */
 	memory_clear(&_sbss, &_ebss);
 
-	/* provisional clock (real CCM is Task 9) */
-	SystemCoreClock = 528000000u;
+	/* RT1176 CCM bring-up: ARM PLL -> 996 MHz on the M7 core CLOCK_ROOT */
+	set_arm_clock_rt1176();
+
+	/* 1 kHz SysTick + DWT cycle counter (must follow the clock init so the
+	 * reload value matches the now-996 MHz core) */
+	systick_init();
 
 	/* C++ static constructors, then the application */
 	__libc_init_array();
 	main();
 
 	while (1) { __asm__ volatile("wfi"); }
+}
+
+/* ----------------------------------------------------------------------------
+ * set_arm_clock_rt1176 — RT1176 CCM bring-up for a 996 MHz Cortex-M7 core.
+ *
+ * Faithful (but minimal) port of the EVKB SDK BOARD_BootClockRUN()
+ *   (_boards/evkbmimxrt1170/.../clock_config.c) translated to direct register
+ *   writes through imxrt1176.h. We bring up exactly the path Phase 0 needs:
+ *     - confirm the 24 MHz crystal OSC is enabled/stable (PLL reference),
+ *     - park the M7 core root on a safe slow source while the PLL re-locks,
+ *     - configure + lock the ARM PLL (mirrors CLOCK_InitArmPll):
+ *         Fout = Fin * (loopDivider / (2 * postDivider))
+ *              = 24 MHz * (166 / (2*2)) = 996 MHz
+ *       (loopDivider 166, postDivider kCLOCK_PllPostDiv2 == encoded 0),
+ *     - route the ARM PLL to the M7 core CLOCK_ROOT (root 0, mux 4, div 1),
+ *     - point the AHB/bus CLOCK_ROOT (root 2) at a safe source.
+ *   GPIO/IOMUXC roots used by Phase 0 are left on their boot-ROM defaults
+ *   (24 MHz OSC-derived); they are not on a CCM root that needs re-muxing for
+ *   correctness here.
+ *
+ * QEMU caveat: QEMU's CCM is a clock-survival model — most of these writes are
+ * absorbed and the CPU clock is wired to 996 MHz at the board level. Every
+ * poll loop below is bounded (guard counters) so it cannot hang when a status
+ * bit QEMU does not model never sets. On real silicon the loops spin until the
+ * hardware reports OSC-stable / PLL-stable (hardware validation is Task 13).
+ * -------------------------------------------------------------------------- */
+void set_arm_clock_rt1176(void)
+{
+	volatile int i;
+
+	/* --- 1. 24 MHz crystal OSC (ARM PLL reference) --------------------- */
+	ANADIG_OSC_OSC_24M_CTRL |= ANADIG_OSC_OSC_24M_CTRL_OSC_EN |
+	                           ANADIG_OSC_OSC_24M_CTRL_LP_EN;
+	for (i = 0; i < 100000 &&
+	     !(ANADIG_OSC_OSC_24M_CTRL & ANADIG_OSC_OSC_24M_CTRL_OSC_24M_STABLE); i++) {
+		/* bounded wait for OSC stable */
+	}
+
+	/* --- 2. Park M7 core root on a slow source during PLL re-lock ------ */
+	/* CLOCK_SetRootClock(kCLOCK_Root_M7, mux=OscRc48MDiv2(0), div=1) */
+	CCM_CLOCK_ROOT0_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(0) |
+	                          CCM_CLOCK_ROOT_CONTROL_DIV(0);
+	__asm__ volatile("dsb":::"memory");
+	__asm__ volatile("isb":::"memory");
+
+	/* --- 3. ARM PLL -> 996 MHz (mirrors CLOCK_InitArmPll) -------------- */
+	{
+		uint32_t reg = ANADIG_PLL_ARM_PLL_CTRL;
+
+		/* Power the PLL down before reconfiguring (clear POWERUP/ENABLE,
+		 * set GATE) so the loop/post dividers can change cleanly. */
+		reg &= ~(ANADIG_PLL_ARM_PLL_CTRL_POWERUP |
+		         ANADIG_PLL_ARM_PLL_CTRL_ENABLE_CLK |
+		         ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_STABLE);
+		reg |= ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_GATE;
+		ANADIG_PLL_ARM_PLL_CTRL = reg;
+
+		/* Program dividers, power up, hold ring off, keep gated for now. */
+		reg &= ~(ANADIG_PLL_ARM_PLL_CTRL_DIV_SELECT(0xFF) |
+		         ANADIG_PLL_ARM_PLL_CTRL_POST_DIV_SEL(0x3));
+		reg |= ANADIG_PLL_ARM_PLL_CTRL_DIV_SELECT(166) |   /* loopDivider 166 */
+		       ANADIG_PLL_ARM_PLL_CTRL_POST_DIV_SEL(0) |    /* PllPostDiv2     */
+		       ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_GATE |
+		       ANADIG_PLL_ARM_PLL_CTRL_POWERUP |
+		       ANADIG_PLL_ARM_PLL_CTRL_HOLD_RING_OFF;
+		ANADIG_PLL_ARM_PLL_CTRL = reg;
+		__asm__ volatile("dsb":::"memory");
+		__asm__ volatile("isb":::"memory");
+
+		/* Settling delay (SDK waits ~30us); a short spin suffices here. */
+		for (i = 0; i < 3000; i++) { /* ~PLL ramp */ }
+
+		/* Release the hold-ring and wait (bounded) for PLL stable. */
+		reg &= ~ANADIG_PLL_ARM_PLL_CTRL_HOLD_RING_OFF;
+		ANADIG_PLL_ARM_PLL_CTRL = reg;
+		for (i = 0; i < 100000 &&
+		     !(ANADIG_PLL_ARM_PLL_CTRL & ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_STABLE); i++) {
+			/* bounded wait for PLL stable */
+		}
+
+		/* Enable the clock output and ungate. */
+		reg |= ANADIG_PLL_ARM_PLL_CTRL_ENABLE_CLK;
+		reg &= ~ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_GATE;
+		ANADIG_PLL_ARM_PLL_CTRL = reg;
+		__asm__ volatile("dsb":::"memory");
+		__asm__ volatile("isb":::"memory");
+	}
+
+	/* --- 4. Route ARM PLL to the M7 core CLOCK_ROOT (996 MHz) ---------- */
+	/* CLOCK_SetRootClock(kCLOCK_Root_M7, mux=MuxArmPllOut(4), div=1) */
+	CCM_CLOCK_ROOT0_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(4) |
+	                          CCM_CLOCK_ROOT_CONTROL_DIV(0);
+	__asm__ volatile("dsb":::"memory");
+	__asm__ volatile("isb":::"memory");
+
+	/* --- 5. AHB/bus CLOCK_ROOT — keep on a safe OSC-derived source ----- */
+	/* The SDK routes BUS off SYS_PLL3 (not brought up in this Phase-0 subset);
+	 * leave the bus root on its boot-ROM-safe slow source (mux 0, div 1). */
+	CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(0) |
+	                          CCM_CLOCK_ROOT_CONTROL_DIV(0);
+	__asm__ volatile("dsb":::"memory");
+	__asm__ volatile("isb":::"memory");
+
+	SystemCoreClock = 996000000u;
+}
+
+/* ----------------------------------------------------------------------------
+ * systick_init — 1 kHz SysTick from the (now 996 MHz) core clock, plus the DWT
+ * cycle counter (used by the Teensy cycle-accurate delay primitives).
+ * -------------------------------------------------------------------------- */
+void systick_init(void)
+{
+	SYST_RVR = (996000000u / 1000u) - 1u;   /* 1 ms reload @ 996 MHz */
+	SYST_CVR = 0;
+	SYST_CSR = 7;                            /* ENABLE | TICKINT | CLKSOURCE */
+
+	/* DWT cycle counter for sub-microsecond timing. */
+	ARM_DEMCR |= ARM_DEMCR_TRCENA;
+	ARM_DWT_CTRL |= 1u;                      /* CYCCNTENA */
+}
+
+/* ----------------------------------------------------------------------------
+ * systick_isr — 1 kHz tick. Increments the millisecond counter that delay.c
+ * (Task 10) exposes via millis(). Kept in flash with the rest of startup.
+ * -------------------------------------------------------------------------- */
+void systick_isr(void)
+{
+	systick_millis_count++;
 }
 
 /* ----------------------------------------------------------------------------

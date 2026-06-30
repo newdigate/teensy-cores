@@ -4,6 +4,8 @@
 #define _imxrt1176_h_
 #include <stdint.h>
 
+#define ANADIG_OSC_BASE 0x40C84000u
+#define ANADIG_PLL_BASE 0x40C84000u
 #define CCM_BASE 0x40CC0000u
 #define FLEXSPI_BASE 0x400CC000u
 #define FLEXSPI2_BASE 0x400D0000u
@@ -100,6 +102,28 @@
 #define GPIO13_DR_SET    (*(volatile uint32_t *)0x40CA0084u)
 #define GPIO13_DR_CLEAR  (*(volatile uint32_t *)0x40CA0088u)
 #define GPIO13_DR_TOGGLE (*(volatile uint32_t *)0x40CA008Cu)
+
+/* CCM clock roots: CCM->CLOCK_ROOT[n].CONTROL @ CCM_BASE + n*0x80 */
+#define CCM_CLOCK_ROOT0_CONTROL (*(volatile uint32_t *)0x40CC0000u) /* M7 */
+#define CCM_CLOCK_ROOT2_CONTROL (*(volatile uint32_t *)0x40CC0100u) /* BUS */
+#define CCM_CLOCK_ROOT8_CONTROL (*(volatile uint32_t *)0x40CC0400u) /* M7_SYSTICK */
+#define CCM_CLOCK_ROOT_CONTROL_MUX(x)  (((uint32_t)(x) << 8) & 0x700u)
+#define CCM_CLOCK_ROOT_CONTROL_DIV(x)  (((uint32_t)(x) << 0) & 0x0FFu)
+
+#define ANADIG_PLL_ARM_PLL_CTRL (*(volatile uint32_t *)0x40C84200u)
+#define ANADIG_PLL_ARM_PLL_CTRL_DIV_SELECT(x)   (((uint32_t)(x) << 0) & 0x000000FFu)
+#define ANADIG_PLL_ARM_PLL_CTRL_HOLD_RING_OFF   (1u << 12)
+#define ANADIG_PLL_ARM_PLL_CTRL_POWERUP         (1u << 13)
+#define ANADIG_PLL_ARM_PLL_CTRL_ENABLE_CLK      (1u << 14)
+#define ANADIG_PLL_ARM_PLL_CTRL_POST_DIV_SEL(x) (((uint32_t)(x) << 15) & 0x00018000u)
+#define ANADIG_PLL_ARM_PLL_CTRL_BYPASS          (1u << 17)
+#define ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_STABLE  (1u << 29)
+#define ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_GATE    (1u << 30)
+#define ANADIG_OSC_OSC_24M_CTRL (*(volatile uint32_t *)0x40C84020u)
+#define ANADIG_OSC_OSC_24M_CTRL_OSC_EN          (1u << 4)
+#define ANADIG_OSC_OSC_24M_CTRL_LP_EN           (1u << 2)
+#define ANADIG_OSC_OSC_24M_CTRL_OSC_24M_STABLE  (1u << 30)
+
 #define SYST_CSR   (*(volatile uint32_t *)0xE000E010u)
 #define SYST_RVR   (*(volatile uint32_t *)0xE000E014u)
 #define SYST_CVR   (*(volatile uint32_t *)0xE000E018u)

@@ -15,7 +15,20 @@ OUT = pathlib.Path(__file__).resolve().parent.parent / "imxrt1176.h"
 
 WANTED = {"CCM": "CCM", "IOMUXC": "IOMUXC", "IOMUXC_GPR": "IOMUXC_GPR",
           "FLEXSPI1": "FLEXSPI", "FLEXSPI2": "FLEXSPI2",
+          "ANADIG_PLL": "ANADIG_PLL", "ANADIG_OSC": "ANADIG_OSC",
           **{f"GPIO{i}": f"GPIO{i}" for i in range(1, 14)}}
+
+# --- CCM clock roots (Task 9: 996 MHz core clock tree) -----------------------
+# CCM->CLOCK_ROOT[n].CONTROL is at CCM_BASE + n*0x80 (CONTROL at struct offset 0).
+# We emit the roots the 996 MHz bring-up touches.  See SDK BOARD_BootClockRUN /
+# clock_root_t enum (fsl_clock.h):  M7=0, Bus=2, M7_Systick=8.
+CCM_ROOT_STRIDE = 0x80
+CCM_CLOCK_ROOTS = {0: "M7", 2: "BUS", 8: "M7_SYSTICK"}
+
+# ANADIG_PLL / ANADIG_OSC register offsets (from MIMXRT1176_cm7.h peripheral
+# struct layouts).  Both blocks share base 0x40C84000 in the analog top.
+ANADIG_PLL_REGS = {"ARM_PLL_CTRL": 0x200}   # ARM_PLL_CTRL_REGISTER, offset 0x200
+ANADIG_OSC_REGS = {"OSC_24M_CTRL": 0x020}   # 24MHz OSC Control,      offset 0x020
 
 def parse_bases(txt):
     bases = {}
@@ -42,7 +55,40 @@ def main():
               f"#define GPIO{i}_DR_SET    (*(volatile uint32_t *)0x{b+0x84:08X}u)",
               f"#define GPIO{i}_DR_CLEAR  (*(volatile uint32_t *)0x{b+0x88:08X}u)",
               f"#define GPIO{i}_DR_TOGGLE (*(volatile uint32_t *)0x{b+0x8C:08X}u)"]
-    L += ["#define SYST_CSR   (*(volatile uint32_t *)0xE000E010u)",
+    # --- CCM clock-root CONTROL registers (Task 9) ---------------------------
+    ccm = bases.get("CCM")
+    if ccm is not None:
+        L.append("")
+        L.append("/* CCM clock roots: CCM->CLOCK_ROOT[n].CONTROL @ CCM_BASE + n*0x80 */")
+        for n, nm in sorted(CCM_CLOCK_ROOTS.items()):
+            addr = ccm + n * CCM_ROOT_STRIDE
+            L.append(f"#define CCM_CLOCK_ROOT{n}_CONTROL (*(volatile uint32_t *)0x{addr:08X}u) /* {nm} */")
+        L += ["#define CCM_CLOCK_ROOT_CONTROL_MUX(x)  (((uint32_t)(x) << 8) & 0x700u)",
+              "#define CCM_CLOCK_ROOT_CONTROL_DIV(x)  (((uint32_t)(x) << 0) & 0x0FFu)"]
+
+    # --- ANADIG PLL / OSC registers (Task 9: ARM PLL = 996 MHz, 24M OSC) ------
+    apll = bases.get("ANADIG_PLL")
+    if apll is not None:
+        L.append("")
+        for nm, off in sorted(ANADIG_PLL_REGS.items()):
+            L.append(f"#define ANADIG_PLL_{nm} (*(volatile uint32_t *)0x{apll+off:08X}u)")
+        L += ["#define ANADIG_PLL_ARM_PLL_CTRL_DIV_SELECT(x)   (((uint32_t)(x) << 0) & 0x000000FFu)",
+              "#define ANADIG_PLL_ARM_PLL_CTRL_HOLD_RING_OFF   (1u << 12)",
+              "#define ANADIG_PLL_ARM_PLL_CTRL_POWERUP         (1u << 13)",
+              "#define ANADIG_PLL_ARM_PLL_CTRL_ENABLE_CLK      (1u << 14)",
+              "#define ANADIG_PLL_ARM_PLL_CTRL_POST_DIV_SEL(x) (((uint32_t)(x) << 15) & 0x00018000u)",
+              "#define ANADIG_PLL_ARM_PLL_CTRL_BYPASS          (1u << 17)",
+              "#define ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_STABLE  (1u << 29)",
+              "#define ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_GATE    (1u << 30)"]
+    aosc = bases.get("ANADIG_OSC")
+    if aosc is not None:
+        for nm, off in sorted(ANADIG_OSC_REGS.items()):
+            L.append(f"#define ANADIG_OSC_{nm} (*(volatile uint32_t *)0x{aosc+off:08X}u)")
+        L += ["#define ANADIG_OSC_OSC_24M_CTRL_OSC_EN          (1u << 4)",
+              "#define ANADIG_OSC_OSC_24M_CTRL_LP_EN           (1u << 2)",
+              "#define ANADIG_OSC_OSC_24M_CTRL_OSC_24M_STABLE  (1u << 30)"]
+
+    L += ["", "#define SYST_CSR   (*(volatile uint32_t *)0xE000E010u)",
           "#define SYST_RVR   (*(volatile uint32_t *)0xE000E014u)",
           "#define SYST_CVR   (*(volatile uint32_t *)0xE000E018u)",
           "#define SCB_VTOR   (*(volatile uint32_t *)0xE000ED08u)",
