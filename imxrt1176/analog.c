@@ -2,7 +2,9 @@
  * Fresh implementation against the LPADC command/trigger/RESFIFO model (the
  * teensy4 ADC driver targets the different RT106x ADC and does not port).
  * No calibration: PERI_ADC.h exposes no CTRL.CAL bit and QEMU does not model it;
- * uncalibrated single-shot reads are adequate for this bring-up. */
+ * uncalibrated single-shot reads are adequate for this bring-up.
+ *
+ * This file is released into the public domain. */
 #include "core_pins.h"
 #include "imxrt1176.h"
 #include "pins_arduino.h"
@@ -15,7 +17,7 @@ const analog_pin_info_t analog_pin_to_info[NUM_ANALOG_INPUTS] = {
 typedef struct {
     volatile uint32_t *CTRL, *STAT, *IE, *CFG, *FCTRL, *SWTRIG, *TCTRL0, *CMDL1, *CMDH1, *RESFIFO;
     volatile uint32_t *clock_root, *lpcg;
-    IRQ_NUMBER_t irq;
+    IRQ_NUMBER_t irq;   /* IE/FCTRL/irq are used by the async path (analogReadAsync) */
 } lpadc_regs_t;
 
 static const lpadc_regs_t LPADC[2] = {
@@ -54,7 +56,9 @@ uint16_t analogReadChannel(uint8_t instance, uint8_t channel) {
     *a->TCTRL0 = ADC_TCTRL_TCMD(1);        /* trigger 0 -> command 1 */
     *a->SWTRIG = 1u;                        /* software-trigger 0 */
     uint32_t guard = 100000u;
-    while (!((*a->STAT) & ADC_STAT_RDY) && --guard) { }  /* bounded */
+    while (!((*a->STAT) & ADC_STAT_RDY) && --guard) { }  /* bounded (never hangs) */
+    /* On timeout the VALID check below returns 0; a late result could linger in
+     * the FIFO, but this path is unreachable at ~996 MHz vs LPADC conversion time. */
     uint32_t r = *a->RESFIFO;              /* pops the FIFO entry */
     if (!(r & ADC_RESFIFO_VALID)) return 0;
     return scale12((uint16_t)(r & ADC_RESFIFO_D));
@@ -77,3 +81,7 @@ void analogReadRes(unsigned int bits) {
 }
 
 void analogReference(uint8_t type) { (void)type; }  /* stub: Vref fixed to Alt1 in init */
+
+/* Declared in core_pins.h; stubbed so sketches that call it link. Hardware
+ * averaging (CMDH.AVGS) is not wired yet. */
+void analogReadAveraging(unsigned int num) { (void)num; }
