@@ -56,7 +56,17 @@
 #define LED_BUILTIN       13   /* GPIO9_IO03, pad GPIO_AD_04 (User LED D6) */
 #define CORE_NUM_DIGITAL  14
 #define NUM_DIGITAL_PINS  CORE_NUM_DIGITAL
-#define NUM_ANALOG_INPUTS 0
+#define NUM_ANALOG_INPUTS 1
+#define A0 14   /* Arduino analog pin 0 -> LPADC1 channel 0 side A (pad GPIO_AD_06) */
+
+typedef struct analog_pin_info_struct {
+    uint8_t pin;       /* Arduino pin id */
+    uint8_t instance;  /* 0 = LPADC1, 1 = LPADC2 */
+    uint8_t channel;   /* CMDL.ADCH channel */
+    uint8_t side;      /* 0 = A, 1 = B */
+} analog_pin_info_t;
+
+extern const analog_pin_info_t analog_pin_to_info[NUM_ANALOG_INPUTS];
 
 #define NOT_AN_INTERRUPT  -1
 #define NOT_ON_TIMER      0

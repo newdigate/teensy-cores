@@ -2803,6 +2803,8 @@ static inline void analogReadResolution(unsigned int bits) { analogReadRes(bits)
 // voltage with analogRead().  Possible configurations are 1, 4, 8, 16, 32.  More
 // readings averaged gives better results, but takes longer.
 void analogReadAveraging(unsigned int num);
+uint16_t analogReadChannel(uint8_t instance, uint8_t channel); /* raw (instance,channel) read; test hook */
+int analogReadAsync(uint8_t pin, void (*callback)(uint16_t value)); /* returns 1 started, 0 busy/invalid */
 void analog_init(void);
 // Teensy 4 boards to not have capacitive touch sensing hardware.  This function
 // is not implemented for Teensy 4.
