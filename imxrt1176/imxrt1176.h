@@ -126,7 +126,11 @@
 
 /* IOMUXC per-pad mux/pad-control regs (offsets from fsl_iomuxc.h) */
 #define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_04 (*(volatile uint32_t *)0x400E811Cu)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_24 (*(volatile uint32_t *)0x400E816Cu)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_25 (*(volatile uint32_t *)0x400E8170u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_04 (*(volatile uint32_t *)0x400E8360u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_24 (*(volatile uint32_t *)0x400E83B0u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_25 (*(volatile uint32_t *)0x400E83B4u)
 
 #define SYST_CSR   (*(volatile uint32_t *)0xE000E010u)
 #define SYST_RVR   (*(volatile uint32_t *)0xE000E014u)
@@ -312,5 +316,15 @@
 #define LPUART_BAUD_SBR(n)   ((uint32_t)(n) & 0x1FFFu)
 #define LPUART_BAUD_OSR(n)   (((uint32_t)(n) & 0x1Fu) << 24)
 #define LPUART_BAUD_BOTHEDGE (1u << 17)
+#define LPUART_FIFO_RXFE   (1u << 3)
+#define LPUART_FIFO_TXFE   (1u << 7)
+#define LPUART_WATER_TXWATER(n) ((uint32_t)(n) & 0x3u)
+#define LPUART_WATER_RXWATER(n) (((uint32_t)(n) << 16) & 0x30000u)
+
+/* LPUART1 console clock + input select (EVKB VCOM) */
+#define CCM_CLOCK_ROOT25_CONTROL (*(volatile uint32_t *)0x40CC0C80u)
+#define CCM_LPCG86_DIRECT        (*(volatile uint32_t *)0x40CC6AC0u)
+#define IOMUXC_LPUART1_TXD_SELECT_INPUT (*(volatile uint32_t *)0x400E8620u)
+#define IOMUXC_LPUART1_RXD_SELECT_INPUT (*(volatile uint32_t *)0x400E861Cu)
 
 #endif

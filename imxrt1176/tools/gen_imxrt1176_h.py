@@ -39,6 +39,9 @@ ANADIG_OSC_REGS = {"OSC_24M_CTRL": 0x020}   # 24MHz OSC Control,      offset 0x0
 # muxMode 0xA (ALT10) selects GPIO9_IO03 (the EVKB User LED D6, GPIO9 bit 3).
 IOMUXC_MUX_CTL_REGS = {"GPIO_AD_04": 0x11C}
 IOMUXC_PAD_CTL_REGS = {"GPIO_AD_04": 0x360}
+# LPUART1 console pins (EVKB VCOM): TX=GPIO_AD_24, RX=GPIO_AD_25.
+IOMUXC_MUX_CTL_REGS.update({"GPIO_AD_24": 0x16C, "GPIO_AD_25": 0x170})
+IOMUXC_PAD_CTL_REGS.update({"GPIO_AD_24": 0x3B0, "GPIO_AD_25": 0x3B4})
 
 def parse_bases(txt):
     bases = {}
@@ -156,7 +159,17 @@ def main():
           "#define LPUART_CTRL_TIE    (1u << 23)",
           "#define LPUART_BAUD_SBR(n)   ((uint32_t)(n) & 0x1FFFu)",
           "#define LPUART_BAUD_OSR(n)   (((uint32_t)(n) & 0x1Fu) << 24)",
-          "#define LPUART_BAUD_BOTHEDGE (1u << 17)"]
+          "#define LPUART_BAUD_BOTHEDGE (1u << 17)",
+          "#define LPUART_FIFO_RXFE   (1u << 3)",
+          "#define LPUART_FIFO_TXFE   (1u << 7)",
+          "#define LPUART_WATER_TXWATER(n) ((uint32_t)(n) & 0x3u)",
+          "#define LPUART_WATER_RXWATER(n) (((uint32_t)(n) << 16) & 0x30000u)"]
+    L += ["",
+          "/* LPUART1 console clock + input select (EVKB VCOM) */",
+          "#define CCM_CLOCK_ROOT25_CONTROL (*(volatile uint32_t *)0x40CC0C80u)",
+          "#define CCM_LPCG86_DIRECT        (*(volatile uint32_t *)0x40CC6AC0u)",
+          "#define IOMUXC_LPUART1_TXD_SELECT_INPUT (*(volatile uint32_t *)0x400E8620u)",
+          "#define IOMUXC_LPUART1_RXD_SELECT_INPUT (*(volatile uint32_t *)0x400E861Cu)"]
     L += ["", "#endif"]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")

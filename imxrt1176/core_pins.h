@@ -44,6 +44,14 @@ extern "C" {
 #endif
 extern void (* volatile _VectorsRam[NVIC_NUM_INTERRUPTS + 16])(void);
 void attachInterruptVector(IRQ_NUMBER_t irq, void (*function)(void));
+
+// Cortex-M PRIMASK interrupt enable/disable intrinsics (CMSIS equivalents).
+// wiring.h's cli()/sei()/noInterrupts()/interrupts(), avr_emulation.h, and the
+// HardwareSerial driver all rely on these.
+static inline void __enable_irq(void) __attribute__((always_inline, unused));
+static inline void __enable_irq(void) { __asm__ volatile("cpsie i" ::: "memory"); }
+static inline void __disable_irq(void) __attribute__((always_inline, unused));
+static inline void __disable_irq(void) { __asm__ volatile("cpsid i" ::: "memory"); }
 #ifdef __cplusplus
 }
 #endif
