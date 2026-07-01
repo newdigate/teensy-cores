@@ -45,11 +45,12 @@
  * linker LMA->VMA layout requires, enables the FPU, runs C++ constructors,
  * and calls main().
  *
- * QEMU models ITCM and DTCM as full RAM regions regardless of FlexRAM config,
- * so no FlexRAM bank configuration is needed to boot here. All RT1062-specific
- * bring-up (PLL/CCM, FlexRAM banks, DCDC, USB PHY, temp sensor, external RAM,
- * MPU/cache, printf debug) has been removed and will be re-added in proper
- * RT1176 form in later phases.
+ * ResetHandler configures the FlexRAM ITCM/DTCM bank split (GPR17/16/14) before
+ * touching the stack, since _estack now lives at DTCM-top: required on both QEMU
+ * (which resizes the TCM RAMBlock on the GPR16/17 writes) and silicon (the
+ * BootROM-default DTCM is too small to back DTCM-top). Other RT1062-specific
+ * bring-up (DCDC, USB PHY, temp sensor, external RAM, MPU/cache, printf debug)
+ * remains removed, to be re-added in proper RT1176 form in later phases.
  * ========================================================================== */
 
 #include <stdint.h>
@@ -145,7 +146,7 @@ void ResetHandler(void)
 	 * BootROM-default split does not back DTCM-top, so this must run first.
 	 * ResetHandler is naked and these are plain register stores (no stack use). */
 	IOMUXC_GPR_GPR17 = (uint32_t)&_flexram_bank_config;   /* per-bank ITCM/DTCM map */
-	IOMUXC_GPR_GPR16 = 0x00200007u;                       /* FLEXRAM_BANK_CFG_SEL + INIT_ITCM/DTCM enable */
+	IOMUXC_GPR_GPR16 = 0x00200007u;                       /* bits0-2: INIT_ITCM/DTCM_EN + FLEXRAM_BANK_CFG_SEL; bit21: CM7_INIT_VTOR-region enable (SDK/teensy value; see RT1176 RM GPR16) */
 	IOMUXC_GPR_GPR14 = 0x00AA0000u;                       /* TCM size fields */
 	__asm__ volatile("dsb":::"memory"); __asm__ volatile("isb":::"memory");
 

@@ -1,6 +1,7 @@
 /* NXP MIMXRT1170-EVKB - i.MX RT1176, 16 MB QSPI NOR on FlexSPI1.
  * FlexSPI1 XIP window is at 0x30000000 (RT1176 RM table 2-1).
- * ITCM/DTCM are 256 KB each; OCRAM is 512 KB @ 0x20240000.
+ * ITCM/DTCM MEMORY lengths below are the fuse-default routing window; ResetHandler
+ * reconfigures FlexRAM (up to ~480K DTCM). OCRAM is 512 KB @ 0x20240000.
  * ERAM points at the board's 64 MB SDRAM on SEMC @ 0x80000000. */
 MEMORY
 {
@@ -107,7 +108,7 @@ SECTIONS
 	_ebss = ADDR(.bss) + SIZEOF(.bss);
 
 	_heap_start = ADDR(.bss.dma) + SIZEOF(.bss.dma);
-	_heap_end = ORIGIN(OCRAM) + LENGTH(OCRAM) - 0x8000;  /* reserve 32K for the OCRAM stack (Phase 0) */
+	_heap_end = ORIGIN(OCRAM) + LENGTH(OCRAM) - 0x8000;  /* reserve top 32K of OCRAM (HAB log / DMA / future use) */
 
 	_extram_start = ADDR(.bss.extram);
 	_extram_end = ADDR(.bss.extram) + SIZEOF(.bss.extram);
@@ -118,17 +119,9 @@ SECTIONS
 	 * (The teensy4/RT1062 form `0xAAAAAAAA | ((1<<(n*2))-1)` yields 0b11=reserved
 	 * for the ITCM banks and does NOT work on RT1176.) */
 	_flexram_bank_config = (0xAAAAAAAA & ~((1 << (_itcm_block_count * 2)) - 1)) | (0x55555555 & ((1 << (_itcm_block_count * 2)) - 1));
-	/*
-	 * Phase 0: the stack lives at the top of the dedicated OCRAM, which is
-	 * always present regardless of the FlexRAM bank split.  The teensy4 formula
-	 * (kept below) assumes startup configures FlexRAM to create a large DTCM;
-	 * our minimal RT1176 startup does not, and the BootROM-default DTCM is small
-	 * (~128K), so the old DTCM-top _estack pointed at non-existent RAM and
-	 * faulted on the first push.  Configuring FlexRAM/TCM properly is deferred.
-	 * _estack = ORIGIN(DTCM) + ((16 - _itcm_block_count) << 15);
-	 */
 	/* Stack at the top of DTCM.  Valid because ResetHandler configures FlexRAM
-	 * (GPR17/16/14) BEFORE setting SP, so DTCM-top is backed before any push. */
+	 * (GPR17/16/14) BEFORE setting SP, so DTCM-top is backed before any push.
+	 * DTCM = (16 - _itcm_block_count) banks x 32K; for 1 ITCM bank _estack = 0x20078000. */
 	_estack = ORIGIN(DTCM) + ((16 - _itcm_block_count) << 15);
 
 	_flashimagelen = __text_csf_end - ORIGIN(FLASH);
