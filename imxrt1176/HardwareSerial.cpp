@@ -34,6 +34,8 @@
 
 #define UART_CLOCK 24000000
 
+volatile uint32_t serial1_rx_isr_count = 0;
+
 #define CTRL_ENABLE 		(LPUART_CTRL_TE | LPUART_CTRL_RE | LPUART_CTRL_RIE | LPUART_CTRL_ILIE)
 #define CTRL_TX_ACTIVE		(CTRL_ENABLE | LPUART_CTRL_TIE)
 #define CTRL_TX_COMPLETING	(CTRL_ENABLE | LPUART_CTRL_TCIE)
@@ -241,6 +243,7 @@ void HardwareSerialIMXRT::IRQHandler()
 
 	// See if we have stuff to read in.
 	if (port->STAT & (LPUART_STAT_RDRF | LPUART_STAT_IDLE)) {
+		serial1_rx_isr_count++;   // diagnostic: an RX-servicing pass ran in the ISR
 		// See how many bytes are pending.
 		uint8_t avail = (port->WATER >> 24) & 0x7;
 		if (avail) {

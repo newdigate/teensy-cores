@@ -197,6 +197,9 @@ private:
 // Serial1 hardware serial port (LPUART1 = EVKB VCOM console).  More detail at
 // https://www.pjrc.com/teensy/td_uart.html
 extern HardwareSerialIMXRT Serial1;
+// Diagnostic: counts each LPUART1 RX-servicing pass in the ISR (proves the RX
+// interrupt fired, vs. bytes drained by an available()/read() FIFO peek).
+extern volatile uint32_t serial1_rx_isr_count;
 extern void serialEvent1(void);
 
 #endif // __cplusplus
