@@ -99,6 +99,17 @@ void srandom(unsigned int newseed);
 
 #include "pins_arduino.h"
 
+// Character-stream base classes, so a normal Arduino sketch gets String,
+// Print, and Stream via Arduino.h (parity with Teensyduino). Placed near the
+// end to avoid include cycles with wiring.h/core_pins.h. Each header has its
+// own include guard; dependency order is WString -> Printable -> Print ->
+// Stream (Print.h already pulls in WString.h/Printable.h; Stream.h pulls in
+// Print.h), so this ordering is defensive but not strictly required.
+#include "WString.h"
+#include "Printable.h"
+#include "Print.h"
+#include "Stream.h"
+
 #endif // __cplusplus
 
 

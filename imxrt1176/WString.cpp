@@ -19,18 +19,24 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef __IMXRT1176_HOST_TEST__
-#include <Arduino.h>
-#else
+// Include our own class declaration unconditionally. This minimal core's
+// Arduino.h does not transitively provide String, so we must include it
+// ourselves for the ARM build too. WString.h pulls in avr_functions.h
+// (ltoa/ultoa/dtostrf declarations) and avr/pgmspace.h.
+#include "WString.h"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
-#include "avr_functions.h"
-#include "WString.h"
-// Host implementations of avr_functions (not in macOS libc)
+
+#ifndef __IMXRT1176_HOST_TEST__
+#include <Arduino.h>
+#else
+// Host implementations of avr_functions (ltoa/ultoa/dtostrf are not in
+// macOS libc; on the ARM target these are provided by newlib/ROM).
 extern "C" {
 char * ultoa(unsigned long val, char *buf, int radix) {
     if (radix == 10) { sprintf(buf, "%lu", val); return buf; }

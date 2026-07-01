@@ -20,16 +20,20 @@
  parsing functions based on TextFinder library by Michael Margolis
  */
 
-#ifndef __IMXRT1176_HOST_TEST__
-#include <Arduino.h>
-#else
+// Include our own class declaration unconditionally (Stream.h pulls in
+// Print.h -> WString.h). This minimal core's Arduino.h does not transitively
+// provide Stream, so we must include it ourselves for the ARM build too.
+#include "Stream.h"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+
+#ifndef __IMXRT1176_HOST_TEST__
+#include <Arduino.h>  // provides millis() and yield() on the target
+#else
 #include <time.h>
-#include "Stream.h"
-#include "WString.h"
-// Host stubs for Stream::timedRead/timedPeek
+// Host stubs for Stream::timedRead/timedPeek (no target clock/scheduler).
 static unsigned long millis() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);

@@ -34,17 +34,20 @@
 // developed for Teensyduino have made their way back into
 // Arduino's code base.  :-)
 
-#ifndef __IMXRT1176_HOST_TEST__
-#include <Arduino.h>
-#include "debug/printf.h"
-#undef printf
-#else
+// Include our own class declaration unconditionally so the definitions
+// below compile regardless of whether Arduino.h transitively provides it.
+// Print.h pulls in WString.h (String) and Printable.h.
+#include "Print.h"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <math.h>
-#include "Print.h"
-#include "WString.h"
+
+#ifndef __IMXRT1176_HOST_TEST__
+#include <Arduino.h>
 #endif
 
 size_t Print::write(const uint8_t *buffer, size_t size)
@@ -96,44 +99,48 @@ size_t Print::println(void)
 	return write(buf, 2);
 }
 
-#ifndef __IMXRT1176_HOST_TEST__
-extern "C" {
-__attribute__((weak))
-int _write(int file, char *ptr, int len)
-{
-	if (file >= 0 && file <= 2) file = (int)&Serial;
-	return ((class Print *)file)->write((uint8_t *)ptr, len);
-}
-}
+// The teensy4 core routed printf through a newlib _write() hook that
+// resolved to &Serial. This minimal core has no Serial yet (Phase 1) and
+// no debug/printf.h, so we implement printf portably: format into a fixed
+// stack buffer with vsnprintf, then write() the bytes. Works on both ARM
+// and host with no external dependency.
+// NOTE: output is limited to PRINTF_BUF_SIZE-1 bytes per call; longer
+// results are truncated (acceptable for Phase 1).
+#define PRINTF_BUF_SIZE 128
 
 int Print::printf(const char *format, ...)
 {
+	char buf[PRINTF_BUF_SIZE];
 	va_list ap;
 	va_start(ap, format);
-#ifdef __STRICT_ANSI__
+	int len = vsnprintf(buf, sizeof(buf), format, ap);
 	va_end(ap);
-	return 0;  // TODO: make this work with -std=c++0x
-#else
-	int retval = vdprintf((int)this, format, ap);
-	va_end(ap);
-	return retval;
-#endif
+	if (len < 0) return 0;
+	// vsnprintf returns the length it WOULD have written; clamp to what fit.
+	size_t n = (len < (int)sizeof(buf)) ? (size_t)len : sizeof(buf) - 1;
+	return write((const uint8_t *)buf, n);
 }
 
 int Print::printf(const __FlashStringHelper *format, ...)
 {
+	char buf[PRINTF_BUF_SIZE];
 	va_list ap;
 	va_start(ap, format);
-#ifdef __STRICT_ANSI__
+	int len = vsnprintf(buf, sizeof(buf), (const char *)format, ap);
 	va_end(ap);
-	return 0;
-#else
-	int retval = vdprintf((int)this, (const char *)format, ap);
-	va_end(ap);
-	return retval;
-#endif
+	if (len < 0) return 0;
+	size_t n = (len < (int)sizeof(buf)) ? (size_t)len : sizeof(buf) - 1;
+	return write((const uint8_t *)buf, n);
 }
-#endif // __IMXRT1176_HOST_TEST__
+
+int Print::vprintf(const char *format, va_list ap)
+{
+	char buf[PRINTF_BUF_SIZE];
+	int len = vsnprintf(buf, sizeof(buf), format, ap);
+	if (len < 0) return 0;
+	size_t n = (len < (int)sizeof(buf)) ? (size_t)len : sizeof(buf) - 1;
+	return write((const uint8_t *)buf, n);
+}
 
 size_t Print::printNumber(unsigned long n, uint8_t base, uint8_t sign)
 {
@@ -157,7 +164,7 @@ size_t Print::printNumber(unsigned long n, uint8_t base, uint8_t sign)
 		i = sizeof(buf) - 1;
 		while (1) {
 			digit = n % base;
-			buf[i] = ((digit < 10) ? '0' + digit : 'a' + digit - 10);
+			buf[i] = ((digit < 10) ? '0' + digit : 'A' + digit - 10);
 			n /= base;
 			if (n == 0) break;
 			i--;
@@ -183,7 +190,7 @@ size_t Print::printNumber64(uint64_t n, uint8_t base, uint8_t sign)
 		i = sizeof(buf) - 1;
 		while (1) {
 			digit = n % base;
-			buf[i] = ((digit < 10) ? '0' + digit : 'a' + digit - 10);
+			buf[i] = ((digit < 10) ? '0' + digit : 'A' + digit - 10);
 			n /= base;
 			if (n == 0) break;
 			i--;
