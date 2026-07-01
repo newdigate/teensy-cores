@@ -85,12 +85,20 @@ uint32_t micros(void)
  * --------------------------------------------------------------------- */
 __attribute__((weak)) void yield(void) {}
 
+void delayMicroseconds(uint32_t us);   /* defined below; DWT-based */
+
 void delay(uint32_t msec)
 {
-    uint32_t start;
-    if (msec == 0) return;
-    start = millis();
-    while ((millis() - start) < msec) {
+    /*
+     * Phase 0: wait via the free-running DWT cycle counter, one millisecond at
+     * a time, rather than spinning on the SysTick-interrupt-driven millis().
+     * On RT1176 silicon the SysTick tick ISR was not advancing millis(), which
+     * hung a millis()-based delay (LED stuck on).  DWT CYCCNT needs no interrupt
+     * and is what delayMicroseconds() already uses, so this is robust.  yield()
+     * is still called between milliseconds for cooperative tasks.
+     */
+    while (msec--) {
+        delayMicroseconds(1000);
         yield();
     }
 }
