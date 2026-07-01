@@ -170,6 +170,36 @@ def main():
           "#define CCM_LPCG86_DIRECT        (*(volatile uint32_t *)0x40CC6AC0u)",
           "#define IOMUXC_LPUART1_TXD_SELECT_INPUT (*(volatile uint32_t *)0x400E8620u)",
           "#define IOMUXC_LPUART1_RXD_SELECT_INPUT (*(volatile uint32_t *)0x400E861Cu)"]
+    # --- LPADC (ADC1/ADC2) register blocks + bitfields (Task: analogRead) ---
+    ADC_BASES = {1: 0x40050000, 2: 0x40054000}
+    ADC_REGS = {"VERID":0x0,"PARAM":0x4,"CTRL":0x10,"STAT":0x14,"IE":0x18,"DE":0x1C,
+                "CFG":0x20,"PAUSE":0x24,"FCTRL":0x30,"SWTRIG":0x34,
+                "TCTRL0":0xC0,"CMDL1":0x100,"CMDH1":0x104,"RESFIFO":0x300}
+    L += ["", "/* --- LPADC register blocks (Task: analogRead) --- */"]
+    for n, base in sorted(ADC_BASES.items()):
+        for reg, off in ADC_REGS.items():
+            L.append(f"#define ADC{n}_{reg} (*(volatile uint32_t *)0x{base+off:08X}u)")
+    L += ["",
+          "/* LPADC bitfields (RT1176 RM / PERI_ADC.h) */",
+          "#define ADC_CTRL_ADCEN   (1u << 0)",
+          "#define ADC_CTRL_RST     (1u << 1)",
+          "#define ADC_CTRL_RSTFIFO (1u << 8)",
+          "#define ADC_STAT_RDY     (1u << 0)",
+          "#define ADC_STAT_FOF     (1u << 1)",
+          "#define ADC_IE_FWMIE     (1u << 0)",
+          "#define ADC_CMDL_ADCH(x)   ((uint32_t)(x) & 0x1Fu)",
+          "#define ADC_TCTRL_TCMD(x)  (((uint32_t)(x) & 0xFu) << 24)",
+          "#define ADC_FCTRL_FWMARK(x)(((uint32_t)(x) & 0xFu) << 16)",
+          "#define ADC_CFG_PWRSEL(x)  (((uint32_t)(x) & 0x3u) << 4)",
+          "#define ADC_CFG_REFSEL(x)  (((uint32_t)(x) & 0x3u) << 6)",
+          "#define ADC_RESFIFO_D      (0xFFFFu)",
+          "#define ADC_RESFIFO_VALID  (1u << 31)",
+          "",
+          "/* LPADC clock roots + LPCG gates */",
+          "#define CCM_CLOCK_ROOT9_CONTROL  (*(volatile uint32_t *)0x40CC0480u)",
+          "#define CCM_CLOCK_ROOT10_CONTROL (*(volatile uint32_t *)0x40CC0500u)",
+          "#define CCM_LPCG55_DIRECT (*(volatile uint32_t *)0x40CC66E0u)",
+          "#define CCM_LPCG56_DIRECT (*(volatile uint32_t *)0x40CC6700u)"]
     L += ["", "#endif"]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")
