@@ -54,6 +54,7 @@
 
 #include <stdint.h>
 #include "imxrt1176.h"   /* CCM clock-root, ANADIG PLL/OSC, SysTick, DWT regs */
+#include "core_pins.h"   /* NVIC_NUM_INTERRUPTS, IRQ_NUMBER_t, _VectorsRam decl */
 
 /* ---- symbols exported by imxrt1176.ld ---- */
 extern uint32_t _stext;       /* ITCM .text.itcm VMA start                  */
@@ -125,6 +126,15 @@ void (* const _VectorsFlash[16 + 16])(void) =
 };
 
 /* ----------------------------------------------------------------------------
+ * RAM vector table (DTCM, .vectorsram NOLOAD region). Populated in ResetHandler
+ * by copying the 16 architectural + 16 flash NVIC-tail entries and defaulting
+ * the remaining external IRQs to unused_isr; VTOR is then repointed here so
+ * attachInterruptVector() can install ISRs at run time.
+ * -------------------------------------------------------------------------- */
+__attribute__((section(".vectorsram"), used, aligned(1024)))
+void (* volatile _VectorsRam[16 + NVIC_NUM_INTERRUPTS])(void);
+
+/* ----------------------------------------------------------------------------
  * ResetHandler — boot-ROM entry. Bring RAM up and reach main().
  * -------------------------------------------------------------------------- */
 __attribute__((section(".startup"), naked))
@@ -133,9 +143,6 @@ void ResetHandler(void)
 	/* The boot-ROM already loaded MSP from the vector table, but set it
 	 * again explicitly so we are independent of how we were entered. */
 	__asm__ volatile("mov sp, %0" : : "r" ((uint32_t)&_estack) : "memory");
-
-	/* point VTOR at our flash vector table */
-	SCB_VTOR = (uint32_t)_VectorsFlash;
 
 	/* enable the FPU (CP10/CP11 full access) */
 	*(volatile uint32_t *)0xE000ED88 |= (0xF << 20);
@@ -148,6 +155,17 @@ void ResetHandler(void)
 
 	/* zero .bss */
 	memory_clear(&_sbss, &_ebss);
+
+	/* Build the RAM vector table: copy the 16 architectural + 16 flash NVIC-tail
+	 * entries, default the remaining external IRQs to unused_isr, then repoint
+	 * VTOR at RAM so attachInterruptVector() can install ISRs at run time.
+	 * (_VectorsFlash is [16 + 16]; only indices < 32 are read from it.) */
+	for (unsigned i = 0; i < 16 + NVIC_NUM_INTERRUPTS; i++) {
+		_VectorsRam[i] = (i < 16 + 16) ? _VectorsFlash[i] : unused_isr;
+	}
+	__asm__ volatile("dsb":::"memory");
+	SCB_VTOR = (uint32_t)_VectorsRam;
+	__asm__ volatile("dsb":::"memory"); __asm__ volatile("isb":::"memory");
 
 	/* RT1176 CCM bring-up: ARM PLL -> 996 MHz on the M7 core CLOCK_ROOT */
 	set_arm_clock_rt1176();
@@ -336,6 +354,12 @@ __attribute__((weak)) void startup_early_hook(void) {}
 __attribute__((weak)) void startup_middle_hook(void) {}
 __attribute__((weak)) void startup_late_hook(void) {}
 __attribute__((weak)) void unused_interrupt_vector(void) { while (1) {} }
+
+/* Install an ISR into the RAM vector table (external IRQs start at index 16). */
+void attachInterruptVector(IRQ_NUMBER_t irq, void (*function)(void)) {
+	_VectorsRam[16 + (int)irq] = function;
+	__asm__ volatile("dsb":::"memory"); __asm__ volatile("isb":::"memory");
+}
 
 /* __libc_init_array() walks .init_array then calls _init(); we don't use the
  * .init/.fini crt objects, so provide empty stubs. */

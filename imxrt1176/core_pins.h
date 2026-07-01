@@ -32,6 +32,22 @@
 #include "imxrt1176.h"
 #include "pins_arduino.h"
 
+#define NVIC_NUM_INTERRUPTS 217
+typedef enum IRQ_NUMBER_t {
+    IRQ_LPUART1 = 20, IRQ_LPUART2, IRQ_LPUART3, IRQ_LPUART4,
+    IRQ_LPUART5, IRQ_LPUART6, IRQ_LPUART7, IRQ_LPUART8,
+    IRQ_LPUART9, IRQ_LPUART10, IRQ_LPUART11, IRQ_LPUART12   /* = 31 */
+} IRQ_NUMBER_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern void (* volatile _VectorsRam[NVIC_NUM_INTERRUPTS + 16])(void);
+void attachInterruptVector(IRQ_NUMBER_t irq, void (*function)(void));
+#ifdef __cplusplus
+}
+#endif
+
 #define HIGH			1
 #define LOW			0
 #define INPUT			0

@@ -117,7 +117,20 @@ def main():
           "#define ARM_DWT_CYCCNT (*(volatile uint32_t *)0xE0001004u)",
           "#define ARM_DWT_CTRL   (*(volatile uint32_t *)0xE0001000u)",
           "#define ARM_DEMCR      (*(volatile uint32_t *)0xE000EDFCu)",
-          "#define ARM_DEMCR_TRCENA (1u << 24)", "", "#endif"]
+          "#define ARM_DEMCR_TRCENA (1u << 24)"]
+    L += ["",
+          "/* --- Cortex-M7 NVIC (Task: interrupt infrastructure) --- */",
+          "#define NVIC_ISER(n) (*(volatile uint32_t *)(0xE000E100u + ((n) << 2)))",
+          "#define NVIC_ICER(n) (*(volatile uint32_t *)(0xE000E180u + ((n) << 2)))",
+          "#define NVIC_ISPR(n) (*(volatile uint32_t *)(0xE000E200u + ((n) << 2)))",
+          "#define NVIC_ICPR(n) (*(volatile uint32_t *)(0xE000E280u + ((n) << 2)))",
+          "#define NVIC_IP(n)   (*(volatile uint8_t  *)(0xE000E400u + (n)))",
+          "#define NVIC_ENABLE_IRQ(n)   (NVIC_ISER((n) >> 5) = (1u << ((n) & 31)))",
+          "#define NVIC_DISABLE_IRQ(n)  (NVIC_ICER((n) >> 5) = (1u << ((n) & 31)))",
+          "#define NVIC_SET_PENDING(n)  (NVIC_ISPR((n) >> 5) = (1u << ((n) & 31)))",
+          "#define NVIC_CLEAR_PENDING(n)(NVIC_ICPR((n) >> 5) = (1u << ((n) & 31)))",
+          "#define NVIC_SET_PRIORITY(n, p) (NVIC_IP(n) = (uint8_t)(p))"]
+    L += ["", "#endif"]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")
 

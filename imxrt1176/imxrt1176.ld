@@ -62,8 +62,13 @@ SECTIONS
 		*(.endpoint_queue)   
 		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
 		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.data*)))
-		KEEP(*(.vectorsram))
 	} > DTCM  AT> FLASH
+
+	.vectorsram (NOLOAD) : {
+		. = ALIGN(1024);
+		KEEP(*(.vectorsram))
+		. = ALIGN(4);
+	} > DTCM
 
 	.bss ALIGN(4) : {
 		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.bss*)))
