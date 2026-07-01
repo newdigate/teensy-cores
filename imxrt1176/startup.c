@@ -66,6 +66,7 @@ extern uint32_t _sdataload;   /* DTCM .data LMA (in FLASH)                  */
 extern uint32_t _sbss;        /* DTCM .bss VMA start                        */
 extern uint32_t _ebss;        /* DTCM .bss VMA end                          */
 extern uint32_t _estack;      /* top of stack (DTCM)                        */
+extern uint32_t _flexram_bank_config;   /* linker absolute symbol; its address IS the value */
 
 extern int main(void);
 extern void __libc_init_array(void); /* C++ static constructors            */
@@ -140,6 +141,14 @@ void (* volatile _VectorsRam[16 + NVIC_NUM_INTERRUPTS])(void);
 __attribute__((section(".startup"), naked))
 void ResetHandler(void)
 {
+	/* Configure the FlexRAM ITCM/DTCM bank split BEFORE using the stack: the
+	 * BootROM-default split does not back DTCM-top, so this must run first.
+	 * ResetHandler is naked and these are plain register stores (no stack use). */
+	IOMUXC_GPR_GPR17 = (uint32_t)&_flexram_bank_config;   /* per-bank ITCM/DTCM map */
+	IOMUXC_GPR_GPR16 = 0x00200007u;                       /* FLEXRAM_BANK_CFG_SEL + INIT_ITCM/DTCM enable */
+	IOMUXC_GPR_GPR14 = 0x00AA0000u;                       /* TCM size fields */
+	__asm__ volatile("dsb":::"memory"); __asm__ volatile("isb":::"memory");
+
 	/* The boot-ROM already loaded MSP from the vector table, but set it
 	 * again explicitly so we are independent of how we were entered. */
 	__asm__ volatile("mov sp, %0" : : "r" ((uint32_t)&_estack) : "memory");

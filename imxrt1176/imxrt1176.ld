@@ -113,7 +113,11 @@ SECTIONS
 	_extram_end = ADDR(.bss.extram) + SIZEOF(.bss.extram);
 
 	_itcm_block_count = (SIZEOF(.text.itcm) + SIZEOF(.ARM.exidx) + 0x7FFF) >> 15;
-	_flexram_bank_config = 0xAAAAAAAA | ((1 << (_itcm_block_count * 2)) - 1);
+	/* RT1176 GPR17 FLEXRAM_BANK_CFG: 2 bits/bank, 01=ITCM 10=DTCM 00=OCRAM.
+	 * Low _itcm_block_count banks -> ITCM (01); the rest -> DTCM (10).
+	 * (The teensy4/RT1062 form `0xAAAAAAAA | ((1<<(n*2))-1)` yields 0b11=reserved
+	 * for the ITCM banks and does NOT work on RT1176.) */
+	_flexram_bank_config = (0xAAAAAAAA & ~((1 << (_itcm_block_count * 2)) - 1)) | (0x55555555 & ((1 << (_itcm_block_count * 2)) - 1));
 	/*
 	 * Phase 0: the stack lives at the top of the dedicated OCRAM, which is
 	 * always present regardless of the FlexRAM bank split.  The teensy4 formula
@@ -123,7 +127,9 @@ SECTIONS
 	 * faulted on the first push.  Configuring FlexRAM/TCM properly is deferred.
 	 * _estack = ORIGIN(DTCM) + ((16 - _itcm_block_count) << 15);
 	 */
-	_estack = ORIGIN(OCRAM) + LENGTH(OCRAM);
+	/* Stack at the top of DTCM.  Valid because ResetHandler configures FlexRAM
+	 * (GPR17/16/14) BEFORE setting SP, so DTCM-top is backed before any push. */
+	_estack = ORIGIN(DTCM) + ((16 - _itcm_block_count) << 15);
 
 	_flashimagelen = __text_csf_end - ORIGIN(FLASH);
 	_teensy_model_identifier = 0x25;
