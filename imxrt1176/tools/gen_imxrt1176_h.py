@@ -130,6 +130,33 @@ def main():
           "#define NVIC_SET_PENDING(n)  (NVIC_ISPR((n) >> 5) = (1u << ((n) & 31)))",
           "#define NVIC_CLEAR_PENDING(n)(NVIC_ICPR((n) >> 5) = (1u << ((n) & 31)))",
           "#define NVIC_SET_PRIORITY(n, p) (NVIC_IP(n) = (uint8_t)(p))"]
+    # --- LPUART register blocks + bitfields (Task: Serial1) -----------------
+    LPUART_BASES = {1:0x4007C000, 2:0x40080000, 3:0x40084000, 4:0x40088000,
+                    5:0x4008C000, 6:0x40090000, 7:0x40094000, 8:0x40098000,
+                    9:0x4009C000, 10:0x400A0000, 11:0x40C24000, 12:0x40C28000}
+    LPUART_REGS = {"VERID":0x0,"PARAM":0x4,"GLOBAL":0x8,"PINCFG":0xC,"BAUD":0x10,
+                   "STAT":0x14,"CTRL":0x18,"DATA":0x1C,"MATCH":0x20,"MODIR":0x24,
+                   "FIFO":0x28,"WATER":0x2C}
+    L += ["", "/* --- LPUART register blocks (Task: Serial1) --- */"]
+    for n, base in sorted(LPUART_BASES.items()):
+        for reg, off in LPUART_REGS.items():
+            L.append(f"#define LPUART{n}_{reg} (*(volatile uint32_t *)0x{base+off:08X}u)")
+    L += ["",
+          "/* LPUART bitfields (RT1176 RM / PERI_LPUART.h) */",
+          "#define LPUART_STAT_RDRF   (1u << 21)",
+          "#define LPUART_STAT_TDRE   (1u << 23)",
+          "#define LPUART_STAT_TC     (1u << 22)",
+          "#define LPUART_STAT_IDLE   (1u << 20)",
+          "#define LPUART_STAT_OR     (1u << 19)",
+          "#define LPUART_CTRL_RE     (1u << 18)",
+          "#define LPUART_CTRL_TE     (1u << 19)",
+          "#define LPUART_CTRL_ILIE   (1u << 20)",
+          "#define LPUART_CTRL_RIE    (1u << 21)",
+          "#define LPUART_CTRL_TCIE   (1u << 22)",
+          "#define LPUART_CTRL_TIE    (1u << 23)",
+          "#define LPUART_BAUD_SBR(n)   ((uint32_t)(n) & 0x1FFFu)",
+          "#define LPUART_BAUD_OSR(n)   (((uint32_t)(n) & 0x1Fu) << 24)",
+          "#define LPUART_BAUD_BOTHEDGE (1u << 17)"]
     L += ["", "#endif"]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")
