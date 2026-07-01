@@ -42,10 +42,13 @@ static void lpadc_init(int i) {
     lpadc_inited[i] = 1;
 }
 
-static uint16_t scale12(uint16_t d) {
-    if (read_res_bits <= 12) return (uint16_t)(d >> (12 - read_res_bits));
-    return (uint16_t)(d << (read_res_bits - 12));
+/* Scale a 12-bit LPADC sample to `bits` resolution. The ISR passes a snapshot of
+ * read_res_bits (ISR-safety); scale12() uses the live value. Single source of truth. */
+static uint16_t scale12_bits(uint16_t d, uint8_t bits) {
+    if (bits <= 12) return (uint16_t)(d >> (12 - bits));
+    return (uint16_t)(d << (bits - 12));
 }
+static uint16_t scale12(uint16_t d) { return scale12_bits(d, read_res_bits); }
 
 uint16_t analogReadChannel(uint8_t instance, uint8_t channel) {
     if (instance > 1) return 0;
@@ -99,10 +102,8 @@ static void lpadc_isr(int i) {
     uint32_t r = *a->RESFIFO;               /* pop result */
     uint8_t bits = read_res_bits;           /* read once (ISR-safety: avoid mid-change) */
     uint16_t raw = (uint16_t)(r & ADC_RESFIFO_D);
-    uint16_t v = (r & ADC_RESFIFO_VALID) ? ((bits <= 12) ? (uint16_t)(raw >> (12 - bits))
-                                                          : (uint16_t)(raw << (bits - 12)))
-                                         : 0;
-    async_pending[i] = 0;
+    uint16_t v = (r & ADC_RESFIFO_VALID) ? scale12_bits(raw, bits) : 0;
+    async_pending[i] = 0;                    /* cleared before callback: a callback may chain another conversion */
     if (async_cb[i]) async_cb[i](v);
 }
 static void lpadc1_isr(void) { lpadc_isr(0); }
