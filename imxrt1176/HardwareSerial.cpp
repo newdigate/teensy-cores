@@ -41,7 +41,20 @@
 
 // Task 6: clock root + LPCG gate + pin mux + pad config all live here.  Kept an
 // empty stub for now so begin()'s baud/FIFO/CTRL programming compiles and links.
-void HardwareSerialIMXRT::configure_hardware(void) { /* Task 6: clock root + LPCG + pin mux + pad cfg */ }
+void HardwareSerialIMXRT::configure_hardware(void) {
+    // 1. LPUART1 clock root = OscRC48MDiv2 (24 MHz), divider 1  (clock_root_val = mux0|div0)
+    hardware->clock_root_reg = hardware->clock_root_val;
+    // 2. enable the LPUART1 LPCG clock gate (CCM->LPCG[86].DIRECT = ON)
+    hardware->lpcg_register = 0x1u;
+    // 3. pad mux (ALT0 = LPUART1 TXD/RXD) + pad control.
+    //    PAD_CFG 0x02: fast slew, high drive strength, weak pull-down (exact value from the
+    //    EVKB SDK pin_mux.c for GPIO_AD_24/25 LPUART1 console pads).
+    const uint32_t PAD_CFG = 0x02u;
+    hardware->tx_mux_reg = hardware->tx_mux_val;  hardware->tx_pad_reg = PAD_CFG;
+    hardware->rx_mux_reg = hardware->rx_mux_val;  hardware->rx_pad_reg = PAD_CFG;
+    // 4. route the RX pad into LPUART1_RXD (input daisy = GPIO_AD_25)
+    hardware->rx_select_input_reg = hardware->rx_select_input_val;
+}
 
 void HardwareSerialIMXRT::begin(uint32_t baud, uint16_t format)
 {
