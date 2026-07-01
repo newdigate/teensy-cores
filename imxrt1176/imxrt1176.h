@@ -126,9 +126,11 @@
 
 /* IOMUXC per-pad mux/pad-control regs (offsets from fsl_iomuxc.h) */
 #define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_04 (*(volatile uint32_t *)0x400E811Cu)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_06 (*(volatile uint32_t *)0x400E8124u)
 #define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_24 (*(volatile uint32_t *)0x400E816Cu)
 #define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_25 (*(volatile uint32_t *)0x400E8170u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_04 (*(volatile uint32_t *)0x400E8360u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_06 (*(volatile uint32_t *)0x400E8368u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_24 (*(volatile uint32_t *)0x400E83B0u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_25 (*(volatile uint32_t *)0x400E83B4u)
 

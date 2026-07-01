@@ -42,6 +42,10 @@ IOMUXC_PAD_CTL_REGS = {"GPIO_AD_04": 0x360}
 # LPUART1 console pins (EVKB VCOM): TX=GPIO_AD_24, RX=GPIO_AD_25.
 IOMUXC_MUX_CTL_REGS.update({"GPIO_AD_24": 0x16C, "GPIO_AD_25": 0x170})
 IOMUXC_PAD_CTL_REGS.update({"GPIO_AD_24": 0x3B0, "GPIO_AD_25": 0x3B4})
+# LPADC1 analog input A0 = GPIO_AD_06 (ADC1_CH0A). Muxed to a non-driving ALT so
+# the ADC can tap the pad (per the SDK lpadc example: ALT5 GPIO_MUX3_IO05).
+IOMUXC_MUX_CTL_REGS.update({"GPIO_AD_06": 0x124})
+IOMUXC_PAD_CTL_REGS.update({"GPIO_AD_06": 0x368})
 
 def parse_bases(txt):
     bases = {}
