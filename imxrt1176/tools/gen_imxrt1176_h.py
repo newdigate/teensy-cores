@@ -204,6 +204,11 @@ def main():
           "#define CCM_CLOCK_ROOT10_CONTROL (*(volatile uint32_t *)0x40CC0500u)",
           "#define CCM_LPCG55_DIRECT (*(volatile uint32_t *)0x40CC66E0u)",
           "#define CCM_LPCG56_DIRECT (*(volatile uint32_t *)0x40CC6700u)"]
+    L += ["",
+          "/* IOMUXC_GPR FlexRAM bank-config registers (base 0x400E4000) */",
+          "#define IOMUXC_GPR_GPR14 (*(volatile uint32_t *)0x400E4038u)",
+          "#define IOMUXC_GPR_GPR16 (*(volatile uint32_t *)0x400E4040u)",
+          "#define IOMUXC_GPR_GPR17 (*(volatile uint32_t *)0x400E4044u)"]
     L += ["", "#endif"]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")
