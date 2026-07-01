@@ -85,3 +85,58 @@ void analogReference(uint8_t type) { (void)type; }  /* stub: Vref fixed to Alt1 
 /* Declared in core_pins.h; stubbed so sketches that call it link. Hardware
  * averaging (CMDH.AVGS) is not wired yet. */
 void analogReadAveraging(unsigned int num) { (void)num; }
+
+/* ---- Interrupt-driven async conversion path (analogReadAsync) -------------
+ * Sets IE.FWMIE with FWMARK=0 so the first FIFO result raises the LPADC IRQ;
+ * the ISR pops RESFIFO, scales it, disables the interrupt, and delivers the
+ * value via the registered callback. One pending conversion per instance. */
+static void (* volatile async_cb[2])(uint16_t) = {0, 0};
+static volatile uint8_t async_pending[2] = {0, 0};
+
+static void lpadc_isr(int i) {
+    const lpadc_regs_t *a = &LPADC[i];
+    *a->IE = 0u;                            /* disable FIFO-watermark interrupt */
+    uint32_t r = *a->RESFIFO;               /* pop result */
+    uint8_t bits = read_res_bits;           /* read once (ISR-safety: avoid mid-change) */
+    uint16_t raw = (uint16_t)(r & ADC_RESFIFO_D);
+    uint16_t v = (r & ADC_RESFIFO_VALID) ? ((bits <= 12) ? (uint16_t)(raw >> (12 - bits))
+                                                          : (uint16_t)(raw << (bits - 12)))
+                                         : 0;
+    async_pending[i] = 0;
+    if (async_cb[i]) async_cb[i](v);
+}
+static void lpadc1_isr(void) { lpadc_isr(0); }
+static void lpadc2_isr(void) { lpadc_isr(1); }
+
+/* Shared start routine for a raw (instance,channel) async conversion. */
+static int lpadc_start_async(int i, uint8_t channel, void (*callback)(uint16_t)) {
+    if (i < 0 || i > 1) return 0;
+    if (async_pending[i]) return 0;         /* one conversion per instance */
+    lpadc_init(i);
+    const lpadc_regs_t *a = &LPADC[i];
+    async_cb[i] = callback;
+    async_pending[i] = 1;
+    *a->FCTRL = ADC_FCTRL_FWMARK(0);
+    *a->IE = ADC_IE_FWMIE;
+    attachInterruptVector(a->irq, (i == 0) ? &lpadc1_isr : &lpadc2_isr);
+    NVIC_ENABLE_IRQ(a->irq);
+    *a->CMDL1  = ADC_CMDL_ADCH(channel);
+    *a->CMDH1  = 0u;
+    *a->TCTRL0 = ADC_TCTRL_TCMD(1);
+    *a->SWTRIG = 1u;                        /* fires; ISR delivers the result */
+    return 1;
+}
+
+int analogReadAsync(uint8_t pin, void (*callback)(uint16_t value)) {
+    for (uint8_t k = 0; k < NUM_ANALOG_INPUTS; k++) {
+        if (analog_pin_to_info[k].pin == pin)
+            return lpadc_start_async(analog_pin_to_info[k].instance,
+                                     analog_pin_to_info[k].channel, callback);
+    }
+    return 0;   /* not an analog pin */
+}
+
+/* Test hook: start an async conversion on a raw (instance,channel). */
+int analogReadAsyncChannel(uint8_t instance, uint8_t channel, void (*callback)(uint16_t value)) {
+    return lpadc_start_async((int)instance, channel, callback);
+}
