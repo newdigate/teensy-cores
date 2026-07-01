@@ -102,14 +102,23 @@ SECTIONS
 	_ebss = ADDR(.bss) + SIZEOF(.bss);
 
 	_heap_start = ADDR(.bss.dma) + SIZEOF(.bss.dma);
-	_heap_end = ORIGIN(OCRAM) + LENGTH(OCRAM);
+	_heap_end = ORIGIN(OCRAM) + LENGTH(OCRAM) - 0x8000;  /* reserve 32K for the OCRAM stack (Phase 0) */
 
 	_extram_start = ADDR(.bss.extram);
 	_extram_end = ADDR(.bss.extram) + SIZEOF(.bss.extram);
 
 	_itcm_block_count = (SIZEOF(.text.itcm) + SIZEOF(.ARM.exidx) + 0x7FFF) >> 15;
 	_flexram_bank_config = 0xAAAAAAAA | ((1 << (_itcm_block_count * 2)) - 1);
-	_estack = ORIGIN(DTCM) + ((16 - _itcm_block_count) << 15);
+	/*
+	 * Phase 0: the stack lives at the top of the dedicated OCRAM, which is
+	 * always present regardless of the FlexRAM bank split.  The teensy4 formula
+	 * (kept below) assumes startup configures FlexRAM to create a large DTCM;
+	 * our minimal RT1176 startup does not, and the BootROM-default DTCM is small
+	 * (~128K), so the old DTCM-top _estack pointed at non-existent RAM and
+	 * faulted on the first push.  Configuring FlexRAM/TCM properly is deferred.
+	 * _estack = ORIGIN(DTCM) + ((16 - _itcm_block_count) << 15);
+	 */
+	_estack = ORIGIN(OCRAM) + LENGTH(OCRAM);
 
 	_flashimagelen = __text_csf_end - ORIGIN(FLASH);
 	_teensy_model_identifier = 0x25;

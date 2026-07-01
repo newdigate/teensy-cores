@@ -58,7 +58,7 @@ const uint32_t ImageVectorTable[8] = {
 	0,			// dcd (must be 0 for XIP boot)
 	(uint32_t)BootData,	// abs address of boot data
 	(uint32_t)ImageVectorTable, // self = 0x30001000
-	(uint32_t)hab_csf,	// command sequence file
+	0,			// csf = 0: unsigned image (non-zero triggers HAB auth on real ROM)
 	0			// reserved
 };
 
