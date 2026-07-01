@@ -33,7 +33,7 @@
 
 #define IRQ_PRIORITY 64  // 0 = highest priority, 255 = lowest
 
-static void IRQHandler_Serial1();
+void IRQHandler_Serial1();
 static uint8_t tx_buffer1[64];
 static uint8_t rx_buffer1[64];
 
@@ -51,7 +51,7 @@ const HardwareSerialIMXRT::hardware_t UART1_Hardware = {
 HardwareSerialIMXRT Serial1(0x4007C000, &UART1_Hardware, tx_buffer1, sizeof(tx_buffer1),
                             rx_buffer1, sizeof(rx_buffer1));
 
-static void IRQHandler_Serial1() { Serial1.IRQHandler(); }
+void IRQHandler_Serial1() { Serial1.IRQHandler(); }
 
 void serialEvent1() __attribute__((weak));
 void serialEvent1() {}

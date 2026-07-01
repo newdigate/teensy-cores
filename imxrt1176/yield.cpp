@@ -28,8 +28,14 @@
  * SOFTWARE.
  */
 
-// Phase-0 (imxrt1176): the full Teensy 4 yield() dispatches USB Serial,
-// HardwareSerial and the EventResponder, none of which are ported yet. For
-// blink, yield() is a no-op. delay.c already provides a weak empty yield(),
-// so this translation unit is intentionally empty for Phase 0. Restore the
-// real dispatcher when Serial / EventResponder land.
+#include "HardwareSerial.h"
+
+extern void serialEvent1(void) __attribute__((weak));
+
+extern "C" void yield(void) {
+    static uint8_t running = 0;
+    if (running) return;            // guard against re-entrancy (delay()->yield()->serialEvent1()->delay()...)
+    running = 1;
+    if (&serialEvent1 && Serial1.available()) serialEvent1();
+    running = 0;
+}
