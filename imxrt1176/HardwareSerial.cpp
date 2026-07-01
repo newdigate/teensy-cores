@@ -39,16 +39,18 @@
 #define CTRL_TX_COMPLETING	(CTRL_ENABLE | LPUART_CTRL_TCIE)
 #define CTRL_TX_INACTIVE	CTRL_ENABLE
 
-// Task 6: clock root + LPCG gate + pin mux + pad config all live here.  Kept an
-// empty stub for now so begin()'s baud/FIFO/CTRL programming compiles and links.
+// Configure LPUART1 clocking (root + LPCG gate), pad mux, pad drive, and the RX
+// input daisy.  Called first in begin(), before the baud/FIFO/CTRL programming.
 void HardwareSerialIMXRT::configure_hardware(void) {
     // 1. LPUART1 clock root = OscRC48MDiv2 (24 MHz), divider 1  (clock_root_val = mux0|div0)
     hardware->clock_root_reg = hardware->clock_root_val;
     // 2. enable the LPUART1 LPCG clock gate (CCM->LPCG[86].DIRECT = ON)
     hardware->lpcg_register = 0x1u;
     // 3. pad mux (ALT0 = LPUART1 TXD/RXD) + pad control.
-    //    PAD_CFG 0x02: fast slew, high drive strength, weak pull-down (exact value from the
-    //    EVKB SDK pin_mux.c for GPIO_AD_24/25 LPUART1 console pads).
+    //    PAD_CFG 0x02 is the exact SW_PAD_CTL value the EVKB SDK pin_mux.c writes for
+    //    the GPIO_AD_24/25 LPUART1 console pads (SDK decodes it as fast slew / high
+    //    drive / pull disabled).  RT1176 pad-field polarity is non-obvious, so treat
+    //    the SDK's value as authoritative rather than hand-decoding the bits.
     const uint32_t PAD_CFG = 0x02u;
     hardware->tx_mux_reg = hardware->tx_mux_val;  hardware->tx_pad_reg = PAD_CFG;
     hardware->rx_mux_reg = hardware->rx_mux_val;  hardware->rx_pad_reg = PAD_CFG;
