@@ -142,6 +142,15 @@ void (* volatile _VectorsRam[16 + NVIC_NUM_INTERRUPTS])(void);
 __attribute__((section(".startup"), naked))
 void ResetHandler(void)
 {
+	/* Dual-core hygiene: this is an M7-only image, but the BootROM also releases
+	 * the CM4.  With no CM4 firmware it fetches garbage and locks up, which by
+	 * default (SRC_SRMR.M4LOCKUP_RESET_MODE=0b00) resets the WHOLE SoC
+	 * (SRC_SRSR.M4_LOCKUP_M7, bit12) -> intermittent full boot resets.  Tell SRC
+	 * not to reset on a CM4 lockup or CM4 reset-request.  Plain register store,
+	 * no stack; must precede anything that a stray CM4 reset would disturb.
+	 * (Verified on EVKB: SRMR reads 0x3CC0, SRSR stays clean.) */
+	SRC_SRMR |= (0x3u << 6) | (0x3u << 10);   /* M4LOCKUP + M4REQ reset mode = 0b11 (do not reset) */
+
 	/* Configure the FlexRAM ITCM/DTCM bank split BEFORE using the stack: the
 	 * BootROM-default split does not back DTCM-top, so this must run first.
 	 * ResetHandler is naked and these are plain register stores (no stack use).

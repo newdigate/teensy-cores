@@ -386,4 +386,9 @@
 #define IOMUXC_GPR_GPR17 (*(volatile uint32_t *)0x400E4044u)  /* FLEXRAM_BANK_CFG_LOW  (banks 0-7)  */
 #define IOMUXC_GPR_GPR18 (*(volatile uint32_t *)0x400E4048u)  /* FLEXRAM_BANK_CFG_HIGH (banks 8-15) */
 
+/* SRC (System Reset Controller, base 0x40C04000) - dual-core reset control.
+ * SRSR bitmap (nxp PERI_SRC.h): bit2 M7_LOCKUP, bit12 M4_LOCKUP_M7, bit0/16 POR. */
+#define SRC_SRMR (*(volatile uint32_t *)0x40C04004u)  /* [7:6] M4LOCKUP_RESET_MODE, [11:10] M4REQ_RESET_MODE */
+#define SRC_SRSR (*(volatile uint32_t *)0x40C04010u)  /* reset status (write 1 to clear) */
+
 #endif
