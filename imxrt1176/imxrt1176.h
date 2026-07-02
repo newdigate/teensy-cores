@@ -391,4 +391,24 @@
 #define SRC_SRMR (*(volatile uint32_t *)0x40C04004u)  /* [7:6] M4LOCKUP_RESET_MODE, [11:10] M4REQ_RESET_MODE */
 #define SRC_SRSR (*(volatile uint32_t *)0x40C04010u)  /* reset status (write 1 to clear) */
 
+/* LPI2C1 (Arduino-header I2C master), base 0x40104000 */
+#define LPI2C1_MCR    (*(volatile uint32_t *)0x40104010u)
+#define LPI2C1_MSR    (*(volatile uint32_t *)0x40104014u)
+#define LPI2C1_MIER   (*(volatile uint32_t *)0x40104018u)
+#define LPI2C1_MCFGR1 (*(volatile uint32_t *)0x40104024u)
+#define LPI2C1_MCCR0  (*(volatile uint32_t *)0x40104048u)
+#define LPI2C1_MFCR   (*(volatile uint32_t *)0x40104058u)
+#define LPI2C1_MTDR   (*(volatile uint32_t *)0x40104060u)
+#define LPI2C1_MRDR   (*(volatile uint32_t *)0x40104070u)
+/* LPI2C1 clock: CCM_CLOCK_ROOT37 + LPCG98 */
+#define CCM_CLOCK_ROOT37_CONTROL (*(volatile uint32_t *)0x40CC1280u)
+#define CCM_LPCG98_DIRECT        (*(volatile uint32_t *)0x40CC6C40u)
+/* LPI2C1 pins: SCL=GPIO_AD_08, SDA=GPIO_AD_09 (ALT1) */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_08 (*(volatile uint32_t *)0x400E812Cu)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_09 (*(volatile uint32_t *)0x400E8130u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_08 (*(volatile uint32_t *)0x400E8370u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_09 (*(volatile uint32_t *)0x400E8374u)
+#define IOMUXC_LPI2C1_SCL_SELECT_INPUT   (*(volatile uint32_t *)0x400E85ACu)
+#define IOMUXC_LPI2C1_SDA_SELECT_INPUT   (*(volatile uint32_t *)0x400E85B0u)
+
 #endif
