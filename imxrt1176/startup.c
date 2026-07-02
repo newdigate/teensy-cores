@@ -180,6 +180,26 @@ void ResetHandler(void)
 	SCB_VTOR = (uint32_t)_VectorsRam;
 	__asm__ volatile("dsb":::"memory"); __asm__ volatile("isb":::"memory");
 
+	/* Raise the CM7 core supply (DCDC VDD1P0) to 1.15 V OverDrive BEFORE boosting to
+	 * 996 MHz.  Mirrors the SDK BOARD_BootClockRUN: put the DCDC in CCM mode, clear
+	 * REG3.VDD1P0CTRL_DISABLE_STEP (a bare CTRL1 write with stepping disabled does
+	 * NOTHING - why the first attempt failed), set the buck target, then wait for
+	 * REG0.STS_DC_OK.  DCDC @ 0x40CA8000: CTRL1@+4, REG0@+8, REG2@+0x10, REG3@+0x14.
+	 * VDD1P0CTRL_TRG[12:8]: 16=1.0 V, +1 step=+25 mV, 22=1.15 V.  Waits are bounded. */
+	{
+		volatile uint32_t *DCDC_CTRL1 = (volatile uint32_t *)0x40CA8004u;
+		volatile uint32_t *DCDC_REG0  = (volatile uint32_t *)0x40CA8008u;
+		volatile uint32_t *DCDC_REG2  = (volatile uint32_t *)0x40CA8010u;
+		volatile uint32_t *DCDC_REG3  = (volatile uint32_t *)0x40CA8014u;
+		uint32_t g;
+		*DCDC_REG0 = (*DCDC_REG0 & ~0x04000000u) | 0x1u;         /* CCM: -PWD_CMP_OFFSET +PWD_ZCD */
+		*DCDC_REG2 = (*DCDC_REG2 & ~0x00000E00u) | (3u << 9);    /* LOOPCTRL_EN_RCSCALE = 3       */
+		*DCDC_REG3 &= ~0x20000000u;                              /* enable VDD1P0 stepping        */
+		*DCDC_CTRL1 = (*DCDC_CTRL1 & ~0x1F00u) | (22u << 8);     /* VDD1P0CTRL_TRG = 22 (1.15 V)  */
+		for (g = 0; g < 200000u && !(*DCDC_REG0 & 0x80000000u); g++) { }  /* wait STS_DC_OK */
+		__asm__ volatile("dsb":::"memory");
+	}
+
 	/* RT1176 CCM bring-up: ARM PLL -> 996 MHz on the M7 core CLOCK_ROOT */
 	set_arm_clock_rt1176();
 
@@ -253,7 +273,7 @@ void set_arm_clock_rt1176(void)
 		reg &= ~(ANADIG_PLL_ARM_PLL_CTRL_DIV_SELECT(0xFF) |
 		         ANADIG_PLL_ARM_PLL_CTRL_POST_DIV_SEL(0x3));
 		reg |= ANADIG_PLL_ARM_PLL_CTRL_DIV_SELECT(166) |   /* loopDivider 166 */
-		       ANADIG_PLL_ARM_PLL_CTRL_POST_DIV_SEL(0) |    /* PllPostDiv2     */
+		       ANADIG_PLL_ARM_PLL_CTRL_POST_DIV_SEL(0) |    /* PllPostDiv2 -> 996 MHz */
 		       ANADIG_PLL_ARM_PLL_CTRL_ARM_PLL_GATE |
 		       ANADIG_PLL_ARM_PLL_CTRL_POWERUP |
 		       ANADIG_PLL_ARM_PLL_CTRL_HOLD_RING_OFF;
