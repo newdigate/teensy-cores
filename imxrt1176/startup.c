@@ -144,10 +144,13 @@ void ResetHandler(void)
 {
 	/* Configure the FlexRAM ITCM/DTCM bank split BEFORE using the stack: the
 	 * BootROM-default split does not back DTCM-top, so this must run first.
-	 * ResetHandler is naked and these are plain register stores (no stack use). */
-	IOMUXC_GPR_GPR17 = (uint32_t)&_flexram_bank_config;   /* per-bank ITCM/DTCM map */
-	IOMUXC_GPR_GPR16 = 0x00200007u;                       /* bits0-2: INIT_ITCM/DTCM_EN + FLEXRAM_BANK_CFG_SEL; bit21: CM7_INIT_VTOR-region enable (SDK/teensy value; see RT1176 RM GPR16) */
-	IOMUXC_GPR_GPR14 = 0x00AA0000u;                       /* TCM size fields */
+	 * ResetHandler is naked and these are plain register stores (no stack use).
+	 * RT1176 splits the 16-bank config across GPR17 (low 8 banks) and GPR18
+	 * (high 8 banks); GPR16.FLEXRAM_BANK_CFG_SEL (bit2) selects it. Unlike RT1062
+	 * there are no GPR14 TCM-size or GPR16 INIT_ITCM/DTCM_EN fields to write. */
+	IOMUXC_GPR_GPR17 = ((uint32_t)&_flexram_bank_config) & 0xFFFFu;         /* banks 0-7  */
+	IOMUXC_GPR_GPR18 = (((uint32_t)&_flexram_bank_config) >> 16) & 0xFFFFu; /* banks 8-15 */
+	IOMUXC_GPR_GPR16 |= 0x4u;                                               /* FLEXRAM_BANK_CFG_SEL */
 	__asm__ volatile("dsb":::"memory"); __asm__ volatile("isb":::"memory");
 
 	/* The boot-ROM already loaded MSP from the vector table, but set it

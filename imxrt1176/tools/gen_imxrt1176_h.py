@@ -208,7 +208,8 @@ def main():
           "/* IOMUXC_GPR FlexRAM bank-config registers (base 0x400E4000) */",
           "#define IOMUXC_GPR_GPR14 (*(volatile uint32_t *)0x400E4038u)",
           "#define IOMUXC_GPR_GPR16 (*(volatile uint32_t *)0x400E4040u)",
-          "#define IOMUXC_GPR_GPR17 (*(volatile uint32_t *)0x400E4044u)"]
+          "#define IOMUXC_GPR_GPR17 (*(volatile uint32_t *)0x400E4044u)  /* FLEXRAM_BANK_CFG_LOW  (banks 0-7)  */",
+          "#define IOMUXC_GPR_GPR18 (*(volatile uint32_t *)0x400E4048u)  /* FLEXRAM_BANK_CFG_HIGH (banks 8-15) */"]
     L += ["", "#endif"]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")

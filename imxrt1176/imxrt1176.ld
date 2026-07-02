@@ -114,15 +114,17 @@ SECTIONS
 	_extram_end = ADDR(.bss.extram) + SIZEOF(.bss.extram);
 
 	_itcm_block_count = (SIZEOF(.text.itcm) + SIZEOF(.ARM.exidx) + 0x7FFF) >> 15;
-	/* RT1176 GPR17 FLEXRAM_BANK_CFG: 2 bits/bank, 01=ITCM 10=DTCM 00=OCRAM.
-	 * Low _itcm_block_count banks -> ITCM (01); the rest -> DTCM (10).
-	 * (The teensy4/RT1062 form `0xAAAAAAAA | ((1<<(n*2))-1)` yields 0b11=reserved
-	 * for the ITCM banks and does NOT work on RT1176.) */
-	_flexram_bank_config = (0xAAAAAAAA & ~((1 << (_itcm_block_count * 2)) - 1)) | (0x55555555 & ((1 << (_itcm_block_count * 2)) - 1));
-	/* Stack at the top of DTCM.  Valid because ResetHandler configures FlexRAM
-	 * (GPR17/16/14) BEFORE setting SP, so DTCM-top is backed before any push.
-	 * DTCM = (16 - _itcm_block_count) banks x 32K; for 1 ITCM bank _estack = 0x20078000. */
-	_estack = ORIGIN(DTCM) + ((16 - _itcm_block_count) << 15);
+	/* RT1176 FLEXRAM_BANK_CFG: 2 bits/bank; per SDK fsl_flexram_allocate.h bank enum
+	 * 00=NotUsed 01=OCRAM 10=DTCM 11=ITCM, SDK order OCRAM-low / DTCM-mid / ITCM-HIGH.
+	 * The RT1176 TCM windows are power-of-2 sized, so a non-power-of-2 bank count (e.g.
+	 * 1 ITCM + 15 DTCM) leaves the ITCM window unbacked (IBUSERR on fetch). Use a fixed
+	 * power-of-2 split: 8 DTCM banks (low, 256K) + 8 ITCM banks (high, 256K) = 0xFFFFAAAA
+	 * (banks0-7 = 10 DTCM, banks8-15 = 11 ITCM). Matches the 256K ITCM/DTCM MEMORY sizes.
+	 * (Split across GPR17[15:0]=0xAAAA / GPR18[15:0]=0xFFFF in startup.c.) */
+	_flexram_bank_config = 0xFFFFAAAA;
+	/* Stack at the top of the 8-bank (256K) DTCM.  Valid because ResetHandler configures
+	 * FlexRAM (GPR17/18/16) BEFORE setting SP, so DTCM-top is backed before any push. */
+	_estack = ORIGIN(DTCM) + (8 << 15);   /* 0x20000000 + 256K = 0x20040000 */
 
 	_flashimagelen = __text_csf_end - ORIGIN(FLASH);
 	_teensy_model_identifier = 0x25;
