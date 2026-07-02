@@ -97,3 +97,29 @@ uint8_t TwoWire::endTransmission(bool sendStop) {
 	tx_len = 0;
 	return 0u;
 }
+
+uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, bool sendStop) {
+	if (quantity > BUFFER_LENGTH) quantity = BUFFER_LENGTH;
+	rx_len = 0; rx_idx = 0;
+	uint32_t err = 0xFFu;
+	hw->msr = hw->msr;
+	hw->mtdr = TX_CMD(CMD_START, (address << 1) | 1u);        // START + addr(R)
+	if (!wait_flag(MSR_TDF, MSR_NDF | MSR_ALF | MSR_FEF, err)) { if (sendStop) hw->mtdr = TX_CMD(CMD_STOP,0); return 0; }
+	hw->mtdr = TX_CMD(CMD_RXD, (uint8_t)(quantity - 1));      // receive `quantity` bytes (N-1 encoding)
+	for (uint8_t i = 0; i < quantity; i++) {
+		err = 0u;
+		if (!wait_flag(MSR_RDF, MSR_ALF | MSR_FEF, err)) break;
+		uint32_t r = hw->mrdr;
+		if (r & MRDR_RXEMPTY) break;
+		rx_buf[rx_len++] = (uint8_t)(r & 0xFF);
+	}
+	if (sendStop) {
+		hw->mtdr = TX_CMD(CMD_STOP, 0);
+		wait_flag(MSR_SDF, MSR_ALF | MSR_FEF, err);
+		hw->msr = MSR_SDF | MSR_EPF;
+	}
+	return rx_len;
+}
+
+int TwoWire::read()  { return (rx_idx < rx_len) ? rx_buf[rx_idx++] : -1; }
+int TwoWire::peek()  { return (rx_idx < rx_len) ? rx_buf[rx_idx]   : -1; }
