@@ -36,6 +36,7 @@ public:
 		volatile uint32_t &samr;
 		volatile uint32_t &sasr;
 		volatile uint32_t &scfgr1;
+		volatile uint32_t &scfgr2;
 		volatile uint32_t &stdr;
 		volatile uint32_t &srdr;
 	};

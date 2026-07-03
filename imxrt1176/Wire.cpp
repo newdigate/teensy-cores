@@ -27,9 +27,14 @@
 #define SSR_RDF  (1u<<1)
 #define SSR_AVF  (1u<<2)
 #define SSR_SDF  (1u<<9)
+#define SSR_BEF  (1u<<10)   // bit error (latched)
+#define SSR_FEF  (1u<<11)   // FIFO under/overrun (latched)
+#define SIER_TDIE (1u<<0)
 #define SIER_RDIE (1u<<1)
 #define SIER_AVIE (1u<<2)
 #define SIER_SDIE (1u<<9)
+#define SIER_BEIE (1u<<10)
+#define SIER_FEIE (1u<<11)
 
 #define WIRE_TIMEOUT 100000u   // bounded guard-loop (like analogRead)
 
@@ -58,24 +63,46 @@ void TwoWire::begin(uint8_t address) {
 	hw->sda_select_input = hw->sda_select_val;
 	hw->scr = SCR_RST; hw->scr = 0u;
 	hw->samr = ((uint32_t)address << 1);
-	hw->scfgr1 = (1u << 9);                              // SAEN (7-bit address enable)
-	hw->sier = SIER_RDIE | SIER_AVIE | SIER_SDIE;
+	// SAEN (7-bit address) | RXSTALL (bit1) | TXDSTALL (bit2): clock-stretch until the
+	// ISR drains SRDR / fills STDR, so multi-byte reads/writes stay byte-correct even
+	// when the master clocks faster than the ISR can refill.
+	hw->scfgr1 = (1u << 9) | (1u << 2) | (1u << 1);              // SAEN | TXDSTALL | RXSTALL (SDK default)
+	// SCFGR2.CLKHOLD (bits[3:0]) sets the SCL hold time while stalling — MUST be
+	// non-zero or TXDSTALL/RXSTALL never actually hold the clock, so the ISR can't
+	// refill STDR/drain SRDR in time on multi-byte transfers. Max hold; the 996 MHz
+	// ISR refills well within it. (Matches the SDK's clockHoldTime default.)
+	hw->scfgr2 = 0x0000000Fu;
+	// TDIE is essential: without it only the first read byte (which rides the AVF
+	// interrupt) is served; bytes 2..N need a TDF interrupt each to refill STDR.
+	// BEIE|FEIE are essential for recovery: a multi-byte-read glitch can latch
+	// FEF (TX underrun) / BEF, which corrupts the slave FIFO and eventually wedges
+	// it into permanent address-NACK. These interrupts fire the ISR to W1C the
+	// error so the *next* transfer recovers cleanly (matches the SDK's IRQ handler,
+	// which clears BitErr/FifoErr on every interrupt).
+	hw->sier = SIER_TDIE | SIER_RDIE | SIER_AVIE | SIER_SDIE | SIER_BEIE | SIER_FEIE;
 	attachInterruptVector(hw->irq, hw->irq_handler);
 	NVIC_SET_PRIORITY(hw->irq, hw->irq_priority);
 	NVIC_ENABLE_IRQ(hw->irq);
-	hw->scr = SCR_SEN;
+	hw->scr = SCR_SEN | (1u << 4);   // SEN | FILTEN (SDK default)
 }
 void TwoWire::onReceive(void (*cb)(int)) { on_receive = cb; }
 void TwoWire::onRequest(void (*cb)(void)) { on_request = cb; }
 
+// Runs from ITCM (.fastrun): the slave ISR must refill STDR within the bounded
+// SCFGR2.CLKHOLD clock-stretch window, so it can't tolerate flash-XIP fetch stalls.
+__attribute__((section(".fastrun")))
 void TwoWire::handle_slave_isr() {
 	uint32_t ssr = hw->ssr;
+	if (ssr & (SSR_BEF | SSR_FEF)) {              // latched slave error -> W1C + re-arm
+		hw->ssr = (SSR_BEF | SSR_FEF);           // clear so the slave FIFO recovers
+		s_rx_len = 0; s_rx_idx = 0; s_tx_idx = 0; s_tx_len = 0;
+	}
 	if (ssr & SSR_AVF) { volatile uint32_t sasr = hw->sasr; (void)sasr; s_rx_len = 0; s_rx_idx = 0; }   // new transfer (read of SASR clears AVF)
 	if (ssr & SSR_RDF) {                                                 // master wrote a byte
 		uint8_t d = (uint8_t)hw->srdr;
 		if (s_rx_len < BUFFER_LENGTH) s_rx_buf[s_rx_len++] = d;
 	}
-	if (ssr & SSR_TDF) {                                                 // master wants a byte
+	if (ssr & SSR_TDF) {                                                 // master wants a byte (TXDSTALL holds SCL until we write STDR)
 		if (s_tx_idx == 0 && on_request) {
 			s_tx_len = 0; in_slave_request = true; on_request(); in_slave_request = false;
 		}

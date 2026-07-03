@@ -23,9 +23,9 @@ static const TwoWire::hardware_t lpi2c1_hw = {
 	/* pad_ctl_val */ 0x0000001Eu,           // ODE(bit4)|DSE(bit1)|PUE(bit2)|PUS(bit3,up): internal pull-up for header w/o external R
 	/* mcr */ LPI2C1_MCR, /* msr */ LPI2C1_MSR, /* mcfgr1 */ LPI2C1_MCFGR1,
 	/* mccr0 */ LPI2C1_MCCR0, /* mtdr */ LPI2C1_MTDR, /* mrdr */ LPI2C1_MRDR,
-	/* irq_handler */ wire_isr, /* irq_priority */ 64u,
+	/* irq_handler */ wire_isr, /* irq_priority */ 16u,
 	/* scr */ LPI2C1_SCR, /* ssr */ LPI2C1_SSR, /* sier */ LPI2C1_SIER,
-	/* samr */ LPI2C1_SAMR, /* sasr */ LPI2C1_SASR, /* scfgr1 */ LPI2C1_SCFGR1,
+	/* samr */ LPI2C1_SAMR, /* sasr */ LPI2C1_SASR, /* scfgr1 */ LPI2C1_SCFGR1, /* scfgr2 */ LPI2C1_SCFGR2,
 	/* stdr */ LPI2C1_STDR, /* srdr */ LPI2C1_SRDR,
 };
 
@@ -41,14 +41,14 @@ static const TwoWire::hardware_t lpi2c2_hw = {
 	/* pad_ctl_val */ 0x1Eu,
 	/* mcr */ LPI2C2_MCR, /* msr */ LPI2C2_MSR, /* mcfgr1 */ LPI2C2_MCFGR1,
 	/* mccr0 */ LPI2C2_MCCR0, /* mtdr */ LPI2C2_MTDR, /* mrdr */ LPI2C2_MRDR,
-	/* irq_handler */ wire1_isr, /* irq_priority */ 64u,
+	/* irq_handler */ wire1_isr, /* irq_priority */ 16u,
 	/* scr */ LPI2C2_SCR, /* ssr */ LPI2C2_SSR, /* sier */ LPI2C2_SIER,
-	/* samr */ LPI2C2_SAMR, /* sasr */ LPI2C2_SASR, /* scfgr1 */ LPI2C2_SCFGR1,
+	/* samr */ LPI2C2_SAMR, /* sasr */ LPI2C2_SASR, /* scfgr1 */ LPI2C2_SCFGR1, /* scfgr2 */ LPI2C2_SCFGR2,
 	/* stdr */ LPI2C2_STDR, /* srdr */ LPI2C2_SRDR,
 };
 
 TwoWire Wire(&lpi2c1_hw);
 TwoWire Wire1(&lpi2c2_hw);
 
-static void wire_isr()  { Wire.handle_slave_isr(); }
-static void wire1_isr() { Wire1.handle_slave_isr(); }
+__attribute__((section(".fastrun"))) static void wire_isr()  { Wire.handle_slave_isr(); }
+__attribute__((section(".fastrun"))) static void wire1_isr() { Wire1.handle_slave_isr(); }
