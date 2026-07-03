@@ -411,4 +411,37 @@
 #define IOMUXC_LPI2C1_SCL_SELECT_INPUT   (*(volatile uint32_t *)0x400E85ACu)
 #define IOMUXC_LPI2C1_SDA_SELECT_INPUT   (*(volatile uint32_t *)0x400E85B0u)
 
+/* LPI2C1 slave register block */
+#define LPI2C1_SCR    (*(volatile uint32_t *)0x40104110u)
+#define LPI2C1_SSR    (*(volatile uint32_t *)0x40104114u)
+#define LPI2C1_SIER   (*(volatile uint32_t *)0x40104118u)
+#define LPI2C1_SCFGR1 (*(volatile uint32_t *)0x40104124u)
+#define LPI2C1_SCFGR2 (*(volatile uint32_t *)0x40104128u)
+#define LPI2C1_SAMR   (*(volatile uint32_t *)0x40104140u)
+#define LPI2C1_SASR   (*(volatile uint32_t *)0x40104150u)
+#define LPI2C1_STAR   (*(volatile uint32_t *)0x40104154u)
+#define LPI2C1_STDR   (*(volatile uint32_t *)0x40104160u)
+#define LPI2C1_SRDR   (*(volatile uint32_t *)0x40104170u)
+/* LPI2C2 (QEMU loopback slave), base 0x40108000 */
+#define LPI2C2_MCR    (*(volatile uint32_t *)0x40108010u)
+#define LPI2C2_MSR    (*(volatile uint32_t *)0x40108014u)
+#define LPI2C2_MIER   (*(volatile uint32_t *)0x40108018u)
+#define LPI2C2_MCFGR1 (*(volatile uint32_t *)0x40108024u)
+#define LPI2C2_MCCR0  (*(volatile uint32_t *)0x40108048u)
+#define LPI2C2_MTDR   (*(volatile uint32_t *)0x40108060u)
+#define LPI2C2_MRDR   (*(volatile uint32_t *)0x40108070u)
+#define LPI2C2_SCR    (*(volatile uint32_t *)0x40108110u)
+#define LPI2C2_SSR    (*(volatile uint32_t *)0x40108114u)
+#define LPI2C2_SIER   (*(volatile uint32_t *)0x40108118u)
+#define LPI2C2_SCFGR1 (*(volatile uint32_t *)0x40108124u)
+#define LPI2C2_SCFGR2 (*(volatile uint32_t *)0x40108128u)
+#define LPI2C2_SAMR   (*(volatile uint32_t *)0x40108140u)
+#define LPI2C2_SASR   (*(volatile uint32_t *)0x40108150u)
+#define LPI2C2_STAR   (*(volatile uint32_t *)0x40108154u)
+#define LPI2C2_STDR   (*(volatile uint32_t *)0x40108160u)
+#define LPI2C2_SRDR   (*(volatile uint32_t *)0x40108170u)
+/* LPI2C2 clock: CCM_CLOCK_ROOT38 + LPCG99 */
+#define CCM_CLOCK_ROOT38_CONTROL (*(volatile uint32_t *)0x40CC1300u)
+#define CCM_LPCG99_DIRECT        (*(volatile uint32_t *)0x40CC6C60u)
+
 #endif
