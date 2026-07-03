@@ -20,6 +20,16 @@
 #define CMD_STOP   2u
 #define CMD_START  4u
 #define MRDR_RXEMPTY (1u<<14)
+// Slave register bits
+#define SCR_SEN  (1u<<0)
+#define SCR_RST  (1u<<1)
+#define SSR_TDF  (1u<<0)
+#define SSR_RDF  (1u<<1)
+#define SSR_AVF  (1u<<2)
+#define SSR_SDF  (1u<<9)
+#define SIER_RDIE (1u<<1)
+#define SIER_AVIE (1u<<2)
+#define SIER_SDIE (1u<<9)
 
 #define WIRE_TIMEOUT 100000u   // bounded guard-loop (like analogRead)
 
@@ -37,6 +47,46 @@ void TwoWire::begin() {
 }
 
 void TwoWire::end() { hw->mcr = 0u; hw->lpcg = 0u; }
+
+void TwoWire::begin(uint8_t address) {
+	is_slave = true; slave_addr = address;
+	s_rx_len = 0; s_rx_idx = 0; s_tx_len = 0; s_tx_idx = 0;
+	hw->lpcg = 1u; hw->clock_root = hw->clock_root_val;
+	hw->scl_mux = hw->scl_mux_val;  hw->scl_pad = hw->pad_ctl_val;
+	hw->sda_mux = hw->sda_mux_val;  hw->sda_pad = hw->pad_ctl_val;
+	hw->scl_select_input = hw->scl_select_val;
+	hw->sda_select_input = hw->sda_select_val;
+	hw->scr = SCR_RST; hw->scr = 0u;
+	hw->samr = ((uint32_t)address << 1);
+	hw->scfgr1 = (1u << 9);                              // SAEN (7-bit address enable)
+	hw->sier = SIER_RDIE | SIER_AVIE | SIER_SDIE;
+	attachInterruptVector(hw->irq, hw->irq_handler);
+	NVIC_SET_PRIORITY(hw->irq, hw->irq_priority);
+	NVIC_ENABLE_IRQ(hw->irq);
+	hw->scr = SCR_SEN;
+}
+void TwoWire::onReceive(void (*cb)(int)) { on_receive = cb; }
+void TwoWire::onRequest(void (*cb)(void)) { on_request = cb; }
+
+void TwoWire::handle_slave_isr() {
+	uint32_t ssr = hw->ssr;
+	if (ssr & SSR_AVF) { (void)hw->sasr; s_rx_len = 0; s_rx_idx = 0; }   // new transfer (read of SASR clears AVF)
+	if (ssr & SSR_RDF) {                                                 // master wrote a byte
+		uint8_t d = (uint8_t)hw->srdr;
+		if (s_rx_len < BUFFER_LENGTH) s_rx_buf[s_rx_len++] = d;
+	}
+	if (ssr & SSR_TDF) {                                                 // master wants a byte
+		if (s_tx_idx == 0 && on_request) {
+			s_tx_len = 0; in_slave_request = true; on_request(); in_slave_request = false;
+		}
+		hw->stdr = (s_tx_idx < s_tx_len) ? s_tx_buf[s_tx_idx++] : 0xFFu;
+	}
+	if (ssr & SSR_SDF) {                                                 // STOP -> transfer done
+		hw->ssr = SSR_SDF;                                               // W1C
+		if (s_rx_len && on_receive) { s_rx_idx = 0; on_receive(s_rx_len); }
+		s_rx_len = 0; s_rx_idx = 0; s_tx_idx = 0; s_tx_len = 0;
+	}
+}
 
 void TwoWire::setClock(uint32_t freq) {
 	clock_hz = freq;
@@ -72,6 +122,7 @@ bool TwoWire::wait_flag(uint32_t mask, uint32_t error_mask, uint32_t &err) {
 }
 
 size_t TwoWire::write(uint8_t data) {
+	if (in_slave_request) { if (s_tx_len >= BUFFER_LENGTH) return 0; s_tx_buf[s_tx_len++] = data; return 1; }
 	if (tx_len >= BUFFER_LENGTH) return 0;
 	tx_buf[tx_len++] = data; return 1;
 }
@@ -121,5 +172,11 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, bool sendStop) {
 	return rx_len;
 }
 
-int TwoWire::read()  { return (rx_idx < rx_len) ? rx_buf[rx_idx++] : -1; }
-int TwoWire::peek()  { return (rx_idx < rx_len) ? rx_buf[rx_idx]   : -1; }
+int TwoWire::read() {
+	if (is_slave) return (s_rx_idx < s_rx_len) ? s_rx_buf[s_rx_idx++] : -1;
+	return (rx_idx < rx_len) ? rx_buf[rx_idx++] : -1;
+}
+int TwoWire::peek() {
+	if (is_slave) return (s_rx_idx < s_rx_len) ? s_rx_buf[s_rx_idx] : -1;
+	return (rx_idx < rx_len) ? rx_buf[rx_idx] : -1;
+}
