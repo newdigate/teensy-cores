@@ -70,7 +70,7 @@ void TwoWire::onRequest(void (*cb)(void)) { on_request = cb; }
 
 void TwoWire::handle_slave_isr() {
 	uint32_t ssr = hw->ssr;
-	if (ssr & SSR_AVF) { (void)hw->sasr; s_rx_len = 0; s_rx_idx = 0; }   // new transfer (read of SASR clears AVF)
+	if (ssr & SSR_AVF) { volatile uint32_t sasr = hw->sasr; (void)sasr; s_rx_len = 0; s_rx_idx = 0; }   // new transfer (read of SASR clears AVF)
 	if (ssr & SSR_RDF) {                                                 // master wrote a byte
 		uint8_t d = (uint8_t)hw->srdr;
 		if (s_rx_len < BUFFER_LENGTH) s_rx_buf[s_rx_len++] = d;
