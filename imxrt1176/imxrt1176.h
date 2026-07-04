@@ -558,6 +558,21 @@ typedef struct {
 #define USB1_ENDPTCTRL5        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1D4))
 #define USB1_ENDPTCTRL6        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1D8))
 #define USB1_ENDPTCTRL7        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1DC))
+
+/* USB GPTIMER0 — general-purpose one-shot; usb_serial TX auto-flush (Phase 2). */
+#define USB1_GPTIMER0LD        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x080))
+#define USB1_GPTIMER0CTRL      (*(volatile uint32_t *)(USB_OTG1_BASE + 0x084))
+/* USB_USBSTS_TI0 already defined below (USBSTS/USBINTR bit masks block). */
+#define USB_USBINTR_TIE0          ((uint32_t)(1u<<24))
+#define USB_GPTIMERCTRL_GPTRUN    ((uint32_t)(1u<<31))
+#define USB_GPTIMERCTRL_GPTRST    ((uint32_t)(1u<<30))
+
+/* D-cache is OFF in this core (Phase-1 HW-confirmed) → cache maintenance is a
+ * no-op.  Provided so the teensy4 usb_serial.c port compiles verbatim.  If a
+ * future build enables the D-cache, replace these with real CMSIS operations. */
+static inline void arm_dcache_delete(void *addr, uint32_t size) { (void)addr; (void)size; }
+static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)addr; (void)size; }
+
 #define USBPHY1_BASE           0x40434000u
 #define USBPHY1_PWD            (*(volatile uint32_t *)(USBPHY1_BASE + 0x00))
 #define USBPHY1_CTRL           (*(volatile uint32_t *)(USBPHY1_BASE + 0x30))
