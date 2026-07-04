@@ -532,4 +532,88 @@ typedef struct {
 /* PIT1 clock gate: CCM LPCG62 DIRECT (kCLOCK_Pit1=62 -> 0x6000 + 62*0x20). */
 #define CCM_LPCG62_DIRECT  (*(volatile uint32_t *)0x40CC67C0u)
 
+/* ---- USB_OTG1 (ChipIdea/EHCI device controller) + USBPHY1 -------------------
+ * Same IP as imxrt1062, so cores/teensy4/usb.c ports verbatim; only the base
+ * changes (1062 0x402E0000 -> 0x40430000). Device register window at base+0x140.
+ * Register/bit names match Teensy so the port needs no renaming. IRQ = 136. */
+#define USB_OTG1_BASE          0x40430000u
+#define USB1_USBCMD            (*(volatile uint32_t *)(USB_OTG1_BASE + 0x140))
+#define USB1_USBSTS            (*(volatile uint32_t *)(USB_OTG1_BASE + 0x144))
+#define USB1_USBINTR           (*(volatile uint32_t *)(USB_OTG1_BASE + 0x148))
+#define USB1_DEVICEADDR        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x154))
+#define USB1_ENDPOINTLISTADDR  (*(volatile uint32_t *)(USB_OTG1_BASE + 0x158))
+#define USB1_BURSTSIZE         (*(volatile uint32_t *)(USB_OTG1_BASE + 0x160))
+#define USB1_PORTSC1           (*(volatile uint32_t *)(USB_OTG1_BASE + 0x184))
+#define USB1_USBMODE           (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1A8))
+#define USB1_ENDPTSETUPSTAT    (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1AC))
+#define USB1_ENDPTPRIME        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1B0))
+#define USB1_ENDPTFLUSH        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1B4))
+#define USB1_ENDPTSTATUS       (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1B8))
+#define USB1_ENDPTCOMPLETE     (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1BC))
+#define USB1_ENDPTCTRL0        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1C0))
+#define USB1_ENDPTCTRL1        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1C4))
+#define USB1_ENDPTCTRL2        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1C8))
+#define USB1_ENDPTCTRL3        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1CC))
+#define USB1_ENDPTCTRL4        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1D0))
+#define USB1_ENDPTCTRL5        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1D4))
+#define USB1_ENDPTCTRL6        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1D8))
+#define USB1_ENDPTCTRL7        (*(volatile uint32_t *)(USB_OTG1_BASE + 0x1DC))
+#define USBPHY1_BASE           0x40434000u
+#define USBPHY1_PWD            (*(volatile uint32_t *)(USBPHY1_BASE + 0x00))
+#define USBPHY1_CTRL           (*(volatile uint32_t *)(USBPHY1_BASE + 0x30))
+#define USBPHY1_CTRL_SET       (*(volatile uint32_t *)(USBPHY1_BASE + 0x34))
+#define USBPHY1_CTRL_CLR       (*(volatile uint32_t *)(USBPHY1_BASE + 0x38))
+#define USBPHY1_PLL_SIC        (*(volatile uint32_t *)(USBPHY1_BASE + 0xA0))
+#define USBPHY1_PLL_SIC_SET    (*(volatile uint32_t *)(USBPHY1_BASE + 0xA4))
+#define USBPHY1_PLL_SIC_CLR    (*(volatile uint32_t *)(USBPHY1_BASE + 0xA8))
+/* USBCMD / USBSTS / USBINTR / USBMODE / DEVICEADDR / ENDPTCTRL bit masks */
+#define USB_USBCMD_RST         (1u << 1)
+#define USB_USBCMD_RS          (1u << 0)
+#define USB_USBCMD_SUTW        (1u << 13)
+#define USB_USBSTS_TI1         (1u << 25)
+#define USB_USBSTS_TI0         (1u << 24)
+#define USB_USBSTS_SLI         (1u << 8)
+#define USB_USBSTS_SRI         (1u << 7)
+#define USB_USBSTS_URI         (1u << 6)
+#define USB_USBSTS_PCI         (1u << 2)
+#define USB_USBSTS_UEI         (1u << 1)
+#define USB_USBSTS_UI          (1u << 0)
+#define USB_USBINTR_SLE        (1u << 8)
+#define USB_USBINTR_SRE        (1u << 7)
+#define USB_USBINTR_URE        (1u << 6)
+#define USB_USBINTR_PCE        (1u << 2)
+#define USB_USBINTR_UEE        (1u << 1)
+#define USB_USBINTR_UE         (1u << 0)
+#define USB_USBMODE_SLOM       (1u << 3)
+#define USB_USBMODE_CM(n)      (((n) & 0x03u) << 0)
+#define USB_USBMODE_CM_MASK    (0x03u)
+#define USB_DEVICEADDR_USBADR(n) (((n) & 0x7Fu) << 25)
+#define USB_DEVICEADDR_USBADRA (1u << 24)
+#define USB_ENDPTCTRL_TXS      (1u << 16)
+#define USB_ENDPTCTRL_RXS      (1u << 0)
+#define USB_PORTSC1_HSP        (1u << 9)
+#define USB_PORTSC1_PR         (1u << 8)
+/* USBPHY CTRL / PWD / PLL_SIC bit masks (PLL_SIC values from SDK PERI_USBPHY.h) */
+#define USBPHY_CTRL_SFTRST     (1u << 31)
+#define USBPHY_CTRL_CLKGATE    (1u << 30)
+#define USBPHY_PWD_RXPWDRX     (1u << 20)
+#define USBPHY_PWD_RXPWDDIFF   (1u << 19)
+#define USBPHY_PWD_RXPWD1PT1   (1u << 18)
+#define USBPHY_PWD_RXPWDENV    (1u << 17)
+#define USBPHY_PWD_TXPWDV2I    (1u << 12)
+#define USBPHY_PWD_TXPWDIBIAS  (1u << 11)
+#define USBPHY_PWD_TXPWDFS     (1u << 10)
+#define USBPHY_PLL_SIC_PLL_EN_USB_CLKS  (0x40u)
+#define USBPHY_PLL_SIC_PLL_POWER        (0x1000u)
+#define USBPHY_PLL_SIC_PLL_BYPASS       (0x10000u)
+#define USBPHY_PLL_SIC_PLL_REG_ENABLE   (0x200000u)
+#define USBPHY_PLL_SIC_PLL_DIV_SEL(n)   (((n) & 0x7u) << 22)
+#define USBPHY_PLL_SIC_PLL_DIV_SEL_MASK (0x1C00000u)
+#define USBPHY_PLL_SIC_PLL_LOCK         (0x80000000u)
+
+/* DMA structures (USB dQH/dTD/buffers) -> .dmabuffers (OCRAM). */
+#ifndef DMAMEM
+#define DMAMEM __attribute__((section(".dmabuffers"), used))
+#endif
+
 #endif

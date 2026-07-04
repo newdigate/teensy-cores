@@ -52,7 +52,8 @@ typedef enum IRQ_NUMBER_t {
     IRQ_GPIO2_0_15 = 102, IRQ_GPIO2_16_31 = 103,
     IRQ_GPIO3_0_15 = 104, IRQ_GPIO3_16_31 = 105,
     IRQ_GPIO5_0_15 = 108, IRQ_GPIO5_16_31 = 109,
-    IRQ_PIT1 = 155, IRQ_PIT2 = 156
+    IRQ_PIT1 = 155, IRQ_PIT2 = 156,
+    IRQ_USB_OTG1 = 136
 } IRQ_NUMBER_t;
 #define IRQ_PIT IRQ_PIT1   /* Teensy source-compat alias */
 
