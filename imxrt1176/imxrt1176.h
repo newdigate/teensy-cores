@@ -566,10 +566,12 @@ typedef struct {
 #define USBPHY1_PLL_SIC        (*(volatile uint32_t *)(USBPHY1_BASE + 0xA0))
 #define USBPHY1_PLL_SIC_SET    (*(volatile uint32_t *)(USBPHY1_BASE + 0xA4))
 #define USBPHY1_PLL_SIC_CLR    (*(volatile uint32_t *)(USBPHY1_BASE + 0xA8))
+#define CCM_LPCG115_DIRECT     (*(volatile uint32_t *)0x40CC6E60u)   /* USB (kCLOCK_Usb=115) */
 /* USBCMD / USBSTS / USBINTR / USBMODE / DEVICEADDR / ENDPTCTRL bit masks */
 #define USB_USBCMD_RST         (1u << 1)
 #define USB_USBCMD_RS          (1u << 0)
 #define USB_USBCMD_SUTW        (1u << 13)
+#define USB_USBCMD_ATDTW       (1u << 14)
 #define USB_USBSTS_TI1         (1u << 25)
 #define USB_USBSTS_TI0         (1u << 24)
 #define USB_USBSTS_SLI         (1u << 8)
