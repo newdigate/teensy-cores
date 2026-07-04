@@ -127,6 +127,10 @@ static void usb_pll_phy_init(void)
 
 void usb_init(void)
 {
+	static uint8_t initialized = 0;
+	if (initialized) return;
+	initialized = 1;
+
 	usb_pll_phy_init();                 // RT1176 480 MHz USB PHY-PLL
 	USB1_BURSTSIZE = 0x0404;
 	USBPHY1_CTRL_CLR = USBPHY_CTRL_CLKGATE;

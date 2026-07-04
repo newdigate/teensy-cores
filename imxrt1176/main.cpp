@@ -29,6 +29,8 @@
  */
 
 #include <Arduino.h>
+#include "usb_desc.h"   // CDC_*_INTERFACE macros
+#include "usb_dev.h"    // usb_init()
 
 extern "C" int main(void)
 {
@@ -48,6 +50,9 @@ extern "C" int main(void)
 
 #else
 	// Arduino's main() function just calls setup() and loop()....
+#if defined(CDC_STATUS_INTERFACE) && defined(CDC_DATA_INTERFACE)
+	usb_init();     // bring up USB CDC so Serial is live before setup()
+#endif
 	setup();
 	while (1) {
 		loop();
