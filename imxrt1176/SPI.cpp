@@ -38,6 +38,7 @@ void SPIClass::end() { hw->cr = 0u; hw->lpcg = 0u; }
 // SCK = func_clock / (prescale_div * (SCKDIV + 2)); pick smallest prescale with
 // SCKDIV in [0,255] giving SCK <= clockHz.
 void SPIClass::setClockDivider(uint32_t clockHz) {
+	if (clockHz == 0u) clockHz = 1000u;          // guard divide-by-zero; clamp to slow
 	uint32_t prescale = 0, sckdiv = 0;
 	for (prescale = 0; prescale < 8u; prescale++) {
 		uint32_t pdiv = 1u << prescale;

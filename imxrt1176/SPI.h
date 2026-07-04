@@ -27,7 +27,6 @@ class SPIClass {
 public:
 	struct hardware_t {
 		volatile uint32_t &cr;
-		volatile uint32_t &sr;
 		volatile uint32_t &cfgr1;
 		volatile uint32_t &ccr;
 		volatile uint32_t &tcr;

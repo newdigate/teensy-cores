@@ -3,9 +3,13 @@
 /* EVKB Arduino-header SPI is LPSPI1: SCK=GPIO_AD_28, SOUT/MOSI=GPIO_AD_30,
  * SIN/MISO=GPIO_AD_31, all ALT mode 0. PCS0/CS=GPIO_AD_29 is left as a plain
  * GPIO (manual chip-select, Arduino convention). Push-pull pads (no open-drain,
- * no pull-ups): DSE drive enabled. */
+ * no pull-ups): DSE drive enabled.
+ * SION is 0 on every pin (mux_val bit4 clear) -- unlike LPI2C1 (which needs SION
+ * to sense the open-drain bus), the LPSPI input path (SIN) is routed by the ALT
+ * function + SELECT_INPUT daisy chain, so no SION is required. Confirmed against
+ * the NXP SDK LPSPI1 pin_mux ("Input Path is determined by functionality", 0U). */
 static const SPIClass::hardware_t lpspi1_hw = {
-	/* cr */ LPSPI1_CR, /* sr */ LPSPI1_SR, /* cfgr1 */ LPSPI1_CFGR1, /* ccr */ LPSPI1_CCR,
+	/* cr */ LPSPI1_CR, /* cfgr1 */ LPSPI1_CFGR1, /* ccr */ LPSPI1_CCR,
 	/* tcr */ LPSPI1_TCR, /* tdr */ LPSPI1_TDR, /* rsr */ LPSPI1_RSR, /* rdr */ LPSPI1_RDR,
 	/* lpcg */ CCM_LPCG104_DIRECT, /* clock_root */ CCM_CLOCK_ROOT43_CONTROL, /* clock_root_val */ 0u,
 	/* sck */ IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_28, 0x0u, IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_28,
