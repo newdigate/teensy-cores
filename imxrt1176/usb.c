@@ -83,12 +83,6 @@ volatile uint8_t usb_high_speed = 0;    // non-zero if running at 480 Mbit/sec s
 void (*usb_timer0_callback)(void) = NULL; // USB GPTIMER0 one-shot (usb_serial flush timer)
 static uint8_t endpoint0_buffer[8] DMAMEM;
 
-// CDC line-state globals (owned here for Phase 1; Phase 2's usb_serial.c
-// currently defines its own copies -- when it is added, move these there).
-uint32_t usb_cdc_line_coding[2];
-volatile uint32_t usb_cdc_line_rtsdtr_millis;
-volatile uint8_t usb_cdc_line_rtsdtr = 0;
-
 // staging buffer for descriptor replies (copied from flash to DMAMEM/OCRAM).
 // sized for the largest descriptor: the config descriptor (CONFIG_DESC_SIZE).
 static uint8_t usb_descriptor_buffer[CONFIG_DESC_SIZE] DMAMEM;
@@ -104,10 +98,6 @@ static void endpoint0_complete(void);
 
 
 static void run_callbacks(endpoint_t *ep);
-
-// Phase 2 fills these in (usb_serial.c).  Stubs so SET_CONFIGURATION links.
-void usb_serial_configure(void) {}
-void usb_serial_reset(void) {}
 
 
 static void usb_pll_phy_init(void)

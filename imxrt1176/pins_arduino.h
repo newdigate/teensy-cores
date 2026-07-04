@@ -117,6 +117,9 @@ static inline uint8_t digitalPinToTimer(uint8_t pin __attribute__((unused)))
 	return NOT_ON_TIMER;
 }
 
-#define SerialUSB			Serial
+// SerialUSB: NOT a macro alias here (unlike stock teensy4).  usb_serial.h
+// (Phase 2) declares a real `extern usb_serial_class &SerialUSB;` reference
+// object instead -- a textual #define SerialUSB->Serial would rewrite that
+// declaration's own name and fail to compile.
 
 #endif // pins_macros_for_arduino_compatibility_h
