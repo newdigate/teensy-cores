@@ -332,6 +332,13 @@ def main():
           "#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_14 (*(volatile uint32_t *)0x400E8388u)",
           "#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_29 (*(volatile uint32_t *)0x400E83C4u)",
           "/* IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_28/30/31 already defined above (LPSPI1 block) */"]
+    L += ["/* FlexPWM (analogWrite): module bases + per-module clock gates */",
+          "#define FLEXPWM1_BASE 0x4018C000u",
+          "#define FLEXPWM2_BASE 0x40190000u",
+          "#define FLEXPWM3_BASE 0x40194000u",
+          "#define FLEXPWM4_BASE 0x40198000u",
+          "#define CCM_LPCG79_DIRECT (*(volatile uint32_t *)0x40CC69E0u)  /* FlexPWM1 */",
+          "#define CCM_LPCG81_DIRECT (*(volatile uint32_t *)0x40CC6A20u)  /* FlexPWM3 */"]
     L += ["", "#endif"]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")
