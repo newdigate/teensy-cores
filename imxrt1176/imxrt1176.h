@@ -444,4 +444,27 @@
 #define CCM_CLOCK_ROOT38_CONTROL (*(volatile uint32_t *)0x40CC1300u)
 #define CCM_LPCG99_DIRECT        (*(volatile uint32_t *)0x40CC6C60u)
 
+/* LPSPI1 (Arduino-header SPI master), base 0x40114000 */
+#define LPSPI1_CR     (*(volatile uint32_t *)0x40114010u)
+#define LPSPI1_SR     (*(volatile uint32_t *)0x40114014u)
+#define LPSPI1_CFGR1  (*(volatile uint32_t *)0x40114024u)
+#define LPSPI1_CCR    (*(volatile uint32_t *)0x40114040u)
+#define LPSPI1_TCR    (*(volatile uint32_t *)0x40114060u)
+#define LPSPI1_TDR    (*(volatile uint32_t *)0x40114064u)
+#define LPSPI1_RSR    (*(volatile uint32_t *)0x40114070u)
+#define LPSPI1_RDR    (*(volatile uint32_t *)0x40114074u)
+/* LPSPI1 clock: CCM_CLOCK_ROOT43 + LPCG104 (mux 0 = 24 MHz) */
+#define CCM_CLOCK_ROOT43_CONTROL (*(volatile uint32_t *)0x40CC1580u)
+#define CCM_LPCG104_DIRECT       (*(volatile uint32_t *)0x40CC6D00u)
+/* LPSPI1 pins: SCK=GPIO_AD_28, SOUT=GPIO_AD_30, SIN=GPIO_AD_31 (ALT0) */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_28 (*(volatile uint32_t *)0x400E817Cu)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_30 (*(volatile uint32_t *)0x400E8184u)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_31 (*(volatile uint32_t *)0x400E8188u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_28 (*(volatile uint32_t *)0x400E83C0u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_30 (*(volatile uint32_t *)0x400E83C8u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_31 (*(volatile uint32_t *)0x400E83CCu)
+#define IOMUXC_LPSPI1_SCK_SELECT_INPUT   (*(volatile uint32_t *)0x400E85D0u)
+#define IOMUXC_LPSPI1_SDO_SELECT_INPUT   (*(volatile uint32_t *)0x400E85D8u)
+#define IOMUXC_LPSPI1_SDI_SELECT_INPUT   (*(volatile uint32_t *)0x400E85D4u)
+
 #endif
