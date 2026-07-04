@@ -1,8 +1,9 @@
-/* Arduino digital GPIO for NXP MIMXRT1170-EVKB (RT1176, Cortex-M7) -- Phase 0.
+/* Arduino digital GPIO for NXP MIMXRT1170-EVKB (RT1176, Cortex-M7).
  *
- * Direct GPIO access (no fast-GPIO aliasing yet).  Only the EVKB User LED D6
- * (Arduino pin 13 / LED_BUILTIN -> GPIO9_IO03, pad GPIO_AD_04) is wired up;
- * other table entries are stubs.
+ * Direct GPIO access (no fast-GPIO aliasing yet).  Full Arduino-header
+ * digital pin table: D0-D15 -> pins 0-15, A0-A5 -> pins 16-21.  Header
+ * numbering: core pin N = header DN.  The green User LED D6 shares the D3
+ * pad (GPIO9_IO03, pad GPIO_AD_04) and is LED_BUILTIN (pin 3).
  *
  * GPIOn register layout (offsets from the port base in digital_pin_to_info):
  *   DR        +0x00   data register
@@ -45,14 +46,28 @@
 #define PAD_CTL_DEFAULT  0x0008u   /* DSE field set; pull/keeper off */
 
 const struct digital_pin_info_struct digital_pin_to_info[CORE_NUM_DIGITAL] = {
-	[13] = {
-		.gpio     = GPIO9_BASE,
-		.bit      = 3,
-		.mux_mode = IOMUXC_PAD_GPIO_AD_04_GPIO9_IO03_ALT,   /* ALT10 */
-		.mux      = &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_04,
-		.pad      = &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_04,
-	},
-	/* pins 0..12 left as stubs (gpio == 0) for Phase 0 */
+	[0]  = { .gpio=GPIO11_BASE, .bit=12, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_11, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_11 },
+	[1]  = { .gpio=GPIO11_BASE, .bit=11, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_10, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_10 },
+	[2]  = { .gpio=GPIO11_BASE, .bit=13, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_12, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_12 },
+	[3]  = { .gpio=GPIO9_BASE,  .bit=3,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_04, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_04 },
+	[4]  = { .gpio=GPIO9_BASE,  .bit=5,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_06, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_06 },
+	[5]  = { .gpio=GPIO9_BASE,  .bit=4,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_05, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_05 },
+	[6]  = { .gpio=GPIO8_BASE,  .bit=31, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_00, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_00 },
+	[7]  = { .gpio=GPIO9_BASE,  .bit=13, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_14, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_14 },
+	[8]  = { .gpio=GPIO9_BASE,  .bit=6,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_07, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_07 },
+	[9]  = { .gpio=GPIO9_BASE,  .bit=0,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_01, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_01 },
+	[10] = { .gpio=GPIO9_BASE,  .bit=28, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_29, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_29 },
+	[11] = { .gpio=GPIO9_BASE,  .bit=29, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_30, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_30 },
+	[12] = { .gpio=GPIO9_BASE,  .bit=30, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_31, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_31 },
+	[13] = { .gpio=GPIO9_BASE,  .bit=27, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_28, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_28 },
+	[14] = { .gpio=GPIO12_BASE, .bit=4,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_04, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_04 },
+	[15] = { .gpio=GPIO12_BASE, .bit=5,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_05, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_05 },
+	[16] = { .gpio=GPIO9_BASE,  .bit=9,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_10, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_10 },
+	[17] = { .gpio=GPIO9_BASE,  .bit=10, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_11, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_11 },
+	[18] = { .gpio=GPIO9_BASE,  .bit=11, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_12, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_12 },
+	[19] = { .gpio=GPIO9_BASE,  .bit=12, .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_13, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_13 },
+	[20] = { .gpio=GPIO9_BASE,  .bit=8,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_09, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_09 },
+	[21] = { .gpio=GPIO9_BASE,  .bit=7,  .mux_mode=0xAu, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_08, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_08 },
 };
 
 void pinMode(uint8_t pin, uint8_t mode)

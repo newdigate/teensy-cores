@@ -35,10 +35,11 @@
 #include "imxrt1176.h"
 
 /* ------------------------------------------------------------------------
- * MIMXRT1170-EVKB minimal starter pin table (Phase 0).
+ * MIMXRT1170-EVKB Arduino-header digital pin table.
  *
- * Phase 0 only gates on toggling the on-board User LED "D6":
- *   Arduino pin 13 (LED_BUILTIN) -> GPIO9_IO03, pad GPIO_AD_04, active-high.
+ * Header numbering: core pin N = header DN (D0-D15 -> pins 0-15,
+ * A0-A5 -> pins 16-21).  LED_BUILTIN is pin 3 (green User LED shares the
+ * D3 pad, GPIO_AD_04).
  *
  * The table maps an Arduino pin number to the registers/fields the GPIO
  * driver (digital.c) needs:
@@ -48,16 +49,13 @@
  *   mux   : IOMUXC SW_MUX_CTL_PAD register for the pad
  *   pad   : IOMUXC SW_PAD_CTL_PAD register for the pad
  *   mux_mode : ALT value written to the mux register to route pad -> GPIO
- *
- * Only pin 13 is populated for Phase 0; other entries are stubs (gpio == 0)
- * and must not be driven until later phases fill them in.
  * ------------------------------------------------------------------------ */
 
-#define LED_BUILTIN       13   /* GPIO9_IO03, pad GPIO_AD_04 (User LED D6) */
-#define CORE_NUM_DIGITAL  14
+#define LED_BUILTIN       3    /* GPIO9_IO03, pad GPIO_AD_04 (User LED D6, shares D3) */
+#define CORE_NUM_DIGITAL  22
 #define NUM_DIGITAL_PINS  CORE_NUM_DIGITAL
 #define NUM_ANALOG_INPUTS 1
-#define A0 14   /* Arduino analog pin 0 -> LPADC1 channel 0 side A (pad GPIO_AD_06) */
+#define A0 16   /* Arduino analog pin 0 -> LPADC1 channel 0 side A (pad GPIO_AD_06) */
 
 typedef struct analog_pin_info_struct {
     uint8_t pin;       /* Arduino pin id */
