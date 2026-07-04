@@ -15,10 +15,15 @@
 #define SM_INIT   0x02u
 #define SM_VAL0   0x0Au   /* X duty */
 #define SM_VAL1   0x0Eu   /* modulo (period-1) */
-#define SM_VAL3   0x16u   /* A duty */
-#define SM_VAL5   0x1Eu   /* B duty */
-#define PWM_OUTEN(base) (*(volatile uint16_t *)((base) + 0x180u))
-#define PWM_MCTRL(base) (*(volatile uint16_t *)((base) + 0x188u))
+#define SM_VAL2   0x0Cu   /* A on-edge (kept 0) */
+#define SM_VAL3   0x16u   /* A duty (off-edge) */
+#define SM_VAL4   0x18u   /* B on-edge (kept 0) */
+#define SM_VAL5   0x1Eu   /* B duty (off-edge) */
+#define PWM_OUTEN(base)  (*(volatile uint16_t *)((base) + 0x180u))
+#define PWM_MCTRL(base)  (*(volatile uint16_t *)((base) + 0x188u))
+#define PWM_FCTRL0(base) (*(volatile uint16_t *)((base) + 0x18Cu))
+#define PWM_FSTS0(base)  (*(volatile uint16_t *)((base) + 0x18Eu))
+#define PWM_FFILT0(base) (*(volatile uint16_t *)((base) + 0x190u))
 #define SMCTRL_PRSC(n)  ((uint16_t)(((n) & 0xF) << 4))
 #define SMCTRL_FULL     ((uint16_t)(1u << 10))
 #define SMCTRL2_INDEP   ((uint16_t)(1u << 13))
@@ -69,6 +74,12 @@ static const struct pwm_pin *find_pwm(uint8_t pin) {
 static uint16_t configure_sm(uint32_t base, uint8_t sm) {
 	if (base == FLEXPWM1_BASE) CCM_LPCG79_DIRECT = 1u;   // ungate module clock
 	else if (base == FLEXPWM3_BASE) CCM_LPCG81_DIRECT = 1u;
+	/* Fault init: on reset, latched faults hold every output disabled (pins stay
+	 * low). FLVL=15 makes faults active-high (idle fault inputs aren't faults),
+	 * then clear the latched fault status so outputs can drive. */
+	PWM_FCTRL0(base) = 0xF000u;
+	PWM_FSTS0(base)  = 0x000Fu;
+	PWM_FFILT0(base) = 0u;
 	uint8_t prsc = 0; uint32_t modulo = 0;
 	for (prsc = 0; prsc < 8u; prsc++) {                  // pick prescale so modulo fits 16-bit
 		modulo = PWM_CLOCK_HZ / ((1u << prsc) * pwm_freq);
@@ -81,6 +92,8 @@ static uint16_t configure_sm(uint32_t base, uint8_t sm) {
 	PWM_SM(base, sm, SM_CTRL2) = SMCTRL2_INDEP;          // independent outputs, IPG clock (CLK_SEL=0)
 	PWM_SM(base, sm, SM_CTRL)  = SMCTRL_FULL | SMCTRL_PRSC(prsc);
 	PWM_SM(base, sm, SM_INIT)  = 0;
+	PWM_SM(base, sm, SM_VAL2)  = 0;                      /* A on-edge (explicit, don't rely on reset) */
+	PWM_SM(base, sm, SM_VAL4)  = 0;                      /* B on-edge */
 	PWM_SM(base, sm, SM_VAL1)  = (uint16_t)(modulo - 1u);
 	PWM_MCTRL(base) |= MCTRL_LDOK(mask);
 	PWM_MCTRL(base) |= MCTRL_RUN(mask);
@@ -124,11 +137,23 @@ void analogWrite(uint8_t pin, int value) {
 }
 
 void analogWriteFrequency(uint8_t pin, float frequency) {
-	if (frequency < 1.0f) frequency = 1.0f;
-	pwm_freq = (uint32_t)frequency;
 	const struct pwm_pin *p = find_pwm(pin);
-	if (p) {
-		sm_modulo[pwm_slot(p->base) * 4 + p->sm] = 0;    // force reconfigure
-		configure_sm(p->base, p->sm);
+	if (!p) return;                                      // ignore non-PWM pins (don't touch global freq)
+	if (!(frequency >= 1.0f)) frequency = 1.0f;          // NaN-safe clamp
+	pwm_freq = (uint32_t)frequency;
+	int slot = pwm_slot(p->base) * 4 + p->sm;
+	uint16_t oldm = sm_modulo[slot];
+	uint16_t v0 = PWM_SM(p->base, p->sm, SM_VAL0);       // capture live duty counts
+	uint16_t v3 = PWM_SM(p->base, p->sm, SM_VAL3);
+	uint16_t v5 = PWM_SM(p->base, p->sm, SM_VAL5);
+	sm_modulo[slot] = 0;                                 // force reconfigure at the new freq
+	uint16_t newm = configure_sm(p->base, p->sm);        // reprograms VAL1; leaves VAL0/3/5
+	if (oldm) {                                          // preserve duty PERCENTAGE across the change
+		uint8_t mask = (uint8_t)(1u << p->sm);
+		PWM_MCTRL(p->base) |= MCTRL_CLDOK(mask);
+		PWM_SM(p->base, p->sm, SM_VAL0) = (uint16_t)((uint32_t)v0 * newm / oldm);
+		PWM_SM(p->base, p->sm, SM_VAL3) = (uint16_t)((uint32_t)v3 * newm / oldm);
+		PWM_SM(p->base, p->sm, SM_VAL5) = (uint16_t)((uint32_t)v5 * newm / oldm);
+		PWM_MCTRL(p->base) |= MCTRL_LDOK(mask);
 	}
 }
