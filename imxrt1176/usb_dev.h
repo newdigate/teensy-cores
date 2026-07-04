@@ -33,6 +33,8 @@ void usb_transmit(int endpoint_number, transfer_t *transfer);
 void usb_receive(int endpoint_number, transfer_t *transfer);
 uint32_t usb_transfer_status(const transfer_t *transfer);
 
+extern void (*usb_timer0_callback)(void);
+
 extern volatile uint8_t usb_configuration;
 
 /* CDC line-state globals (names/types match teensy4 usb_serial).

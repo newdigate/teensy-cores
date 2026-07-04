@@ -80,6 +80,7 @@ static uint32_t endpoint0_notify_mask=0;
 static uint32_t endpointN_notify_mask=0;
 volatile uint8_t usb_configuration = 0; // non-zero when USB host as configured device
 volatile uint8_t usb_high_speed = 0;    // non-zero if running at 480 Mbit/sec speed
+void (*usb_timer0_callback)(void) = NULL; // USB GPTIMER0 one-shot (usb_serial flush timer)
 static uint8_t endpoint0_buffer[8] DMAMEM;
 
 // CDC line-state globals (owned here for Phase 1; Phase 2's usb_serial.c
@@ -224,6 +225,9 @@ void usb_isr(void)
 		#endif
 		endpointN_notify_mask = 0;
 		// TODO: Free all allocated dTDs
+	}
+	if (status & USB_USBSTS_TI0) {
+		if (usb_timer0_callback != NULL) usb_timer0_callback();
 	}
 	if (status & USB_USBSTS_PCI) {
 		if (USB1_PORTSC1 & USB_PORTSC1_HSP) {
