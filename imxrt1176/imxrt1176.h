@@ -515,4 +515,21 @@
 #define CCM_LPCG79_DIRECT (*(volatile uint32_t *)0x40CC69E0u)  /* FlexPWM1 */
 #define CCM_LPCG81_DIRECT (*(volatile uint32_t *)0x40CC6A20u)  /* FlexPWM3 */
 
+/* ---- PIT1 (Periodic Interrupt Timer): 4 channels, combined IRQ 155 ------ */
+#define PIT1_BASE          0x400D8000u
+#define PIT1_MCR           (*(volatile uint32_t *)(PIT1_BASE + 0x00u))
+#define PIT1_MCR_MDIS      (1u << 1)         /* module disable (clear to enable) */
+typedef struct {
+    volatile uint32_t LDVAL;    /* +0x0 load value                */
+    volatile uint32_t CVAL;     /* +0x4 current value (read-only) */
+    volatile uint32_t TCTRL;    /* +0x8 timer control             */
+    volatile uint32_t TFLG;     /* +0xC timer flag (W1C)          */
+} pit_channel_t;
+#define PIT1_CHANNEL       ((pit_channel_t *)(PIT1_BASE + 0x100u))
+#define PIT_TCTRL_TEN      (1u << 0)         /* timer enable           */
+#define PIT_TCTRL_TIE      (1u << 1)         /* timer interrupt enable */
+#define PIT_TFLG_TIF       (1u << 0)         /* timeout flag (W1C)     */
+/* PIT1 clock gate: CCM LPCG62 DIRECT (kCLOCK_Pit1=62 -> 0x6000 + 62*0x20). */
+#define CCM_LPCG62_DIRECT  (*(volatile uint32_t *)0x40CC67C0u)
+
 #endif
