@@ -41,8 +41,17 @@ typedef enum IRQ_NUMBER_t {
     IRQ_LPI2C2 = 33,
     IRQ_LPSPI1 = 38, IRQ_LPSPI2, IRQ_LPSPI3, IRQ_LPSPI4, IRQ_LPSPI5, IRQ_LPSPI6, /* = 43 */
     IRQ_ADC1 = 88, IRQ_ADC2 = 89,
-    IRQ_GPIO12_0_15 = 61, IRQ_GPIO12_16_31 = 62,
-    IRQ_GPIO7_8_9_10_11 = 99
+    /*
+     * GPIO combined-interrupt lines, as seen by the CM7 core (NOT the CM4:
+     * on CM4 these same numbers name GPIO7-12).  Each "normal" GPIO port has
+     * two lines: {pins 0-15, pins 16-31}.  The pin table drives the Arduino
+     * header via these normal ports (GPIO2/3/5/6) over ALT5, because the fast
+     * aliases GPIO8/9/11/12 have NO interrupt line to the CM7.
+     */
+    IRQ_GPIO6_0_15 = 61, IRQ_GPIO6_16_31 = 62,
+    IRQ_GPIO2_0_15 = 102, IRQ_GPIO2_16_31 = 103,
+    IRQ_GPIO3_0_15 = 104, IRQ_GPIO3_16_31 = 105,
+    IRQ_GPIO5_0_15 = 108, IRQ_GPIO5_16_31 = 109
 } IRQ_NUMBER_t;
 
 #ifdef __cplusplus

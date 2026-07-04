@@ -51,7 +51,7 @@
  *   mux_mode : ALT value written to the mux register to route pad -> GPIO
  * ------------------------------------------------------------------------ */
 
-#define LED_BUILTIN       3    /* GPIO9_IO03, pad GPIO_AD_04 (User LED D6, shares D3) */
+#define LED_BUILTIN       3    /* GPIO3_IO03, pad GPIO_AD_04 via ALT5 (green User LED, D3) */
 #define CORE_NUM_DIGITAL  22
 #define NUM_DIGITAL_PINS  CORE_NUM_DIGITAL
 #define NUM_ANALOG_INPUTS 1
@@ -69,10 +69,13 @@ extern const analog_pin_info_t analog_pin_to_info[NUM_ANALOG_INPUTS];
 #define NOT_AN_INTERRUPT  -1
 #define NOT_ON_TIMER      0
 
-/* IOMUXC mux ALT value selecting GPIO9_IO03 on pad GPIO_AD_04.
- * From SDK fsl_iomuxc.h: IOMUXC_GPIO_AD_04_GPIO9_IO03 => muxMode 0xA (ALT10).
- * (ALT5 selects the legacy GPIO_MUX3 alias, NOT GPIO9 -- use ALT10.) */
-#define IOMUXC_PAD_GPIO_AD_04_GPIO9_IO03_ALT  0xA
+/* IOMUXC mux ALT value routing an AD pad to the normal GPIO3 (GPIO_MUX3).
+ * From SDK fsl_iomuxc.h: IOMUXC_GPIO_AD_04_GPIO_MUX3_IO03 => muxMode 0x5 (ALT5).
+ * The pin table uses ALT5 (normal GPIO2/3/5/6), not ALT10 (fast GPIO8/9/11/12),
+ * because only the normal ports have a CM7 interrupt line -- see digital.c and
+ * interrupt_attach.c.  (ALT10 -> GPIO9 has no CM7 IRQ; attachInterrupt needs the
+ * normal port.) */
+#define IOMUXC_PAD_GPIO_AD_04_GPIO_MUX3_IO03_ALT  0x5
 
 struct digital_pin_info_struct {
 	uint32_t gpio;      /* GPIOn base address, 0 = unassigned stub */
