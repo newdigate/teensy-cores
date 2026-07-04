@@ -157,19 +157,31 @@ size_t TwoWire::write(const uint8_t *data, size_t len) {
 	size_t n = 0; while (n < len && write(data[n])) n++; return n;
 }
 
+// After a NACK/error, flush the TX/RX FIFOs so the next transaction starts
+// clean (essential when scanning many addresses back-to-back).
+void TwoWire::bus_recover() {
+	hw->mcr = MCR_MEN | MCR_RTF | MCR_RRF;   // reset TX+RX FIFOs, stay enabled
+	hw->mcr = MCR_MEN;
+	hw->msr = hw->msr;                        // W1C any latched flags
+}
+
 uint8_t TwoWire::endTransmission(bool sendStop) {
-	uint32_t err = 0xFFu;                                     // 0xFF => next NACK is address NACK
+	uint32_t err = 0xFFu;                                     // 0xFF => a NACK now is an address NACK (2)
 	hw->msr = hw->msr;                                        // clear stale flags
 	hw->mtdr = TX_CMD(CMD_START, (tx_addr << 1) | 0u);        // START + addr(W)
-	if (!wait_flag(MSR_TDF, MSR_NDF | MSR_ALF | MSR_FEF, err)) { if (sendStop) hw->mtdr = TX_CMD(CMD_STOP,0); return (uint8_t)err; }
-	err = 0u;                                                 // address ACKed; further NACK = data NACK (3)
+	// IMPORTANT: do NOT treat TDF here as "address ACKed". TDF (TX-FIFO ready)
+	// asserts a byte-time BEFORE the ACK bit is sampled on silicon, so racing it
+	// against NDF makes every address look ACKed (breaks bus scanning). The ACK/
+	// NACK is judged at completion (STOP) below, matching the NXP SDK.
 	for (uint8_t i = 0; i < tx_len; i++) {
+		if (!wait_flag(MSR_TDF, MSR_NDF | MSR_ALF | MSR_FEF, err)) { bus_recover(); tx_len = 0; return (uint8_t)err; }
+		err = 0u;                                             // past the address; a NACK now is a data NACK (3)
 		hw->mtdr = TX_CMD(CMD_TXD, tx_buf[i]);
-		if (!wait_flag(MSR_TDF, MSR_NDF | MSR_ALF | MSR_FEF, err)) { if (sendStop) hw->mtdr = TX_CMD(CMD_STOP,0); return (uint8_t)err; }
 	}
 	if (sendStop) {
 		hw->mtdr = TX_CMD(CMD_STOP, 0);
-		wait_flag(MSR_SDF, MSR_ALF | MSR_FEF, err);
+		// Completion is the correct point to judge ACK/NACK -- watch NDF here.
+		if (!wait_flag(MSR_SDF, MSR_NDF | MSR_ALF | MSR_FEF, err)) { bus_recover(); tx_len = 0; return (uint8_t)err; }
 		hw->msr = MSR_SDF | MSR_EPF;
 	}
 	tx_len = 0;

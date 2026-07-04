@@ -84,6 +84,7 @@ private:
 	uint8_t s_tx_idx = 0;
 
 	bool wait_flag(uint32_t mask, uint32_t error_mask, uint32_t &err);
+	void bus_recover();
 };
 
 extern TwoWire Wire;
