@@ -40,7 +40,9 @@ typedef enum IRQ_NUMBER_t {
     IRQ_LPI2C1 = 32,
     IRQ_LPI2C2 = 33,
     IRQ_LPSPI1 = 38, IRQ_LPSPI2, IRQ_LPSPI3, IRQ_LPSPI4, IRQ_LPSPI5, IRQ_LPSPI6, /* = 43 */
-    IRQ_ADC1 = 88, IRQ_ADC2 = 89
+    IRQ_ADC1 = 88, IRQ_ADC2 = 89,
+    IRQ_GPIO12_0_15 = 61, IRQ_GPIO12_16_31 = 62,
+    IRQ_GPIO7_8_9_10_11 = 99
 } IRQ_NUMBER_t;
 
 #ifdef __cplusplus
