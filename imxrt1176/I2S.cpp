@@ -66,4 +66,13 @@ bool I2SClass::begin(uint32_t sampleRate) {
 
 void I2SClass::end() { hw->tcsr = 0u; hw->lpcg = 0u; }
 
-void I2SClass::write(const int16_t *s, size_t n) { (void)s; (void)n; }  // Task 5
+void I2SClass::write(const int16_t *s, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        uint32_t g = 2000000;                    // FIFO-room guard (bounded)
+        while (!(hw->tcsr & SAI_TCSR_FWF) && g--) { }
+        hw->tdr0 = (uint16_t)s[2*i + 0];         // left
+        g = 2000000;
+        while (!(hw->tcsr & SAI_TCSR_FWF) && g--) { }
+        hw->tdr0 = (uint16_t)s[2*i + 1];         // right
+    }
+}
