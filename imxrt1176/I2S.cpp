@@ -1,4 +1,5 @@
 #include "I2S.h"
+#include "DMAChannel.h"
 
 static inline void ai_udelay(volatile uint32_t n) { while (n--) __asm__ volatile("nop"); }
 
@@ -40,8 +41,7 @@ static void sai1_audio_pll_init(void) {
     ai_write(0x08, (1u << 16));                 // CTRL0_CLR: clear BYPASS
 }
 
-bool I2SClass::begin(uint32_t sampleRate) {
-    if (sampleRate != 48000) return false;       // v1: 48k only
+void I2SClass::configureSAI() {
     sai1_audio_pll_init();
     hw->clock_root = hw->clock_root_val;         // mux 4 (Audio PLL), div 16
     hw->lpcg = 1u;                               // ungate SAI1
@@ -63,6 +63,11 @@ bool I2SClass::begin(uint32_t sampleRate) {
                              // underrun (a polled TX briefly underruns at start;
                              // without FCONT the SAI halts and never recovers).
     hw->tcr5 = SAI_TCR5_WNW(15) | SAI_TCR5_W0W(15) | SAI_TCR5_FBT(15);
+}
+
+bool I2SClass::begin(uint32_t sampleRate) {
+    if (sampleRate != 48000) return false;       // v1: 48k only
+    configureSAI();
     // Pre-fill the FIFO with silence before enabling TX so the first frame does
     // not underrun before write() is called.
     for (int i = 0; i < 16; i++) hw->tdr0 = 0u;
@@ -82,3 +87,41 @@ void I2SClass::write(const int16_t *s, size_t n) {
         hw->tdr0 = (uint16_t)s[2*i + 1];         // right
     }
 }
+
+static DMAChannel i2s_dma(false);
+static const int16_t *i2s_ring;
+static size_t i2s_ring_frames;
+static void (*i2s_refill)(int16_t *);
+static volatile uint32_t i2s_blocks;
+
+static void i2s_dma_isr() {
+    i2s_dma.clearInterrupt();
+    i2s_blocks++;
+    if (i2s_refill) {
+        // Which half just drained? SADDR has advanced past it.
+        uint32_t saddr    = (uint32_t)i2s_dma.TCD->SADDR;
+        uint32_t halfByte = (uint32_t)(i2s_ring_frames * 2u * sizeof(int16_t) / 2u);
+        if (saddr < (uint32_t)i2s_ring + halfByte)
+            i2s_refill((int16_t *)i2s_ring + i2s_ring_frames);   // 2nd half drained
+        else
+            i2s_refill((int16_t *)i2s_ring);                     // 1st half drained
+    }
+}
+
+bool I2SClass::beginDMA(const int16_t *ring, size_t nFrames, void (*refillHalf)(int16_t *)) {
+    configureSAI();                              // SAI up, but TX not yet enabled
+    i2s_ring = ring; i2s_ring_frames = nFrames; i2s_refill = refillHalf; i2s_blocks = 0;
+    i2s_dma.begin();
+    if (i2s_dma.TCD == 0) return false;          // no channel free
+    i2s_dma.sourceBuffer((const uint16_t *)ring, (unsigned int)(nFrames * 2u * sizeof(int16_t)));
+    i2s_dma.destination(*(volatile uint16_t *)&SAI1_TDR0);
+    i2s_dma.interruptAtHalf();
+    i2s_dma.interruptAtCompletion();
+    i2s_dma.triggerAtHardwareEvent(DMAMUX_SOURCE_SAI1_TX);
+    i2s_dma.attachInterrupt(i2s_dma_isr);
+    i2s_dma.enable();
+    hw->tcsr = SAI_TCSR_TE | SAI_TCSR_BCE | SAI_TCSR_FRDE;   // TX + bit clock + FIFO DMA request
+    return true;
+}
+
+uint32_t I2SClass::dmaBlockCount() const { return i2s_blocks; }

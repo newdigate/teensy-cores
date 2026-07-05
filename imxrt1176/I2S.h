@@ -20,7 +20,14 @@ public:
     bool begin(uint32_t sampleRate = 48000);   // v1: only 48000 supported
     void end();
     void write(const int16_t *interleavedLR, size_t nFrames);  // polled, blocking
+    // DMA-fed continuous TX. ring = interleaved L,R,L,R... in DMAMEM. refillHalf
+    // (optional) is called from the DMA ISR with a pointer to the just-drained
+    // half so the caller regenerates it; nullptr = loop the same buffer (static
+    // tone). Returns false if no DMA channel is free.
+    bool beginDMA(const int16_t *ring, size_t nFrames, void (*refillHalf)(int16_t *half) = nullptr);
+    uint32_t dmaBlockCount() const;             // half/complete ISR count (for tests)
 private:
+    void configureSAI();                        // shared PLL+clock+pin+TCR setup
     const hardware_t *hw;
 };
 extern I2SClass I2S;
