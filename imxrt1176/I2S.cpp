@@ -58,8 +58,14 @@ bool I2SClass::begin(uint32_t sampleRate) {
     hw->tcr2 = SAI_TCR2_MSEL(1) | SAI_TCR2_BCD | SAI_TCR2_BCP | SAI_TCR2_DIV(7);
     hw->tcr3 = SAI_TCR3_TCE(1);                  // enable channel 0
     hw->tcr4 = SAI_TCR4_FRSZ(1) | SAI_TCR4_SYWD(15) | SAI_TCR4_MF |
-               SAI_TCR4_FSD | SAI_TCR4_FSE | SAI_TCR4_FSP;
+               SAI_TCR4_FSD | SAI_TCR4_FSE | SAI_TCR4_FSP |
+               (1u << 28);   // FCONT: keep the bit clock running through a FIFO
+                             // underrun (a polled TX briefly underruns at start;
+                             // without FCONT the SAI halts and never recovers).
     hw->tcr5 = SAI_TCR5_WNW(15) | SAI_TCR5_W0W(15) | SAI_TCR5_FBT(15);
+    // Pre-fill the FIFO with silence before enabling TX so the first frame does
+    // not underrun before write() is called.
+    for (int i = 0; i < 16; i++) hw->tdr0 = 0u;
     hw->tcsr = SAI_TCSR_TE | SAI_TCSR_BCE;       // enable transmitter + bit clock
     return true;
 }
