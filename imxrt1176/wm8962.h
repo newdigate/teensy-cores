@@ -9,6 +9,7 @@ private:
     TwoWire *bus; uint8_t addr;
     bool writeReg(uint16_t reg, uint16_t val);
     bool readReg(uint16_t reg, uint16_t *val);
+    bool modifyReg(uint16_t reg, uint16_t mask, uint16_t val);  // read-modify-write
     bool pollSeqDone();     // read 0x5D until bit0==0
 };
 extern WM8962Codec Codec;
