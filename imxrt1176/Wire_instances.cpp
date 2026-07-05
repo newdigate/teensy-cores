@@ -2,6 +2,7 @@
 
 static void wire_isr();    // forward decls (defined after the objects)
 static void wire1_isr();
+static void wire2_isr();
 
 /* EVKB Arduino-header I2C is LPI2C1 on GPIO_AD_09 (SDA) / GPIO_AD_08 (SCL), ALT1
  * (confirmed via NXP/Zephyr board docs; LPI2C5/GPIO_LPSR is the onboard eCompass
@@ -47,8 +48,35 @@ static const TwoWire::hardware_t lpi2c2_hw = {
 	/* stdr */ LPI2C2_STDR, /* srdr */ LPI2C2_SRDR,
 };
 
+/* LPI2C5: onboard eCompass/codec bus on GPIO_LPSR_04 (SDA) / GPIO_LPSR_05 (SCL)
+ * (confirmed via NXP board docs; this is the WM8962 codec bus, NOT the Arduino
+ * header). LPSR-domain pads need SION (mux bit4 = 0x10) so the master can sense
+ * the bus lines, same as LPI2C1's AD pads. */
+static const TwoWire::hardware_t lpi2c5_hw = {
+	/* instance */ 4,
+	/* irq */ IRQ_LPI2C5,
+	/* lpcg */ CCM_LPCG102_DIRECT,
+	/* clock_root */ CCM_CLOCK_ROOT41_CONTROL,
+	/* clock_root_val */ (1u << 8),          // mux 1 (HW-verify later; irrelevant to QEMU)
+	/* scl_mux */ IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_05, /* scl_mux_val */ 0x10u, // ALT0 | SION
+	/* scl_pad */ IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_05,
+	/* sda_mux */ IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_04, /* sda_mux_val */ 0x10u, // ALT0 | SION
+	/* sda_pad */ IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_04,
+	/* scl_select_input */ IOMUXC_LPI2C5_SCL_SELECT_INPUT, /* scl_select_val */ 0u,
+	/* sda_select_input */ IOMUXC_LPI2C5_SDA_SELECT_INPUT, /* sda_select_val */ 0u,
+	/* pad_ctl_val */ 0x0000000Au,            // LPSR-domain I2C pad (HW-verify later; irrelevant to QEMU)
+	/* mcr */ LPI2C5_MCR, /* msr */ LPI2C5_MSR, /* mcfgr1 */ LPI2C5_MCFGR1,
+	/* mccr0 */ LPI2C5_MCCR0, /* mtdr */ LPI2C5_MTDR, /* mrdr */ LPI2C5_MRDR,
+	/* irq_handler */ wire2_isr, /* irq_priority */ 16u,
+	/* scr */ LPI2C5_SCR, /* ssr */ LPI2C5_SSR, /* sier */ LPI2C5_SIER,
+	/* samr */ LPI2C5_SAMR, /* sasr */ LPI2C5_SASR, /* scfgr1 */ LPI2C5_SCFGR1, /* scfgr2 */ LPI2C5_SCFGR2,
+	/* stdr */ LPI2C5_STDR, /* srdr */ LPI2C5_SRDR,
+};
+
 TwoWire Wire(&lpi2c1_hw);
 TwoWire Wire1(&lpi2c2_hw);
+TwoWire Wire2(&lpi2c5_hw);
 
 __attribute__((section(".fastrun"))) static void wire_isr()  { Wire.handle_slave_isr(); }
 __attribute__((section(".fastrun"))) static void wire1_isr() { Wire1.handle_slave_isr(); }
+__attribute__((section(".fastrun"))) static void wire2_isr() { Wire2.handle_slave_isr(); }
