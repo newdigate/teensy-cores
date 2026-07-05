@@ -39,7 +39,9 @@ typedef enum IRQ_NUMBER_t {
     IRQ_LPUART9, IRQ_LPUART10, IRQ_LPUART11, IRQ_LPUART12, /* = 31 */
     IRQ_LPI2C1 = 32,
     IRQ_LPI2C2 = 33,
+    IRQ_LPI2C5 = 36,
     IRQ_LPSPI1 = 38, IRQ_LPSPI2, IRQ_LPSPI3, IRQ_LPSPI4, IRQ_LPSPI5, IRQ_LPSPI6, /* = 43 */
+    IRQ_SAI1 = 76,
     IRQ_ADC1 = 88, IRQ_ADC2 = 89,
     /*
      * GPIO combined-interrupt lines, as seen by the CM7 core (NOT the CM4:
