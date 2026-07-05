@@ -650,6 +650,7 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define SAI_TCSR_FEF (1u << 18)
 #define SAI_TCSR_FWF (1u << 17)
 #define SAI_TCSR_FRF (1u << 16)
+#define SAI_TCSR_FRDE (1u << 0)
 #define SAI_TCR2_DIV(x)  ((uint32_t)(x) & 0xFFu)
 #define SAI_TCR2_BCD (1u << 24)
 #define SAI_TCR2_BCP (1u << 25)
@@ -718,5 +719,67 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
  * so only the two SELECT_INPUT (daisy) registers are added here. */
 #define IOMUXC_LPI2C5_SCL_SELECT_INPUT (*(volatile uint32_t *)0x40C08084u)
 #define IOMUXC_LPI2C5_SDA_SELECT_INPUT (*(volatile uint32_t *)0x40C08088u)
+
+/* ---- eDMA + DMAMUX (classic Freescale eDMA: 32 channels, 16 IRQs) ----------
+ * RT1176 uses the SAME IP as RT1062 (Teensy 4), relocated: eDMA 0x40070000,
+ * DMAMUX 0x40074000.  cores/teensy4/DMAChannel.{h,cpp} ports with only base
+ * retargets.  DMAMUX source numbers are RT1176-specific (NOT the RT1062 values;
+ * verified against NXP PERI_DMAMUX.h and QEMU).  TCD0 at 0x40071000, stride 0x20.
+ * Channel completion IRQs are NVIC 0..15 (channel n and n+16 share vector n);
+ * DMA error is NVIC 16. */
+/* eDMA control/status (base 0x40070000) */
+#define DMA_CR       (*(volatile uint32_t *)0x40070000u)
+#define DMA_ES       (*(volatile uint32_t *)0x40070004u)
+#define DMA_ERQ      (*(volatile uint32_t *)0x4007000Cu)
+#define DMA_EEI      (*(volatile uint32_t *)0x40070014u)
+#define DMA_CEEI     (*(volatile uint8_t  *)0x40070018u)
+#define DMA_SEEI     (*(volatile uint8_t  *)0x40070019u)
+#define DMA_CERQ     (*(volatile uint8_t  *)0x4007001Au)
+#define DMA_SERQ     (*(volatile uint8_t  *)0x4007001Bu)
+#define DMA_CDNE     (*(volatile uint8_t  *)0x4007001Cu)
+#define DMA_SSRT     (*(volatile uint8_t  *)0x4007001Du)
+#define DMA_CERR     (*(volatile uint8_t  *)0x4007001Eu)
+#define DMA_CINT     (*(volatile uint8_t  *)0x4007001Fu)
+#define DMA_INT      (*(volatile uint32_t *)0x40070024u)
+#define DMA_ERR      (*(volatile uint32_t *)0x4007002Cu)
+#define DMA_HRS      (*(volatile uint32_t *)0x40070034u)
+#define DMA_DCHPRI3  (*(volatile uint8_t  *)0x40070100u)   /* byte-swizzled priority array base */
+/* DMA_CR bits */
+#define DMA_CR_GRP1PRI ((uint32_t)(1<<10))
+#define DMA_CR_EMLM    ((uint32_t)(1<<7))
+#define DMA_CR_EDBG    ((uint32_t)(1<<1))
+/* DMA_DCHPRIn bits */
+#define DMA_DCHPRI_ECP ((uint8_t)(1<<7))
+#define DMA_DCHPRI_DPA ((uint8_t)(1<<6))
+/* TCD CSR bits */
+#define DMA_TCD_CSR_DONE                 0x0080
+#define DMA_TCD_CSR_MAJORELINK           0x0020
+#define DMA_TCD_CSR_ESG                  0x0010
+#define DMA_TCD_CSR_DREQ                 0x0008
+#define DMA_TCD_CSR_INTHALF              0x0004
+#define DMA_TCD_CSR_INTMAJOR             0x0002
+#define DMA_TCD_CSR_START                0x0001
+#define DMA_TCD_CSR_MAJORLINKCH(n)       (((n) & 0x1F) << 8)
+#define DMA_TCD_CSR_MAJORLINKCH_MASK     0x1F00
+/* TCD BITER linking bits */
+#define DMA_TCD_BITER_ELINK                 ((uint16_t)1<<15)
+#define DMA_TCD_BITER_ELINKYES_ELINK        0x8000
+#define DMA_TCD_BITER_ELINKYES_LINKCH(n)    (((n) & 0x1F) << 9)
+#define DMA_TCD_BITER_ELINKYES_LINKCH_MASK  0x3E00
+/* DMAMUX (base 0x40074000): CHCFG0..31, 4 bytes apart */
+#define DMAMUX_CHCFG0      (*(volatile uint32_t *)0x40074000u)
+#define DMAMUX_CHCFG_ENBL  ((uint32_t)(1<<31))
+#define DMAMUX_CHCFG_TRIG  ((uint32_t)(1<<30))
+#define DMAMUX_CHCFG_A_ON  ((uint32_t)(1<<29))
+/* eDMA clock gate: CCM LPCG22 (kCLOCK_Edma=22 -> 0x40CC6000 + 22*0x20). */
+#define CCM_LPCG22_DIRECT  (*(volatile uint32_t *)0x40CC62C0u)
+/* DMAMUX request sources (RT1176 silicon; NXP PERI_DMAMUX.h; matches QEMU wiring) */
+#define DMAMUX_SOURCE_LPUART1_TX 8
+#define DMAMUX_SOURCE_LPUART1_RX 9
+#define DMAMUX_SOURCE_LPSPI1_RX  36
+#define DMAMUX_SOURCE_LPSPI1_TX  37
+#define DMAMUX_SOURCE_LPI2C1     48
+#define DMAMUX_SOURCE_SAI1_RX    54
+#define DMAMUX_SOURCE_SAI1_TX    55
 
 #endif
