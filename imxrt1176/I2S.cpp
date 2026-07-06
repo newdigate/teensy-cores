@@ -151,3 +151,40 @@ bool I2SClass::beginDMA(const int16_t *ring, size_t nFrames, void (*refillHalf)(
 }
 
 uint32_t I2SClass::dmaBlockCount() const { return i2s_blocks; }
+
+static DMAChannel i2s_rx_dma(false);
+static int16_t *i2s_rx_ring;
+static size_t i2s_rx_frames;
+static void (*i2s_rx_onblock)(int16_t *);
+static volatile uint32_t i2s_rx_blocks;
+
+static void i2s_rx_isr() {
+    i2s_rx_dma.clearInterrupt();
+    i2s_rx_blocks++;
+    if (i2s_rx_onblock) {
+        uint32_t daddr    = (uint32_t)i2s_rx_dma.TCD->DADDR;
+        uint32_t halfByte = (uint32_t)(i2s_rx_frames * 2u * sizeof(int16_t) / 2u);
+        if (daddr < (uint32_t)i2s_rx_ring + halfByte)
+            i2s_rx_onblock(i2s_rx_ring + i2s_rx_frames);   // 2nd half just filled
+        else
+            i2s_rx_onblock(i2s_rx_ring);                   // 1st half just filled
+    }
+}
+
+bool I2SClass::beginReceiveDMA(int16_t *ring, size_t nFrames, void (*onBlock)(int16_t *)) {
+    configureSAI();                              // idempotent
+    i2s_rx_ring = ring; i2s_rx_frames = nFrames; i2s_rx_onblock = onBlock; i2s_rx_blocks = 0;
+    i2s_rx_dma.begin();
+    if (i2s_rx_dma.TCD == 0) return false;       // no channel free
+    i2s_rx_dma.source(*(volatile uint16_t *)&SAI1_RDR0);                 // fixed FIFO source
+    i2s_rx_dma.destinationBuffer((uint16_t *)ring, (unsigned int)(nFrames * 2u * sizeof(int16_t)));
+    i2s_rx_dma.interruptAtHalf();
+    i2s_rx_dma.interruptAtCompletion();
+    i2s_rx_dma.triggerAtHardwareEvent(DMAMUX_SOURCE_SAI1_RX);
+    i2s_rx_dma.attachInterrupt(i2s_rx_isr);
+    i2s_rx_dma.enable();
+    hw->tcsr |= SAI_TCSR_TE | SAI_TCSR_BCE;      // ensure the shared clock is running
+    hw->rcsr |= SAI_RCSR_RE | SAI_RCSR_FRDE;     // RX + FIFO DMA request
+    return true;
+}
+uint32_t I2SClass::rxBlockCount() const { return i2s_rx_blocks; }
