@@ -13,6 +13,9 @@
 #define TCR_LSBF (1u<<23)
 // RSR
 #define RSR_RXEMPTY (1u<<1)
+// DER (DMA enable)
+#define DER_TDDE (1u<<0)
+#define DER_RDDE (1u<<1)
 
 #define SPI_TIMEOUT 100000u
 
@@ -87,4 +90,68 @@ uint16_t SPIClass::transfer16(uint16_t data) {
 void SPIClass::transfer(void *buf, size_t count) {
 	uint8_t *p = (uint8_t *)buf;
 	for (size_t i = 0; i < count; i++) p[i] = transfer(p[i]);
+}
+
+// Single SPI instance on this core: the RX-completion ISR reaches the active
+// instance's DMA state through this pointer, set in startDMA().
+static SPIClass *dma_active_spi = nullptr;
+
+void SPIClass::startDMA(const void *txbuf, void *rxbuf, size_t count) {
+	if (_dmaTX == nullptr) _dmaTX = new DMAChannel();
+	if (_dmaRX == nullptr) _dmaRX = new DMAChannel();
+	dma_active_spi = this;
+
+	// RX drains RDR -> rxbuf; its completion is the transfer's completion.
+	_dmaRX->disable();
+	// 8-bit DMA access to the register's low byte (matches TCR FRAMESZ(7))
+	_dmaRX->source(*(volatile uint8_t *)&hw->rdr);
+	_dmaRX->destinationBuffer((uint8_t *)rxbuf, count);
+	_dmaRX->disableOnCompletion();
+	_dmaRX->triggerAtHardwareEvent(DMAMUX_SOURCE_LPSPI1_RX);
+	_dmaRX->attachInterrupt(rxisr);
+	_dmaRX->interruptAtCompletion();
+
+	// TX feeds txbuf -> TDR.
+	_dmaTX->disable();
+	// 8-bit DMA access to the register's low byte (matches TCR FRAMESZ(7))
+	_dmaTX->destination(*(volatile uint8_t *)&hw->tdr);
+	_dmaTX->sourceBuffer((const uint8_t *)txbuf, count);
+	_dmaTX->disableOnCompletion();
+	_dmaTX->triggerAtHardwareEvent(DMAMUX_SOURCE_LPSPI1_TX);
+
+	hw->tcr = (tcr_base & ~TCR_FRAMESZ(0xFFF)) | TCR_FRAMESZ(7);  // 8-bit frames
+	hw->fcr = 0;                                                  // watermark 0
+	_transfer_done = false;
+	hw->der = DER_TDDE | DER_RDDE;                                // both DMA requests
+	_dmaRX->enable();                                             // arm RX before TX
+	_dmaTX->enable();
+}
+
+void SPIClass::rxisr() {
+	SPIClass *spi = dma_active_spi;
+	spi->_dmaRX->clearInterrupt();
+	spi->_dmaTX->clearComplete();          // both channels disableOnCompletion -> clear latched DONE
+	spi->_dmaRX->clearComplete();
+	asm volatile ("dsb" ::: "memory");     // DMA_CINT/CDNE writes complete before DER is touched
+	spi->hw->der = 0;                      // stop DMA requests
+	EventResponder *e = spi->_dma_event_responder;
+	spi->_dma_event_responder = nullptr;
+	spi->_transfer_done = true;
+	if (e) e->triggerEvent();
+}
+
+void SPIClass::transfer(const void *txbuf, void *rxbuf, size_t count) {
+	if (count == 0 || count > 32767) return;   // BITER/CITER are 16-bit; no chunking (single-shot)
+	while (!_transfer_done) yield();        // wait for any in-flight transfer to finish first
+	_dma_event_responder = nullptr;
+	startDMA(txbuf, rxbuf, count);
+	while (!_transfer_done) yield();        // cooperative wait; RX ISR sets the flag
+}
+
+bool SPIClass::transfer(const void *txbuf, void *rxbuf, size_t count, EventResponder &event) {
+	if (count == 0 || count > 32767) return false;
+	if (!_transfer_done) return false;      // a transfer is already in progress
+	_dma_event_responder = &event;
+	startDMA(txbuf, rxbuf, count);
+	return true;
 }

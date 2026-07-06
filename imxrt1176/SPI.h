@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include "imxrt1176.h"
 #include "core_pins.h"
+#include "DMAChannel.h"
+#include "EventResponder.h"
 
 #define MSBFIRST 1
 #define LSBFIRST 0
@@ -56,12 +58,20 @@ public:
 	uint8_t  transfer(uint8_t data);
 	uint16_t transfer16(uint16_t data);
 	void     transfer(void *buf, size_t count);
+	void transfer(const void *txbuf, void *rxbuf, size_t count);                     // blocking DMA
+	bool transfer(const void *txbuf, void *rxbuf, size_t count, EventResponder &event); // async DMA
 
 private:
 	const hardware_t *hw;
 	uint32_t tcr_base = 0;
 	uint32_t func_clock = 24000000;
 	void setClockDivider(uint32_t clockHz);
+	DMAChannel *_dmaTX = nullptr;
+	DMAChannel *_dmaRX = nullptr;
+	EventResponder *_dma_event_responder = nullptr;
+	volatile bool _transfer_done = true;   // idle
+	void startDMA(const void *txbuf, void *rxbuf, size_t count);
+	static void rxisr();
 };
 
 extern SPIClass SPI;
