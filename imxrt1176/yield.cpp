@@ -29,6 +29,7 @@
  */
 
 #include "HardwareSerial.h"
+#include "EventResponder.h"
 
 extern void serialEvent1(void) __attribute__((weak));
 
@@ -37,5 +38,10 @@ extern "C" void yield(void) {
     if (running) return;            // guard against re-entrancy (delay()->yield()->serialEvent1()->delay()...)
     running = 1;
     if (&serialEvent1 && Serial1.available()) serialEvent1();
+    // Intentionally inside the running-guard (upstream Teensy calls this after
+    // clearing it): a deferred callback's nested delay()->yield() is then a full
+    // no-op until we return. runFromYield()'s own runningFromYield guard also
+    // prevents re-entrant dispatch, so this is safe either way. Do not reorder.
+    EventResponder::runFromYield();
     running = 0;
 }

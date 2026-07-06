@@ -59,8 +59,6 @@
  * your function is called only one time, based on the last trigger
  * event.
  */
-extern "C" void systick_isr_with_timer_events(void);
-
 class EventResponder;
 typedef EventResponder& EventResponderRef;
 typedef void (*EventResponderFunction)(EventResponderRef);
@@ -76,7 +74,7 @@ public:
 		EventTypeDetached = 0, // no function is called
 		EventTypeYield,        // function is called from yield()
 		EventTypeImmediate,    // function is called immediately
-		EventTypeInterrupt,    // function is called from interrupt
+		EventTypeInterrupt,    // function is called from interrupt (unreachable in this minimal build; see EventResponder.cpp header note)
 		EventTypeThread        // function is run as a new thread
 	};
 
@@ -88,7 +86,6 @@ public:
 		detachNoInterrupts();
 		_function = function;
 		_type = EventTypeYield;
-		yield_active_check_flags |= YIELD_CHECK_EVENT_RESPONDER; // user setup a yield type...
 		enableInterrupts(irq);
 	}
 
@@ -108,15 +105,10 @@ public:
 	// this as attachImmediate.  On ARM and other platforms with software
 	// interrupts, this allow fast interrupt-based response, but with less
 	// disruption to other libraries requiring their own interrupts.
+	// No PendSV software interrupt on this core: fall back to immediate, which
+	// preserves the "prompt response" contract (runs in the caller's context).
 	void attachInterrupt(EventResponderFunction function, uint8_t priority __attribute__((unused)) = 128) {
-		bool irq = disableInterrupts();
-		detachNoInterrupts();
-		_function = function;
-		_type = EventTypeInterrupt;
-		SCB_SHPR3 |= 0x00FF0000; // configure PendSV, lowest priority
-		// Make sure we are using the systic ISR that process this
-		_VectorsRam[15] = systick_isr_with_timer_events;
-		enableInterrupts(irq);
+		attachImmediate(function);
 	}
 
 	// Attach a function to be called as its own thread.  Boards not running
@@ -168,10 +160,6 @@ public:
 	void setContext(void *context) { _context = context; }
 	void * getContext() { return _context; }
 
-	// Wait for event(s) to occur.  These are most likely to be useful when
-	// used with a scheduler or RTOS.
-	bool waitForEvent(EventResponderRef event, int timeout);
-	EventResponder * waitForEvent(EventResponder *list, int listsize, int timeout);
 	static void runFromYield() {
 		if (!firstYield) return;  
 		// First, check if yield was called from an interrupt
@@ -206,7 +194,6 @@ public:
 		(*(first->_function))(*first);
 		runningFromYield = false;
 	}
-	static void runFromInterrupt();
 	operator bool() { return _triggered; }
 protected:
 	void triggerEventNotImmediate();
@@ -221,8 +208,6 @@ protected:
 	bool _triggered = false;
 	static EventResponder *firstYield;
 	static EventResponder *lastYield;
-	static EventResponder *firstInterrupt;
-	static EventResponder *lastInterrupt;
 	static bool runningFromYield;
 private:
 	static bool disableInterrupts() {
@@ -232,45 +217,6 @@ private:
 		return (primask == 0) ? true : false;
 	}
 	static void enableInterrupts(bool doit) {
-		if (doit) __enable_irq();
-	}
-};
-
-class MillisTimer
-{
-public:
-	constexpr MillisTimer() {
-	}
-	~MillisTimer() {
-		end();
-	}
-	void begin(unsigned long milliseconds, EventResponderRef event);
-	void beginRepeating(unsigned long milliseconds, EventResponderRef event);
-	void end();
-	static void runFromTimer();
-private:
-	void addToWaitingList();
-	void addToActiveList();
-	unsigned long _ms = 0;
-	unsigned long _reload = 0;
-	MillisTimer *_next = nullptr;
-	MillisTimer *_prev = nullptr;
-	EventResponder *_event = nullptr;
-	enum TimerStateType {
-		TimerOff = 0,
-		TimerWaiting,
-		TimerActive
-	};
-	volatile TimerStateType _state = TimerOff;
-	static MillisTimer *listWaiting; // single linked list of waiting to start timers
-	static MillisTimer *listActive;  // double linked list of running timers
-	static bool disableTimerInterrupt() {
-		uint32_t primask;
-		__asm__ volatile("mrs %0, primask\n" : "=r" (primask)::);
-		__disable_irq();
-		return (primask == 0) ? true : false;
-	}
-	static void enableTimerInterrupt(bool doit) {
 		if (doit) __enable_irq();
 	}
 };
