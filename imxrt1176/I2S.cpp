@@ -42,6 +42,8 @@ static void sai1_audio_pll_init(void) {
 }
 
 void I2SClass::configureSAI() {
+    if (configured_) return;                     // idempotent: full-duplex calls it twice
+    configured_ = true;
     sai1_audio_pll_init();
     hw->clock_root = hw->clock_root_val;         // mux 4 (Audio PLL), div 16
     hw->lpcg = 1u;                               // ungate SAI1
@@ -63,6 +65,18 @@ void I2SClass::configureSAI() {
                              // underrun (a polled TX briefly underruns at start;
                              // without FCONT the SAI halts and never recovers).
     hw->tcr5 = SAI_TCR5_WNW(15) | SAI_TCR5_W0W(15) | SAI_TCR5_FBT(15);
+    // RX: synchronous to TX (shares BCLK/FS); RXD is an input -> select_input.
+    hw->rxd_mux = 0u;                            // ALT0
+    hw->rxd_pad = 0x02u;
+    hw->rxd_select = 0u;                         // daisy: select AD_20
+    hw->rcsr = SAI_RCSR_SR; hw->rcsr = 0u;
+    hw->rcsr = SAI_RCSR_FR; hw->rcsr = 0u;
+    hw->rcr1 = 0u;                               // watermark 0 -> FRF at >=1 sample
+    hw->rcr2 = SAI_RCR2_SYNC(1);                 // synchronous to transmitter
+    hw->rcr3 = SAI_RCR3_RCE(1);
+    hw->rcr4 = SAI_RCR4_FRSZ(1) | SAI_RCR4_SYWD(15) | SAI_RCR4_MF |
+               SAI_RCR4_FSE | SAI_RCR4_FSP;      // no FSD (uses TX sync), no FCONT
+    hw->rcr5 = SAI_RCR5_WNW(15) | SAI_RCR5_W0W(15) | SAI_RCR5_FBT(15);
 }
 
 bool I2SClass::begin(uint32_t sampleRate) {
@@ -71,11 +85,11 @@ bool I2SClass::begin(uint32_t sampleRate) {
     // Pre-fill the FIFO with silence before enabling TX so the first frame does
     // not underrun before write() is called.
     for (int i = 0; i < 16; i++) hw->tdr0 = 0u;
-    hw->tcsr = SAI_TCSR_TE | SAI_TCSR_BCE;       // enable transmitter + bit clock
+    hw->tcsr |= SAI_TCSR_TE | SAI_TCSR_BCE;      // enable transmitter + bit clock
     return true;
 }
 
-void I2SClass::end() { hw->tcsr = 0u; hw->lpcg = 0u; }
+void I2SClass::end() { hw->tcsr = 0u; hw->rcsr = 0u; hw->lpcg = 0u; configured_ = false; }
 
 void I2SClass::write(const int16_t *s, size_t n) {
     for (size_t i = 0; i < n; i++) {
@@ -85,6 +99,18 @@ void I2SClass::write(const int16_t *s, size_t n) {
         g = 2000000;
         while (!(hw->tcsr & SAI_TCSR_FWF) && g--) { }
         hw->tdr0 = (uint16_t)s[2*i + 1];         // right
+    }
+}
+
+void I2SClass::read(int16_t *s, size_t n) {
+    hw->rcsr |= SAI_RCSR_RE;                      // enable the receiver (idempotent)
+    for (size_t i = 0; i < n; i++) {
+        uint32_t g = 2000000;
+        while (!(hw->rcsr & SAI_RCSR_FRF) && g--) { }
+        s[2*i + 0] = (int16_t)hw->rdr0;          // left
+        g = 2000000;
+        while (!(hw->rcsr & SAI_RCSR_FRF) && g--) { }
+        s[2*i + 1] = (int16_t)hw->rdr0;          // right
     }
 }
 
@@ -120,7 +146,7 @@ bool I2SClass::beginDMA(const int16_t *ring, size_t nFrames, void (*refillHalf)(
     i2s_dma.triggerAtHardwareEvent(DMAMUX_SOURCE_SAI1_TX);
     i2s_dma.attachInterrupt(i2s_dma_isr);
     i2s_dma.enable();
-    hw->tcsr = SAI_TCSR_TE | SAI_TCSR_BCE | SAI_TCSR_FRDE;   // TX + bit clock + FIFO DMA request
+    hw->tcsr |= SAI_TCSR_TE | SAI_TCSR_BCE | SAI_TCSR_FRDE;  // TX + bit clock + FIFO DMA request
     return true;
 }
 
