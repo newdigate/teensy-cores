@@ -33,6 +33,8 @@ public:
 		volatile uint32_t &tdr;
 		volatile uint32_t &rsr;
 		volatile uint32_t &rdr;
+		volatile uint32_t &der;
+		volatile uint32_t &fcr;
 		volatile uint32_t &lpcg;
 		volatile uint32_t &clock_root;
 		uint32_t clock_root_val;
