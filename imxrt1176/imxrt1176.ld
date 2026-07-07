@@ -127,6 +127,13 @@ SECTIONS
 	_estack = ORIGIN(DTCM) + (8 << 15);   /* 0x20000000 + 256K = 0x20040000 */
 
 	_flashimagelen = __text_csf_end - ORIGIN(FLASH);
+
+	/* EEPROM emulation reserves the top 256K of FLASH (0x30FC0000..0x31000000,
+	 * 63 x 4K sectors) — see cores/imxrt1176/eeprom.c FLASH_BASEADDR. The image
+	 * (through .text.csf) must not reach it. */
+	ASSERT(__text_csf_end <= 0x30FC0000, "Image overlaps the EEPROM flash region (top 256K)")
+	_eeprom_region_start = 0x30FC0000;
+
 	_teensy_model_identifier = 0x25;
 
 	.debug_info     0 : { *(.debug_info) }
