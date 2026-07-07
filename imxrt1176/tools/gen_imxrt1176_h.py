@@ -327,6 +327,59 @@ typedef struct {
 } IMXRT_LPSPI_t;
 #define IMXRT_LPSPI1_ADDRESS 0x40114000
 '''.rstrip("\n")]
+    L += ['''
+/* LPI2C register-block overlay (for the newdigate/Wire library's port()
+ * accessor).  Layout matches cores/teensy4/imxrt.h IMXRT_LPI2C_t; verified
+ * against the flat LPI2C1_* offsets above.  Master block 0x10..0x70, then a
+ * gap, slave block 0x110..0x170.  Same layout at all 3 bases (LPI2C1
+ * 0x40104000, LPI2C2 0x40108000, LPI2C5 0x40C34000). */
+typedef struct {
+	volatile uint32_t VERID;        // 0x00
+	volatile uint32_t PARAM;        // 0x04
+	volatile uint32_t unused08;     // 0x08
+	volatile uint32_t unused0C;     // 0x0C
+	volatile uint32_t MCR;          // 0x10
+	volatile uint32_t MSR;          // 0x14
+	volatile uint32_t MIER;         // 0x18
+	volatile uint32_t MDER;         // 0x1C
+	volatile uint32_t MCFGR0;       // 0x20
+	volatile uint32_t MCFGR1;       // 0x24
+	volatile uint32_t MCFGR2;       // 0x28
+	volatile uint32_t MCFGR3;       // 0x2C
+	volatile uint32_t unused30[4];  // 0x30..0x3C
+	volatile uint32_t MDMR;         // 0x40
+	volatile uint32_t unused44;     // 0x44
+	volatile uint32_t MCCR0;        // 0x48
+	volatile uint32_t unused4C;     // 0x4C
+	volatile uint32_t MCCR1;        // 0x50
+	volatile uint32_t unused54;     // 0x54
+	volatile uint32_t MFCR;         // 0x58
+	volatile uint32_t MFSR;         // 0x5C
+	volatile uint32_t MTDR;         // 0x60
+	volatile uint32_t unused64[3];  // 0x64..0x6C
+	volatile uint32_t MRDR;         // 0x70
+	volatile uint32_t unused74[39]; // 0x74..0x10C
+	volatile uint32_t SCR;          // 0x110
+	volatile uint32_t SSR;          // 0x114
+	volatile uint32_t SIER;         // 0x118
+	volatile uint32_t SDER;         // 0x11C
+	volatile uint32_t unused120;    // 0x120
+	volatile uint32_t SCFGR1;       // 0x124
+	volatile uint32_t SCFGR2;       // 0x128
+	volatile uint32_t unused12C[5]; // 0x12C..0x13C
+	volatile uint32_t SAMR;         // 0x140
+	volatile uint32_t unused144[3]; // 0x144..0x14C
+	volatile uint32_t SASR;         // 0x150
+	volatile uint32_t STAR;         // 0x154
+	volatile uint32_t unused158[2]; // 0x158..0x15C
+	volatile uint32_t STDR;         // 0x160
+	volatile uint32_t unused164[3]; // 0x164..0x16C
+	volatile uint32_t SRDR;         // 0x170
+} IMXRT_LPI2C_t;
+#define IMXRT_LPI2C1_ADDRESS 0x40104000
+#define IMXRT_LPI2C2_ADDRESS 0x40108000
+#define IMXRT_LPI2C5_ADDRESS 0x40C34000
+'''.rstrip("\n")]
     L += ["",
           "/* Digital header GPIO bases (GPIO8/9/11/12_BASE already defined above) */",
           "/* Arduino-header pin pads (GPIO ALT = 0xA) */",
