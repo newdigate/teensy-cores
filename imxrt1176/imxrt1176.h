@@ -469,6 +469,39 @@
 #define IOMUXC_LPSPI1_SDO_SELECT_INPUT   (*(volatile uint32_t *)0x400E85D8u)
 #define IOMUXC_LPSPI1_SDI_SELECT_INPUT   (*(volatile uint32_t *)0x400E85D4u)
 
+/* LPSPI register-block overlay (for the newdigate/SPI library's port()
+ * accessor).  Layout matches cores/teensy4/imxrt.h IMXRT_LPSPI_t; verified
+ * against the flat LPSPI1_* offsets above (base 0x40114000). */
+typedef struct {
+	volatile uint32_t VERID;    // 0x00
+	volatile uint32_t PARAM;    // 0x04
+	volatile uint32_t unused08; // 0x08
+	volatile uint32_t unused0C; // 0x0C
+	volatile uint32_t CR;       // 0x10
+	volatile uint32_t SR;       // 0x14
+	volatile uint32_t IER;      // 0x18
+	volatile uint32_t DER;      // 0x1C
+	volatile uint32_t CFGR0;    // 0x20
+	volatile uint32_t CFGR1;    // 0x24
+	volatile uint32_t unused28; // 0x28
+	volatile uint32_t unused2C; // 0x2C
+	volatile uint32_t DMR0;     // 0x30
+	volatile uint32_t DMR1;     // 0x34
+	volatile uint32_t unused38; // 0x38
+	volatile uint32_t unused3C; // 0x3C
+	volatile uint32_t CCR;      // 0x40
+	volatile uint32_t unused44[5]; // 0x44..0x54
+	volatile uint32_t FCR;      // 0x58
+	volatile uint32_t FSR;      // 0x5C
+	volatile uint32_t TCR;      // 0x60
+	volatile uint32_t TDR;      // 0x64
+	volatile uint32_t unused68; // 0x68
+	volatile uint32_t unused6C; // 0x6C
+	volatile uint32_t RSR;      // 0x70
+	volatile uint32_t RDR;      // 0x74
+} IMXRT_LPSPI_t;
+#define IMXRT_LPSPI1_ADDRESS 0x40114000
+
 /* Digital header GPIO bases (GPIO8/9/11/12_BASE already defined above) */
 /* Arduino-header pin pads (GPIO ALT = 0xA) */
 #define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_10 (*(volatile uint32_t *)0x400E823Cu)
