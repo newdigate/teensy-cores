@@ -255,6 +255,8 @@ static void flash_wait()
 void eepromemu_flash_write(void *addr, const void *data, uint32_t len)
 {
 	__disable_irq();
+	FLEXSPI_MCR0 |= FLEXSPI_MCR0_SWRESET;   // RT1176: purge a stale AHB prefetch (from the XIP scan) before the IP program, else the first program to a freshly-erased sector corrupts
+	while (FLEXSPI_MCR0 & FLEXSPI_MCR0_SWRESET) ;
 	FLEXSPI_LUTKEY = FLEXSPI_LUTKEY_VALUE;
 	FLEXSPI_LUTCR = FLEXSPI_LUTCR_UNLOCK;
 	FLEXSPI_IPCR0 = 0;
@@ -295,6 +297,8 @@ void eepromemu_flash_write(void *addr, const void *data, uint32_t len)
 void eepromemu_flash_erase_sector(void *addr)
 {
 	__disable_irq();
+	FLEXSPI_MCR0 |= FLEXSPI_MCR0_SWRESET;   // RT1176: purge a stale AHB prefetch before the IP erase (see eepromemu_flash_write)
+	while (FLEXSPI_MCR0 & FLEXSPI_MCR0_SWRESET) ;
 	FLEXSPI_LUTKEY = FLEXSPI_LUTKEY_VALUE;
 	FLEXSPI_LUTCR = FLEXSPI_LUTCR_UNLOCK;
 	FLEXSPI_LUT60 = LUT0(CMD_SDR, PINS1, 0x06); // 06 = write enable
