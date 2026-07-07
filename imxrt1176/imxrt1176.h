@@ -901,4 +901,41 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define DMAMUX_SOURCE_SAI1_RX    54
 #define DMAMUX_SOURCE_SAI1_TX    55
 
+/* FlexSPI1 IP-command registers (for the flash-emulated EEPROM program/erase
+ * primitives in cores/imxrt1176/eeprom.c).  Same IP + offsets as the RT1062
+ * FlexSPI in cores/teensy4/imxrt.h, retargeted to FlexSPI1 base 0x400CC000. */
+#define FLEXSPI_MCR0     (*(volatile uint32_t *)(FLEXSPI_BASE + 0x000))
+#define FLEXSPI_MCR0_SWRESET     ((uint32_t)(1<<0))
+#define FLEXSPI_INTR     (*(volatile uint32_t *)(FLEXSPI_BASE + 0x014))
+#define FLEXSPI_INTR_IPCMDDONE   ((uint32_t)(1<<0))
+#define FLEXSPI_INTR_IPTXWE      ((uint32_t)(1<<6))
+#define FLEXSPI_LUTKEY   (*(volatile uint32_t *)(FLEXSPI_BASE + 0x018))
+#define FLEXSPI_LUTKEY_VALUE     ((uint32_t)0x5AF05AF0)
+#define FLEXSPI_LUTCR    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x01C))
+#define FLEXSPI_LUTCR_UNLOCK     ((uint32_t)(1<<1))
+#define FLEXSPI_IPCR0    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x0A0))
+#define FLEXSPI_IPCR1    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x0A4))
+#define FLEXSPI_IPCR1_ISEQID(n)  ((uint32_t)(((n) & 0x0F) << 16))
+#define FLEXSPI_IPCR1_IDATSZ(n)  ((uint32_t)(((n) & 0xFFFF) << 0))
+#define FLEXSPI_IPCMD    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x0B0))
+#define FLEXSPI_IPCMD_TRG        ((uint32_t)(1<<0))
+#define FLEXSPI_IPRXFCR  (*(volatile uint32_t *)(FLEXSPI_BASE + 0x0B8))
+#define FLEXSPI_IPRXFCR_CLRIPRXF ((uint32_t)(1<<0))
+#define FLEXSPI_IPTXFCR  (*(volatile uint32_t *)(FLEXSPI_BASE + 0x0BC))
+#define FLEXSPI_IPTXFCR_CLRIPTXF ((uint32_t)(1<<0))
+#define FLEXSPI_RFDR0    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x100))
+#define FLEXSPI_TFDR0    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x180))
+#define FLEXSPI_LUT60    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x2F0))
+#define FLEXSPI_LUT61    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x2F4))
+#define FLEXSPI_LUT62    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x2F8))
+#define FLEXSPI_LUT63    (*(volatile uint32_t *)(FLEXSPI_BASE + 0x2FC))
+#define FLEXSPI_LUT_INSTRUCTION(opcode, pads, operand) ((uint32_t)(\
+	(((opcode) & 0x3F) << 10) | (((pads) & 0x03) << 8) | ((operand) & 0xFF)))
+#define FLEXSPI_LUT_OPCODE_CMD_SDR   0x01
+#define FLEXSPI_LUT_OPCODE_RADDR_SDR 0x02
+#define FLEXSPI_LUT_OPCODE_WRITE_SDR 0x08
+#define FLEXSPI_LUT_OPCODE_READ_SDR  0x09
+#define FLEXSPI_LUT_NUM_PADS_1       0x00
+#define FLEXSPI_LUT_NUM_PADS_4       0x02
+
 #endif
