@@ -109,6 +109,7 @@ void srandom(unsigned int newseed);
 #include "Printable.h"
 #include "Print.h"
 #include "Stream.h"
+#include "elapsedMillis.h"   // elapsedMillis / elapsedMicros (parity with teensy4 WProgram.h)
 
 #endif // __cplusplus
 

@@ -818,6 +818,7 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 /* USBPHY CTRL / PWD / PLL_SIC bit masks (PLL_SIC values from SDK PERI_USBPHY.h) */
 #define USBPHY_CTRL_SFTRST     (1u << 31)
 #define USBPHY_CTRL_CLKGATE    (1u << 30)
+#define USBPHY_CTRL_ENHOSTDISCONDETECT (1u << 1)  /* host: HS disconnect detector (USBHost_t36 ehci isr) */
 #define USBPHY_PWD_RXPWDRX     (1u << 20)
 #define USBPHY_PWD_RXPWDDIFF   (1u << 19)
 #define USBPHY_PWD_RXPWD1PT1   (1u << 18)
