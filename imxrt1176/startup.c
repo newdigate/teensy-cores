@@ -66,6 +66,8 @@ extern uint32_t _edata;       /* DTCM .data VMA end                         */
 extern uint32_t _sdataload;   /* DTCM .data LMA (in FLASH)                  */
 extern uint32_t _sbss;        /* DTCM .bss VMA start                        */
 extern uint32_t _ebss;        /* DTCM .bss VMA end                          */
+extern uint32_t _sbss_dma;    /* OCRAM .dmabuffers (DMAMEM) start           */
+extern uint32_t _ebss_dma;    /* OCRAM .dmabuffers (DMAMEM) end             */
 extern uint32_t _estack;      /* top of stack (DTCM)                        */
 extern uint32_t _flexram_bank_config;   /* linker absolute symbol; its address IS the value */
 
@@ -177,6 +179,14 @@ void ResetHandler(void)
 
 	/* zero .bss */
 	memory_clear(&_sbss, &_ebss);
+
+	/* zero .dmabuffers (DMAMEM / OCRAM).  Unlike Teensy, where OCRAM .bss is
+	 * zeroed for free, ours is a separate NOLOAD section -- so DMAMEM-placed
+	 * objects (e.g. USBHost driver globals whose ctors don't set every member)
+	 * would hold power-on garbage.  NOLOAD means nothing can depend on non-zero
+	 * contents, so clearing is strictly safe; runs before __libc_init_array so
+	 * C++ constructors see zeroed members. */
+	memory_clear(&_sbss_dma, &_ebss_dma);
 
 	/* Build the RAM vector table: copy the 16 architectural + 16 flash NVIC-tail
 	 * entries, default the remaining external IRQs to unused_isr, then repoint

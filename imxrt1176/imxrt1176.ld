@@ -80,8 +80,11 @@ SECTIONS
 
 	.bss.dma (NOLOAD) : {
 		*(.hab_log)
+		. = ALIGN(32);
+		_sbss_dma = .;      /* DMAMEM (.dmabuffers) zero-init range start */
 		*(.dmabuffers)
 		. = ALIGN(32);
+		_ebss_dma = .;      /* DMAMEM (.dmabuffers) zero-init range end   */
 	} > OCRAM
 
 	.bss.extram (NOLOAD) : {
