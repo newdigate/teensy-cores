@@ -133,6 +133,7 @@ def main():
           "#define NVIC_ICPR(n) (*(volatile uint32_t *)(0xE000E280u + ((n) << 2)))",
           "#define NVIC_IP(n)   (*(volatile uint8_t  *)(0xE000E400u + (n)))",
           "#define NVIC_ENABLE_IRQ(n)   (NVIC_ISER((n) >> 5) = (1u << ((n) & 31)))",
+          "#define NVIC_IS_ENABLED(n)   (NVIC_ISER((n) >> 5) & (1u << ((n) & 31)))",
           "#define NVIC_DISABLE_IRQ(n)  (NVIC_ICER((n) >> 5) = (1u << ((n) & 31)))",
           "#define NVIC_SET_PENDING(n)  (NVIC_ISPR((n) >> 5) = (1u << ((n) & 31)))",
           "#define NVIC_CLEAR_PENDING(n)(NVIC_ICPR((n) >> 5) = (1u << ((n) & 31)))",
