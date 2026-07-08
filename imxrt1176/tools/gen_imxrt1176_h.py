@@ -380,6 +380,80 @@ typedef struct {
 #define IMXRT_LPI2C2_ADDRESS 0x40108000
 #define IMXRT_LPI2C5_ADDRESS 0x40C34000
 '''.rstrip("\n")]
+    # --- USDHC (SDIO / SD-card) — for the SdFat SdioTeensy __IMXRT1176__ port --
+    # microSD slot on the MIMXRT1170-EVKB (socket J15) = USDHC1 @ 0x40418000.
+    # Pins GPIO_SD_B1_00..05 (ALT0); clock root 58 (SYS_PLL2_PFD2/2 ~198 MHz);
+    # gate LPCG117; IRQ 133.  Addresses verified against the generator's own
+    # IOMUXC scheme (AD_35 mux ends 0x198 / pad 0x3DC, so SD_B1_00 follows).
+    L += ["",
+          "/* USDHC1 microSD pins (EVKB J15): CMD/CLK/DATA0-3 = GPIO_SD_B1_00..05, ALT0 */",
+          "#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B1_00 (*(volatile uint32_t *)0x400E819Cu)",
+          "#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B1_01 (*(volatile uint32_t *)0x400E81A0u)",
+          "#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B1_02 (*(volatile uint32_t *)0x400E81A4u)",
+          "#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B1_03 (*(volatile uint32_t *)0x400E81A8u)",
+          "#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B1_04 (*(volatile uint32_t *)0x400E81ACu)",
+          "#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B1_05 (*(volatile uint32_t *)0x400E81B0u)",
+          "#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B1_00 (*(volatile uint32_t *)0x400E83E0u)",
+          "#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B1_01 (*(volatile uint32_t *)0x400E83E4u)",
+          "#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B1_02 (*(volatile uint32_t *)0x400E83E8u)",
+          "#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B1_03 (*(volatile uint32_t *)0x400E83ECu)",
+          "#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B1_04 (*(volatile uint32_t *)0x400E83F0u)",
+          "#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B1_05 (*(volatile uint32_t *)0x400E83F4u)",
+          "/* USDHC1 clock root 58 (SYS_PLL2_PFD2 / 2) + gate LPCG117 */",
+          "#define CCM_CLOCK_ROOT58_CONTROL (*(volatile uint32_t *)0x40CC1D00u)",
+          "#define CCM_LPCG117_DIRECT       (*(volatile uint32_t *)0x40CC6EA0u)"]
+    L += ['''
+/* USDHC register-block overlay (for the SdFat SdioTeensy __IMXRT1176__ port).
+ * Layout matches cores/teensy4/imxrt.h IMXRT_USDHC_t; only the base addresses
+ * differ from the 1062 (0x40418000/0x4041C000 vs 0x402C0000/0x402C4000). */
+typedef struct {
+	volatile uint32_t DS_ADDR;              // 0x00
+	volatile uint32_t BLK_ATT;              // 0x04
+	volatile uint32_t CMD_ARG;              // 0x08
+	volatile uint32_t CMD_XFR_TYP;          // 0x0C
+	volatile uint32_t CMD_RSP0;             // 0x10
+	volatile uint32_t CMD_RSP1;             // 0x14
+	volatile uint32_t CMD_RSP2;             // 0x18
+	volatile uint32_t CMD_RSP3;             // 0x1C
+	volatile uint32_t DATA_BUFF_ACC_PORT;   // 0x20
+	volatile uint32_t PRES_STATE;           // 0x24
+	volatile uint32_t PROT_CTRL;            // 0x28
+	volatile uint32_t SYS_CTRL;             // 0x2C
+	volatile uint32_t INT_STATUS;           // 0x30
+	volatile uint32_t INT_STATUS_EN;        // 0x34
+	volatile uint32_t INT_SIGNAL_EN;        // 0x38
+	volatile uint32_t AUTOCMD12_ERR_STATUS; // 0x3C
+	volatile uint32_t HOST_CTRL_CAP;        // 0x40
+	volatile uint32_t WTMK_LVL;             // 0x44
+	volatile uint32_t MIX_CTRL;             // 0x48
+	uint32_t unused1;                       // 0x4C
+	volatile uint32_t FORCE_EVENT;          // 0x50
+	volatile uint32_t ADMA_ERR_STATUS;      // 0x54
+	volatile uint32_t ADMA_SYS_ADDR;        // 0x58
+	uint32_t unused2;                       // 0x5C
+	volatile uint32_t DLL_CTRL;             // 0x60
+	volatile uint32_t DLL_STATUS;           // 0x64
+	volatile uint32_t CLK_TUNE_CTRL_STATUS; // 0x68
+	uint32_t unused3[21];                   // 0x6C..0xBC
+	volatile uint32_t VEND_SPEC;            // 0xC0
+	volatile uint32_t MMC_BOOT;             // 0xC4
+	volatile uint32_t VEND_SPEC2;           // 0xC8
+	volatile uint32_t TUNING_CTRL;          // 0xCC
+} IMXRT_USDHC_t;
+#define IMXRT_USDHC1_ADDRESS 0x40418000
+#define IMXRT_USDHC2_ADDRESS 0x4041C000
+#define IMXRT_USDHC1 (*(IMXRT_USDHC_t *)IMXRT_USDHC1_ADDRESS)
+#define IMXRT_USDHC2 (*(IMXRT_USDHC_t *)IMXRT_USDHC2_ADDRESS)
+'''.rstrip("\n")]
+    for _n in (1, 2):
+        for _reg in ("DS_ADDR","BLK_ATT","CMD_ARG","CMD_XFR_TYP","CMD_RSP0","CMD_RSP1",
+                     "CMD_RSP2","CMD_RSP3","DATA_BUFF_ACC_PORT","PRES_STATE","PROT_CTRL",
+                     "SYS_CTRL","INT_STATUS","INT_STATUS_EN","INT_SIGNAL_EN",
+                     "AUTOCMD12_ERR_STATUS","HOST_CTRL_CAP","WTMK_LVL","MIX_CTRL",
+                     "FORCE_EVENT","ADMA_ERR_STATUS","ADMA_SYS_ADDR","DLL_CTRL",
+                     "DLL_STATUS","CLK_TUNE_CTRL_STATUS","VEND_SPEC","MMC_BOOT",
+                     "VEND_SPEC2","TUNING_CTRL"):
+            L.append(f"#define USDHC{_n}_{_reg} (IMXRT_USDHC{_n}.{_reg})")
     L += ["",
           "/* Digital header GPIO bases (GPIO8/9/11/12_BASE already defined above) */",
           "/* Arduino-header pin pads (GPIO ALT = 0xA) */",
