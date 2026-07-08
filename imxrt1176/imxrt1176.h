@@ -838,6 +838,78 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define DMAMEM __attribute__((section(".dmabuffers"), used))
 #endif
 
+/* ---- USB_OTG2 (ChipIdea/EHCI HOST controller) + USBPHY2 --------------------
+ * Host-role twin of USB_OTG1 above, added for the USBHost_t36 port.  That
+ * library's utility/imxrt_usbhs.h maps USBHS_* -> USB2_* verbatim, exactly as
+ * on imxrt1062 where USB2/USBPHY2 are likewise the host controller/PHY.  Same
+ * ChipIdea IP and register offsets as USB1; only the bases differ (OTG
+ * 0x40430000 -> 0x4042C000, PHY 0x40434000 -> 0x40438000).  The host-mode
+ * register names FRINDEX / PERIODICLISTBASE / ASYNCLISTADDR alias the very
+ * offsets the device block calls DEVICEADDR / ENDPOINTLISTADDR.  IRQ = 135,
+ * declared as IRQ_USB_OTG2 in core_pins.h (with an IRQ_USB2 alias there so
+ * imxrt_usbhs.h's IRQ_USBHS resolves).  Bases + IRQ verified vs the qemu2
+ * fsl-imxrt1170 model; offsets/bits vs CMSIS PERI_USB.h / PERI_USBPHY.h. */
+#define USB_OTG2_BASE          0x4042C000u
+#define USB2_GPTIMER0LD        (*(volatile uint32_t *)(USB_OTG2_BASE + 0x080))
+#define USB2_GPTIMER0CTRL      (*(volatile uint32_t *)(USB_OTG2_BASE + 0x084))
+#define USB2_GPTIMER1LD        (*(volatile uint32_t *)(USB_OTG2_BASE + 0x088))
+#define USB2_GPTIMER1CTRL      (*(volatile uint32_t *)(USB_OTG2_BASE + 0x08C))
+#define USB2_SBUSCFG           (*(volatile uint32_t *)(USB_OTG2_BASE + 0x090))
+#define USB2_USBCMD            (*(volatile uint32_t *)(USB_OTG2_BASE + 0x140))
+#define USB2_USBSTS            (*(volatile uint32_t *)(USB_OTG2_BASE + 0x144))
+#define USB2_USBINTR           (*(volatile uint32_t *)(USB_OTG2_BASE + 0x148))
+#define USB2_FRINDEX           (*(volatile uint32_t *)(USB_OTG2_BASE + 0x14C))
+#define USB2_PERIODICLISTBASE  (*(volatile uint32_t *)(USB_OTG2_BASE + 0x154))
+#define USB2_ASYNCLISTADDR     (*(volatile uint32_t *)(USB_OTG2_BASE + 0x158))
+#define USB2_BURSTSIZE         (*(volatile uint32_t *)(USB_OTG2_BASE + 0x160))
+#define USB2_PORTSC1           (*(volatile uint32_t *)(USB_OTG2_BASE + 0x184))
+#define USB2_USBMODE           (*(volatile uint32_t *)(USB_OTG2_BASE + 0x1A8))
+
+#define USBPHY2_BASE           0x40438000u
+#define USBPHY2_PWD            (*(volatile uint32_t *)(USBPHY2_BASE + 0x00))
+#define USBPHY2_CTRL           (*(volatile uint32_t *)(USBPHY2_BASE + 0x30))
+#define USBPHY2_CTRL_SET       (*(volatile uint32_t *)(USBPHY2_BASE + 0x34))
+#define USBPHY2_CTRL_CLR       (*(volatile uint32_t *)(USBPHY2_BASE + 0x38))
+#define USBPHY2_PLL_SIC        (*(volatile uint32_t *)(USBPHY2_BASE + 0xA0))
+#define USBPHY2_PLL_SIC_SET    (*(volatile uint32_t *)(USBPHY2_BASE + 0xA4))
+#define USBPHY2_PLL_SIC_CLR    (*(volatile uint32_t *)(USBPHY2_BASE + 0xA8))
+
+/* Extra generic USB_* bit masks referenced by imxrt_usbhs.h's host block but
+ * not used by the device (USB1) side, hence absent from the device masks
+ * above.  Standard EHCI / ChipIdea positions, each cross-checked against the
+ * CMSIS PERI_USB.h *_MASK defines.  (RS / RST / PCE / UEE / TI0 / TI1 / PR /
+ * HSP / USBMODE_CM and the GPTIMER RST/RUN masks already exist with the device
+ * block; USBSTS UAI/UPI are inlined literally in imxrt_usbhs.h, not here.) */
+/* USBCMD */
+#define USB_USBCMD_FS_1(n)     (((n) & 0x3u) << 2)
+#define USB_USBCMD_PSE         (1u << 4)
+#define USB_USBCMD_ASE         (1u << 5)
+#define USB_USBCMD_IAA         (1u << 6)
+#define USB_USBCMD_ASP(n)      (((n) & 0x3u) << 8)
+#define USB_USBCMD_ASPE        (1u << 11)
+#define USB_USBCMD_FS_2        (1u << 15)
+#define USB_USBCMD_ITC(n)      (((n) & 0xFFu) << 16)
+/* USBSTS */
+#define USB_USBSTS_SEI         (1u << 4)
+#define USB_USBSTS_AAI         (1u << 5)
+#define USB_USBSTS_HCH         (1u << 12)
+#define USB_USBSTS_AS          (1u << 15)
+#define USB_USBSTS_NAKI        (1u << 16)
+/* USBINTR */
+#define USB_USBINTR_SEE        (1u << 4)
+#define USB_USBINTR_UAIE       (1u << 18)
+#define USB_USBINTR_UPIE       (1u << 19)
+#define USB_USBINTR_TIE1       (1u << 25)
+/* PORTSC1 */
+#define USB_PORTSC1_CCS        (1u << 0)
+#define USB_PORTSC1_CSC        (1u << 1)
+#define USB_PORTSC1_PE         (1u << 2)
+#define USB_PORTSC1_PEC        (1u << 3)
+#define USB_PORTSC1_OCC        (1u << 5)
+#define USB_PORTSC1_FPR        (1u << 6)
+#define USB_PORTSC1_PP         (1u << 12)
+#define USB_PORTSC1_PFSC       (1u << 24)
+
 /* --- SAI1 (I2S TX, Arduino audio) base 0x40404000, IRQ 76 --- */
 #define SAI1_TCSR (*(volatile uint32_t *)0x40404008u)
 #define SAI1_TCR1 (*(volatile uint32_t *)0x4040400Cu)
