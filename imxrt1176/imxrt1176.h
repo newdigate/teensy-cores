@@ -1129,4 +1129,454 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define FLEXSPI_LUT_NUM_PADS_1       0x00
 #define FLEXSPI_LUT_NUM_PADS_4       0x02
 
+/* ==== SEMC (external SDRAM controller) @ CS0 0x80000000 ==== */
+#define SEMC_BASE 0x400D4000u
+#define SEMC_MCR (*(volatile uint32_t *)(SEMC_BASE + 0x00u))
+#define SEMC_IOCR (*(volatile uint32_t *)(SEMC_BASE + 0x04u))
+#define SEMC_BMCR0 (*(volatile uint32_t *)(SEMC_BASE + 0x08u))
+#define SEMC_BMCR1 (*(volatile uint32_t *)(SEMC_BASE + 0x0Cu))
+#define SEMC_BR0 (*(volatile uint32_t *)(SEMC_BASE + 0x10u))
+#define SEMC_BR1 (*(volatile uint32_t *)(SEMC_BASE + 0x14u))
+#define SEMC_BR2 (*(volatile uint32_t *)(SEMC_BASE + 0x18u))
+#define SEMC_BR3 (*(volatile uint32_t *)(SEMC_BASE + 0x1Cu))
+#define SEMC_BR4 (*(volatile uint32_t *)(SEMC_BASE + 0x20u))
+#define SEMC_BR5 (*(volatile uint32_t *)(SEMC_BASE + 0x24u))
+#define SEMC_BR6 (*(volatile uint32_t *)(SEMC_BASE + 0x28u))
+#define SEMC_BR7 (*(volatile uint32_t *)(SEMC_BASE + 0x2Cu))
+#define SEMC_BR8 (*(volatile uint32_t *)(SEMC_BASE + 0x30u))
+#define SEMC_INTEN (*(volatile uint32_t *)(SEMC_BASE + 0x38u))
+#define SEMC_INTR (*(volatile uint32_t *)(SEMC_BASE + 0x3Cu))
+#define SEMC_SDRAMCR0 (*(volatile uint32_t *)(SEMC_BASE + 0x40u))
+#define SEMC_SDRAMCR1 (*(volatile uint32_t *)(SEMC_BASE + 0x44u))
+#define SEMC_SDRAMCR2 (*(volatile uint32_t *)(SEMC_BASE + 0x48u))
+#define SEMC_SDRAMCR3 (*(volatile uint32_t *)(SEMC_BASE + 0x4Cu))
+#define SEMC_DBICR0 (*(volatile uint32_t *)(SEMC_BASE + 0x80u))
+#define SEMC_DBICR1 (*(volatile uint32_t *)(SEMC_BASE + 0x84u))
+#define SEMC_IPCR0 (*(volatile uint32_t *)(SEMC_BASE + 0x90u))
+#define SEMC_IPCR1 (*(volatile uint32_t *)(SEMC_BASE + 0x94u))
+#define SEMC_IPCR2 (*(volatile uint32_t *)(SEMC_BASE + 0x98u))
+#define SEMC_IPCMD (*(volatile uint32_t *)(SEMC_BASE + 0x9Cu))
+#define SEMC_IPTXDAT (*(volatile uint32_t *)(SEMC_BASE + 0xA0u))
+#define SEMC_IPRXDAT (*(volatile uint32_t *)(SEMC_BASE + 0xB0u))
+#define SEMC_STS0 (*(volatile uint32_t *)(SEMC_BASE + 0xC0u))
+#define SEMC_STS1 (*(volatile uint32_t *)(SEMC_BASE + 0xC4u))
+#define SEMC_STS2 (*(volatile uint32_t *)(SEMC_BASE + 0xC8u))
+#define SEMC_STS3 (*(volatile uint32_t *)(SEMC_BASE + 0xCCu))
+#define SEMC_STS4 (*(volatile uint32_t *)(SEMC_BASE + 0xD0u))
+#define SEMC_STS5 (*(volatile uint32_t *)(SEMC_BASE + 0xD4u))
+#define SEMC_STS6 (*(volatile uint32_t *)(SEMC_BASE + 0xD8u))
+#define SEMC_STS7 (*(volatile uint32_t *)(SEMC_BASE + 0xDCu))
+#define SEMC_STS8 (*(volatile uint32_t *)(SEMC_BASE + 0xE0u))
+#define SEMC_STS9 (*(volatile uint32_t *)(SEMC_BASE + 0xE4u))
+#define SEMC_STS10 (*(volatile uint32_t *)(SEMC_BASE + 0xE8u))
+#define SEMC_STS11 (*(volatile uint32_t *)(SEMC_BASE + 0xECu))
+#define SEMC_STS12 (*(volatile uint32_t *)(SEMC_BASE + 0xF0u))
+#define SEMC_DCCR (*(volatile uint32_t *)(SEMC_BASE + 0x150u))
+#define SEMC_BR(n) (*(volatile uint32_t *)(SEMC_BASE + 0x10u + ((n) << 2)))  /* BR[0..8] */
+
+/* SEMC register bitfields (verbatim from NXP PERI_SEMC.h) */
+#define SEMC_MCR_SWRST_MASK (0x1U)
+#define SEMC_MCR_SWRST_SHIFT (0U)
+#define SEMC_MCR_SWRST(x) (((uint32_t)(((uint32_t)(x)) << SEMC_MCR_SWRST_SHIFT)) & SEMC_MCR_SWRST_MASK)
+#define SEMC_MCR_MDIS_MASK (0x2U)
+#define SEMC_MCR_MDIS_SHIFT (1U)
+#define SEMC_MCR_MDIS(x) (((uint32_t)(((uint32_t)(x)) << SEMC_MCR_MDIS_SHIFT)) & SEMC_MCR_MDIS_MASK)
+#define SEMC_MCR_DQSMD_MASK (0x4U)
+#define SEMC_MCR_DQSMD_SHIFT (2U)
+#define SEMC_MCR_DQSMD(x) (((uint32_t)(((uint32_t)(x)) << SEMC_MCR_DQSMD_SHIFT)) & SEMC_MCR_DQSMD_MASK)
+#define SEMC_MCR_WPOL0_MASK (0x40U)
+#define SEMC_MCR_WPOL0_SHIFT (6U)
+#define SEMC_MCR_WPOL0(x) (((uint32_t)(((uint32_t)(x)) << SEMC_MCR_WPOL0_SHIFT)) & SEMC_MCR_WPOL0_MASK)
+#define SEMC_MCR_WPOL1_MASK (0x80U)
+#define SEMC_MCR_WPOL1_SHIFT (7U)
+#define SEMC_MCR_WPOL1(x) (((uint32_t)(((uint32_t)(x)) << SEMC_MCR_WPOL1_SHIFT)) & SEMC_MCR_WPOL1_MASK)
+#define SEMC_MCR_CTO_MASK (0xFF0000U)
+#define SEMC_MCR_CTO_SHIFT (16U)
+#define SEMC_MCR_CTO(x) (((uint32_t)(((uint32_t)(x)) << SEMC_MCR_CTO_SHIFT)) & SEMC_MCR_CTO_MASK)
+#define SEMC_MCR_BTO_MASK (0x1F000000U)
+#define SEMC_MCR_BTO_SHIFT (24U)
+#define SEMC_MCR_BTO(x) (((uint32_t)(((uint32_t)(x)) << SEMC_MCR_BTO_SHIFT)) & SEMC_MCR_BTO_MASK)
+#define SEMC_IOCR_MUX_A8_MASK (0xFU)
+#define SEMC_IOCR_MUX_A8_SHIFT (0U)
+#define SEMC_IOCR_MUX_A8(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_MUX_A8_SHIFT)) & SEMC_IOCR_MUX_A8_MASK)
+#define SEMC_IOCR_MUX_CSX0_MASK (0xF0U)
+#define SEMC_IOCR_MUX_CSX0_SHIFT (4U)
+#define SEMC_IOCR_MUX_CSX0(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_MUX_CSX0_SHIFT)) & SEMC_IOCR_MUX_CSX0_MASK)
+#define SEMC_IOCR_MUX_CSX1_MASK (0xF00U)
+#define SEMC_IOCR_MUX_CSX1_SHIFT (8U)
+#define SEMC_IOCR_MUX_CSX1(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_MUX_CSX1_SHIFT)) & SEMC_IOCR_MUX_CSX1_MASK)
+#define SEMC_IOCR_MUX_CSX2_MASK (0xF000U)
+#define SEMC_IOCR_MUX_CSX2_SHIFT (12U)
+#define SEMC_IOCR_MUX_CSX2(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_MUX_CSX2_SHIFT)) & SEMC_IOCR_MUX_CSX2_MASK)
+#define SEMC_IOCR_MUX_CSX3_MASK (0xF0000U)
+#define SEMC_IOCR_MUX_CSX3_SHIFT (16U)
+#define SEMC_IOCR_MUX_CSX3(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_MUX_CSX3_SHIFT)) & SEMC_IOCR_MUX_CSX3_MASK)
+#define SEMC_IOCR_MUX_RDY_MASK (0xF00000U)
+#define SEMC_IOCR_MUX_RDY_SHIFT (20U)
+#define SEMC_IOCR_MUX_RDY(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_MUX_RDY_SHIFT)) & SEMC_IOCR_MUX_RDY_MASK)
+#define SEMC_IOCR_MUX_CLKX0_MASK (0x3000000U)
+#define SEMC_IOCR_MUX_CLKX0_SHIFT (24U)
+#define SEMC_IOCR_MUX_CLKX0(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_MUX_CLKX0_SHIFT)) & SEMC_IOCR_MUX_CLKX0_MASK)
+#define SEMC_IOCR_MUX_CLKX1_MASK (0xC000000U)
+#define SEMC_IOCR_MUX_CLKX1_SHIFT (26U)
+#define SEMC_IOCR_MUX_CLKX1(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_MUX_CLKX1_SHIFT)) & SEMC_IOCR_MUX_CLKX1_MASK)
+#define SEMC_IOCR_CLKX0_AO_MASK (0x10000000U)
+#define SEMC_IOCR_CLKX0_AO_SHIFT (28U)
+#define SEMC_IOCR_CLKX0_AO(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_CLKX0_AO_SHIFT)) & SEMC_IOCR_CLKX0_AO_MASK)
+#define SEMC_IOCR_CLKX1_AO_MASK (0x20000000U)
+#define SEMC_IOCR_CLKX1_AO_SHIFT (29U)
+#define SEMC_IOCR_CLKX1_AO(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IOCR_CLKX1_AO_SHIFT)) & SEMC_IOCR_CLKX1_AO_MASK)
+#define SEMC_BMCR0_WQOS_MASK (0xFU)
+#define SEMC_BMCR0_WQOS_SHIFT (0U)
+#define SEMC_BMCR0_WQOS(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR0_WQOS_SHIFT)) & SEMC_BMCR0_WQOS_MASK)
+#define SEMC_BMCR0_WAGE_MASK (0xF0U)
+#define SEMC_BMCR0_WAGE_SHIFT (4U)
+#define SEMC_BMCR0_WAGE(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR0_WAGE_SHIFT)) & SEMC_BMCR0_WAGE_MASK)
+#define SEMC_BMCR0_WSH_MASK (0xFF00U)
+#define SEMC_BMCR0_WSH_SHIFT (8U)
+#define SEMC_BMCR0_WSH(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR0_WSH_SHIFT)) & SEMC_BMCR0_WSH_MASK)
+#define SEMC_BMCR0_WRWS_MASK (0xFF0000U)
+#define SEMC_BMCR0_WRWS_SHIFT (16U)
+#define SEMC_BMCR0_WRWS(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR0_WRWS_SHIFT)) & SEMC_BMCR0_WRWS_MASK)
+#define SEMC_BMCR1_WQOS_MASK (0xFU)
+#define SEMC_BMCR1_WQOS_SHIFT (0U)
+#define SEMC_BMCR1_WQOS(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR1_WQOS_SHIFT)) & SEMC_BMCR1_WQOS_MASK)
+#define SEMC_BMCR1_WAGE_MASK (0xF0U)
+#define SEMC_BMCR1_WAGE_SHIFT (4U)
+#define SEMC_BMCR1_WAGE(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR1_WAGE_SHIFT)) & SEMC_BMCR1_WAGE_MASK)
+#define SEMC_BMCR1_WPH_MASK (0xFF00U)
+#define SEMC_BMCR1_WPH_SHIFT (8U)
+#define SEMC_BMCR1_WPH(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR1_WPH_SHIFT)) & SEMC_BMCR1_WPH_MASK)
+#define SEMC_BMCR1_WRWS_MASK (0xFF0000U)
+#define SEMC_BMCR1_WRWS_SHIFT (16U)
+#define SEMC_BMCR1_WRWS(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR1_WRWS_SHIFT)) & SEMC_BMCR1_WRWS_MASK)
+#define SEMC_BMCR1_WBR_MASK (0xFF000000U)
+#define SEMC_BMCR1_WBR_SHIFT (24U)
+#define SEMC_BMCR1_WBR(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BMCR1_WBR_SHIFT)) & SEMC_BMCR1_WBR_MASK)
+#define SEMC_BR_VLD_MASK (0x1U)
+#define SEMC_BR_VLD_SHIFT (0U)
+#define SEMC_BR_VLD(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BR_VLD_SHIFT)) & SEMC_BR_VLD_MASK)
+#define SEMC_BR_MS_MASK (0x3EU)
+#define SEMC_BR_MS_SHIFT (1U)
+#define SEMC_BR_MS(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BR_MS_SHIFT)) & SEMC_BR_MS_MASK)
+#define SEMC_BR_BA_MASK (0xFFFFF000U)
+#define SEMC_BR_BA_SHIFT (12U)
+#define SEMC_BR_BA(x) (((uint32_t)(((uint32_t)(x)) << SEMC_BR_BA_SHIFT)) & SEMC_BR_BA_MASK)
+#define SEMC_INTEN_IPCMDDONEEN_MASK (0x1U)
+#define SEMC_INTEN_IPCMDDONEEN_SHIFT (0U)
+#define SEMC_INTEN_IPCMDDONEEN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTEN_IPCMDDONEEN_SHIFT)) & SEMC_INTEN_IPCMDDONEEN_MASK)
+#define SEMC_INTEN_IPCMDERREN_MASK (0x2U)
+#define SEMC_INTEN_IPCMDERREN_SHIFT (1U)
+#define SEMC_INTEN_IPCMDERREN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTEN_IPCMDERREN_SHIFT)) & SEMC_INTEN_IPCMDERREN_MASK)
+#define SEMC_INTEN_AXICMDERREN_MASK (0x4U)
+#define SEMC_INTEN_AXICMDERREN_SHIFT (2U)
+#define SEMC_INTEN_AXICMDERREN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTEN_AXICMDERREN_SHIFT)) & SEMC_INTEN_AXICMDERREN_MASK)
+#define SEMC_INTEN_AXIBUSERREN_MASK (0x8U)
+#define SEMC_INTEN_AXIBUSERREN_SHIFT (3U)
+#define SEMC_INTEN_AXIBUSERREN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTEN_AXIBUSERREN_SHIFT)) & SEMC_INTEN_AXIBUSERREN_MASK)
+#define SEMC_INTEN_NDPAGEENDEN_MASK (0x10U)
+#define SEMC_INTEN_NDPAGEENDEN_SHIFT (4U)
+#define SEMC_INTEN_NDPAGEENDEN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTEN_NDPAGEENDEN_SHIFT)) & SEMC_INTEN_NDPAGEENDEN_MASK)
+#define SEMC_INTEN_NDNOPENDEN_MASK (0x20U)
+#define SEMC_INTEN_NDNOPENDEN_SHIFT (5U)
+#define SEMC_INTEN_NDNOPENDEN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTEN_NDNOPENDEN_SHIFT)) & SEMC_INTEN_NDNOPENDEN_MASK)
+#define SEMC_INTR_IPCMDDONE_MASK (0x1U)
+#define SEMC_INTR_IPCMDDONE_SHIFT (0U)
+#define SEMC_INTR_IPCMDDONE(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTR_IPCMDDONE_SHIFT)) & SEMC_INTR_IPCMDDONE_MASK)
+#define SEMC_INTR_IPCMDERR_MASK (0x2U)
+#define SEMC_INTR_IPCMDERR_SHIFT (1U)
+#define SEMC_INTR_IPCMDERR(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTR_IPCMDERR_SHIFT)) & SEMC_INTR_IPCMDERR_MASK)
+#define SEMC_INTR_AXICMDERR_MASK (0x4U)
+#define SEMC_INTR_AXICMDERR_SHIFT (2U)
+#define SEMC_INTR_AXICMDERR(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTR_AXICMDERR_SHIFT)) & SEMC_INTR_AXICMDERR_MASK)
+#define SEMC_INTR_AXIBUSERR_MASK (0x8U)
+#define SEMC_INTR_AXIBUSERR_SHIFT (3U)
+#define SEMC_INTR_AXIBUSERR(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTR_AXIBUSERR_SHIFT)) & SEMC_INTR_AXIBUSERR_MASK)
+#define SEMC_INTR_NDPAGEEND_MASK (0x10U)
+#define SEMC_INTR_NDPAGEEND_SHIFT (4U)
+#define SEMC_INTR_NDPAGEEND(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTR_NDPAGEEND_SHIFT)) & SEMC_INTR_NDPAGEEND_MASK)
+#define SEMC_INTR_NDNOPEND_MASK (0x20U)
+#define SEMC_INTR_NDNOPEND_SHIFT (5U)
+#define SEMC_INTR_NDNOPEND(x) (((uint32_t)(((uint32_t)(x)) << SEMC_INTR_NDNOPEND_SHIFT)) & SEMC_INTR_NDNOPEND_MASK)
+#define SEMC_SDRAMCR0_PS_MASK (0x3U)
+#define SEMC_SDRAMCR0_PS_SHIFT (0U)
+#define SEMC_SDRAMCR0_PS(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR0_PS_SHIFT)) & SEMC_SDRAMCR0_PS_MASK)
+#define SEMC_SDRAMCR0_BL_MASK (0x70U)
+#define SEMC_SDRAMCR0_BL_SHIFT (4U)
+#define SEMC_SDRAMCR0_BL(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR0_BL_SHIFT)) & SEMC_SDRAMCR0_BL_MASK)
+#define SEMC_SDRAMCR0_COL8_MASK (0x80U)
+#define SEMC_SDRAMCR0_COL8_SHIFT (7U)
+#define SEMC_SDRAMCR0_COL8(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR0_COL8_SHIFT)) & SEMC_SDRAMCR0_COL8_MASK)
+#define SEMC_SDRAMCR0_COL_MASK (0x300U)
+#define SEMC_SDRAMCR0_COL_SHIFT (8U)
+#define SEMC_SDRAMCR0_COL(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR0_COL_SHIFT)) & SEMC_SDRAMCR0_COL_MASK)
+#define SEMC_SDRAMCR0_CL_MASK (0xC00U)
+#define SEMC_SDRAMCR0_CL_SHIFT (10U)
+#define SEMC_SDRAMCR0_CL(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR0_CL_SHIFT)) & SEMC_SDRAMCR0_CL_MASK)
+#define SEMC_SDRAMCR0_BANK2_MASK (0x4000U)
+#define SEMC_SDRAMCR0_BANK2_SHIFT (14U)
+#define SEMC_SDRAMCR0_BANK2(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR0_BANK2_SHIFT)) & SEMC_SDRAMCR0_BANK2_MASK)
+#define SEMC_SDRAMCR1_PRE2ACT_MASK (0xFU)
+#define SEMC_SDRAMCR1_PRE2ACT_SHIFT (0U)
+#define SEMC_SDRAMCR1_PRE2ACT(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR1_PRE2ACT_SHIFT)) & SEMC_SDRAMCR1_PRE2ACT_MASK)
+#define SEMC_SDRAMCR1_ACT2RW_MASK (0xF0U)
+#define SEMC_SDRAMCR1_ACT2RW_SHIFT (4U)
+#define SEMC_SDRAMCR1_ACT2RW(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR1_ACT2RW_SHIFT)) & SEMC_SDRAMCR1_ACT2RW_MASK)
+#define SEMC_SDRAMCR1_RFRC_MASK (0x1F00U)
+#define SEMC_SDRAMCR1_RFRC_SHIFT (8U)
+#define SEMC_SDRAMCR1_RFRC(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR1_RFRC_SHIFT)) & SEMC_SDRAMCR1_RFRC_MASK)
+#define SEMC_SDRAMCR1_WRC_MASK (0xE000U)
+#define SEMC_SDRAMCR1_WRC_SHIFT (13U)
+#define SEMC_SDRAMCR1_WRC(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR1_WRC_SHIFT)) & SEMC_SDRAMCR1_WRC_MASK)
+#define SEMC_SDRAMCR1_CKEOFF_MASK (0xF0000U)
+#define SEMC_SDRAMCR1_CKEOFF_SHIFT (16U)
+#define SEMC_SDRAMCR1_CKEOFF(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR1_CKEOFF_SHIFT)) & SEMC_SDRAMCR1_CKEOFF_MASK)
+#define SEMC_SDRAMCR1_ACT2PRE_MASK (0xF00000U)
+#define SEMC_SDRAMCR1_ACT2PRE_SHIFT (20U)
+#define SEMC_SDRAMCR1_ACT2PRE(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR1_ACT2PRE_SHIFT)) & SEMC_SDRAMCR1_ACT2PRE_MASK)
+#define SEMC_SDRAMCR2_SRRC_MASK (0xFFU)
+#define SEMC_SDRAMCR2_SRRC_SHIFT (0U)
+#define SEMC_SDRAMCR2_SRRC(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR2_SRRC_SHIFT)) & SEMC_SDRAMCR2_SRRC_MASK)
+#define SEMC_SDRAMCR2_REF2REF_MASK (0xFF00U)
+#define SEMC_SDRAMCR2_REF2REF_SHIFT (8U)
+#define SEMC_SDRAMCR2_REF2REF(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR2_REF2REF_SHIFT)) & SEMC_SDRAMCR2_REF2REF_MASK)
+#define SEMC_SDRAMCR2_ACT2ACT_MASK (0xFF0000U)
+#define SEMC_SDRAMCR2_ACT2ACT_SHIFT (16U)
+#define SEMC_SDRAMCR2_ACT2ACT(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR2_ACT2ACT_SHIFT)) & SEMC_SDRAMCR2_ACT2ACT_MASK)
+#define SEMC_SDRAMCR2_ITO_MASK (0xFF000000U)
+#define SEMC_SDRAMCR2_ITO_SHIFT (24U)
+#define SEMC_SDRAMCR2_ITO(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR2_ITO_SHIFT)) & SEMC_SDRAMCR2_ITO_MASK)
+#define SEMC_SDRAMCR3_REN_MASK (0x1U)
+#define SEMC_SDRAMCR3_REN_SHIFT (0U)
+#define SEMC_SDRAMCR3_REN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR3_REN_SHIFT)) & SEMC_SDRAMCR3_REN_MASK)
+#define SEMC_SDRAMCR3_REBL_MASK (0xEU)
+#define SEMC_SDRAMCR3_REBL_SHIFT (1U)
+#define SEMC_SDRAMCR3_REBL(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR3_REBL_SHIFT)) & SEMC_SDRAMCR3_REBL_MASK)
+#define SEMC_SDRAMCR3_PRESCALE_MASK (0xFF00U)
+#define SEMC_SDRAMCR3_PRESCALE_SHIFT (8U)
+#define SEMC_SDRAMCR3_PRESCALE(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR3_PRESCALE_SHIFT)) & SEMC_SDRAMCR3_PRESCALE_MASK)
+#define SEMC_SDRAMCR3_RT_MASK (0xFF0000U)
+#define SEMC_SDRAMCR3_RT_SHIFT (16U)
+#define SEMC_SDRAMCR3_RT(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR3_RT_SHIFT)) & SEMC_SDRAMCR3_RT_MASK)
+#define SEMC_SDRAMCR3_UT_MASK (0xFF000000U)
+#define SEMC_SDRAMCR3_UT_SHIFT (24U)
+#define SEMC_SDRAMCR3_UT(x) (((uint32_t)(((uint32_t)(x)) << SEMC_SDRAMCR3_UT_SHIFT)) & SEMC_SDRAMCR3_UT_MASK)
+#define SEMC_IPCR0_SA_MASK (0xFFFFFFFFU)
+#define SEMC_IPCR0_SA_SHIFT (0U)
+#define SEMC_IPCR0_SA(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCR0_SA_SHIFT)) & SEMC_IPCR0_SA_MASK)
+#define SEMC_IPCR1_DATSZ_MASK (0x7U)
+#define SEMC_IPCR1_DATSZ_SHIFT (0U)
+#define SEMC_IPCR1_DATSZ(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCR1_DATSZ_SHIFT)) & SEMC_IPCR1_DATSZ_MASK)
+#define SEMC_IPCR1_NAND_EXT_ADDR_MASK (0xFF00U)
+#define SEMC_IPCR1_NAND_EXT_ADDR_SHIFT (8U)
+#define SEMC_IPCR1_NAND_EXT_ADDR(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCR1_NAND_EXT_ADDR_SHIFT)) & SEMC_IPCR1_NAND_EXT_ADDR_MASK)
+#define SEMC_IPCR2_BM0_MASK (0x1U)
+#define SEMC_IPCR2_BM0_SHIFT (0U)
+#define SEMC_IPCR2_BM0(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCR2_BM0_SHIFT)) & SEMC_IPCR2_BM0_MASK)
+#define SEMC_IPCR2_BM1_MASK (0x2U)
+#define SEMC_IPCR2_BM1_SHIFT (1U)
+#define SEMC_IPCR2_BM1(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCR2_BM1_SHIFT)) & SEMC_IPCR2_BM1_MASK)
+#define SEMC_IPCR2_BM2_MASK (0x4U)
+#define SEMC_IPCR2_BM2_SHIFT (2U)
+#define SEMC_IPCR2_BM2(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCR2_BM2_SHIFT)) & SEMC_IPCR2_BM2_MASK)
+#define SEMC_IPCR2_BM3_MASK (0x8U)
+#define SEMC_IPCR2_BM3_SHIFT (3U)
+#define SEMC_IPCR2_BM3(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCR2_BM3_SHIFT)) & SEMC_IPCR2_BM3_MASK)
+#define SEMC_IPCMD_CMD_MASK (0xFFFFU)
+#define SEMC_IPCMD_CMD_SHIFT (0U)
+#define SEMC_IPCMD_CMD(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCMD_CMD_SHIFT)) & SEMC_IPCMD_CMD_MASK)
+#define SEMC_IPCMD_KEY_MASK (0xFFFF0000U)
+#define SEMC_IPCMD_KEY_SHIFT (16U)
+#define SEMC_IPCMD_KEY(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPCMD_KEY_SHIFT)) & SEMC_IPCMD_KEY_MASK)
+#define SEMC_IPTXDAT_DAT_MASK (0xFFFFFFFFU)
+#define SEMC_IPTXDAT_DAT_SHIFT (0U)
+#define SEMC_IPTXDAT_DAT(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPTXDAT_DAT_SHIFT)) & SEMC_IPTXDAT_DAT_MASK)
+#define SEMC_IPRXDAT_DAT_MASK (0xFFFFFFFFU)
+#define SEMC_IPRXDAT_DAT_SHIFT (0U)
+#define SEMC_IPRXDAT_DAT(x) (((uint32_t)(((uint32_t)(x)) << SEMC_IPRXDAT_DAT_SHIFT)) & SEMC_IPRXDAT_DAT_MASK)
+#define SEMC_STS0_IDLE_MASK (0x1U)
+#define SEMC_STS0_IDLE_SHIFT (0U)
+#define SEMC_STS0_IDLE(x) (((uint32_t)(((uint32_t)(x)) << SEMC_STS0_IDLE_SHIFT)) & SEMC_STS0_IDLE_MASK)
+#define SEMC_STS0_NARDY_MASK (0x2U)
+#define SEMC_STS0_NARDY_SHIFT (1U)
+#define SEMC_STS0_NARDY(x) (((uint32_t)(((uint32_t)(x)) << SEMC_STS0_NARDY_SHIFT)) & SEMC_STS0_NARDY_MASK)
+#define SEMC_DCCR_SDRAMEN_MASK (0x1U)
+#define SEMC_DCCR_SDRAMEN_SHIFT (0U)
+#define SEMC_DCCR_SDRAMEN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_DCCR_SDRAMEN_SHIFT)) & SEMC_DCCR_SDRAMEN_MASK)
+#define SEMC_DCCR_SDRAMVAL_MASK (0x3EU)
+#define SEMC_DCCR_SDRAMVAL_SHIFT (1U)
+#define SEMC_DCCR_SDRAMVAL(x) (((uint32_t)(((uint32_t)(x)) << SEMC_DCCR_SDRAMVAL_SHIFT)) & SEMC_DCCR_SDRAMVAL_MASK)
+#define SEMC_DCCR_NOREN_MASK (0x100U)
+#define SEMC_DCCR_NOREN_SHIFT (8U)
+#define SEMC_DCCR_NOREN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_DCCR_NOREN_SHIFT)) & SEMC_DCCR_NOREN_MASK)
+#define SEMC_DCCR_NORVAL_MASK (0x3E00U)
+#define SEMC_DCCR_NORVAL_SHIFT (9U)
+#define SEMC_DCCR_NORVAL(x) (((uint32_t)(((uint32_t)(x)) << SEMC_DCCR_NORVAL_SHIFT)) & SEMC_DCCR_NORVAL_MASK)
+#define SEMC_DCCR_SRAM0EN_MASK (0x10000U)
+#define SEMC_DCCR_SRAM0EN_SHIFT (16U)
+#define SEMC_DCCR_SRAM0EN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_DCCR_SRAM0EN_SHIFT)) & SEMC_DCCR_SRAM0EN_MASK)
+#define SEMC_DCCR_SRAM0VAL_MASK (0x3E0000U)
+#define SEMC_DCCR_SRAM0VAL_SHIFT (17U)
+#define SEMC_DCCR_SRAM0VAL(x) (((uint32_t)(((uint32_t)(x)) << SEMC_DCCR_SRAM0VAL_SHIFT)) & SEMC_DCCR_SRAM0VAL_MASK)
+#define SEMC_DCCR_SRAMXEN_MASK (0x1000000U)
+#define SEMC_DCCR_SRAMXEN_SHIFT (24U)
+#define SEMC_DCCR_SRAMXEN(x) (((uint32_t)(((uint32_t)(x)) << SEMC_DCCR_SRAMXEN_SHIFT)) & SEMC_DCCR_SRAMXEN_MASK)
+#define SEMC_DCCR_SRAMXVAL_MASK (0x3E000000U)
+#define SEMC_DCCR_SRAMXVAL_SHIFT (25U)
+#define SEMC_DCCR_SRAMXVAL(x) (((uint32_t)(((uint32_t)(x)) << SEMC_DCCR_SRAMXVAL_SHIFT)) & SEMC_DCCR_SRAMXVAL_MASK)
+
+/* SDRAM IP command codes (fsl_semc.h semc_ipcmd_sdram_t) + magic key */
+#define kSEMC_SDRAMCM_Read 0x8u
+#define kSEMC_SDRAMCM_Write 0x9u
+#define kSEMC_SDRAMCM_Modeset 0xAu
+#define kSEMC_SDRAMCM_Active 0xBu
+#define kSEMC_SDRAMCM_AutoRefresh 0xCu
+#define kSEMC_SDRAMCM_SelfRefresh 0xDu
+#define kSEMC_SDRAMCM_Precharge 0xEu
+#define kSEMC_SDRAMCM_Prechargeall 0xFu
+#define SEMC_IPCMD_KEY_MAGIC 0xA55Au  /* SEMC_IPCOMMANDMAGICKEY */
+#define SEMC_SDRAM_MODESETCAL_OFFSET 4u  /* mode = burstLen | (CL << 4) */
+
+/* SEMC SDRAM pads (SDK semc/sdram pin_mux.c): all IOMUXC MUX_MODE=ALT0,
+ * pad-ctl 0x08 = PDRV high-drive + internal pulldown (incl. CLK/CLKX). */
+#define SEMC_PAD_MUX_ALT 0x0u
+#define SEMC_PAD_CTL_VAL 0x08u
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_00 (*(volatile uint32_t *)0x400E8010u) /* SEMC_DATA00 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_01 (*(volatile uint32_t *)0x400E8014u) /* SEMC_DATA01 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_02 (*(volatile uint32_t *)0x400E8018u) /* SEMC_DATA02 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_03 (*(volatile uint32_t *)0x400E801Cu) /* SEMC_DATA03 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_04 (*(volatile uint32_t *)0x400E8020u) /* SEMC_DATA04 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_05 (*(volatile uint32_t *)0x400E8024u) /* SEMC_DATA05 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_06 (*(volatile uint32_t *)0x400E8028u) /* SEMC_DATA06 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_07 (*(volatile uint32_t *)0x400E802Cu) /* SEMC_DATA07 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_08 (*(volatile uint32_t *)0x400E8030u) /* SEMC_DM00 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_09 (*(volatile uint32_t *)0x400E8034u) /* SEMC_ADDR00 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_10 (*(volatile uint32_t *)0x400E8038u) /* SEMC_ADDR01 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_11 (*(volatile uint32_t *)0x400E803Cu) /* SEMC_ADDR02 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_12 (*(volatile uint32_t *)0x400E8040u) /* SEMC_ADDR03 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_13 (*(volatile uint32_t *)0x400E8044u) /* SEMC_ADDR04 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_14 (*(volatile uint32_t *)0x400E8048u) /* SEMC_ADDR05 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_15 (*(volatile uint32_t *)0x400E804Cu) /* SEMC_ADDR06 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_16 (*(volatile uint32_t *)0x400E8050u) /* SEMC_ADDR07 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_17 (*(volatile uint32_t *)0x400E8054u) /* SEMC_ADDR08 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_18 (*(volatile uint32_t *)0x400E8058u) /* SEMC_ADDR09 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_19 (*(volatile uint32_t *)0x400E805Cu) /* SEMC_ADDR11 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_20 (*(volatile uint32_t *)0x400E8060u) /* SEMC_ADDR12 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_21 (*(volatile uint32_t *)0x400E8064u) /* SEMC_BA0 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_22 (*(volatile uint32_t *)0x400E8068u) /* SEMC_BA1 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_23 (*(volatile uint32_t *)0x400E806Cu) /* SEMC_ADDR10 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_24 (*(volatile uint32_t *)0x400E8070u) /* SEMC_CAS */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_25 (*(volatile uint32_t *)0x400E8074u) /* SEMC_RAS */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_26 (*(volatile uint32_t *)0x400E8078u) /* SEMC_CLK */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_27 (*(volatile uint32_t *)0x400E807Cu) /* SEMC_CKE */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_28 (*(volatile uint32_t *)0x400E8080u) /* SEMC_WE */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_29 (*(volatile uint32_t *)0x400E8084u) /* SEMC_CS0 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_30 (*(volatile uint32_t *)0x400E8088u) /* SEMC_DATA08 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_31 (*(volatile uint32_t *)0x400E808Cu) /* SEMC_DATA09 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_32 (*(volatile uint32_t *)0x400E8090u) /* SEMC_DATA10 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_33 (*(volatile uint32_t *)0x400E8094u) /* SEMC_DATA11 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_34 (*(volatile uint32_t *)0x400E8098u) /* SEMC_DATA12 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_35 (*(volatile uint32_t *)0x400E809Cu) /* SEMC_DATA13 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_36 (*(volatile uint32_t *)0x400E80A0u) /* SEMC_DATA14 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_37 (*(volatile uint32_t *)0x400E80A4u) /* SEMC_DATA15 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_38 (*(volatile uint32_t *)0x400E80A8u) /* SEMC_DM01 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_39 (*(volatile uint32_t *)0x400E80ACu) /* SEMC_DQS */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_40 (*(volatile uint32_t *)0x400E80B0u) /* SEMC_RDY */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_41 (*(volatile uint32_t *)0x400E80B4u) /* SEMC_CSX00 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_00 (*(volatile uint32_t *)0x400E80B8u) /* SEMC_DATA16 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_01 (*(volatile uint32_t *)0x400E80BCu) /* SEMC_DATA17 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_02 (*(volatile uint32_t *)0x400E80C0u) /* SEMC_DATA18 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_03 (*(volatile uint32_t *)0x400E80C4u) /* SEMC_DATA19 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_04 (*(volatile uint32_t *)0x400E80C8u) /* SEMC_DATA20 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_05 (*(volatile uint32_t *)0x400E80CCu) /* SEMC_DATA21 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_06 (*(volatile uint32_t *)0x400E80D0u) /* SEMC_DATA22 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_07 (*(volatile uint32_t *)0x400E80D4u) /* SEMC_DATA23 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_08 (*(volatile uint32_t *)0x400E80D8u) /* SEMC_DM02 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_09 (*(volatile uint32_t *)0x400E80DCu) /* SEMC_DATA24 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_10 (*(volatile uint32_t *)0x400E80E0u) /* SEMC_DATA25 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_11 (*(volatile uint32_t *)0x400E80E4u) /* SEMC_DATA26 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_12 (*(volatile uint32_t *)0x400E80E8u) /* SEMC_DATA27 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_13 (*(volatile uint32_t *)0x400E80ECu) /* SEMC_DATA28 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_14 (*(volatile uint32_t *)0x400E80F0u) /* SEMC_DATA29 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_15 (*(volatile uint32_t *)0x400E80F4u) /* SEMC_DATA30 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_16 (*(volatile uint32_t *)0x400E80F8u) /* SEMC_DATA31 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_17 (*(volatile uint32_t *)0x400E80FCu) /* SEMC_DM03 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_18 (*(volatile uint32_t *)0x400E8100u) /* SEMC_DQS4 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_19 (*(volatile uint32_t *)0x400E8104u) /* SEMC_CLKX00 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_20 (*(volatile uint32_t *)0x400E8108u) /* SEMC_CLKX01 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_00 (*(volatile uint32_t *)0x400E8254u) /* SEMC_DATA00 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_01 (*(volatile uint32_t *)0x400E8258u) /* SEMC_DATA01 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_02 (*(volatile uint32_t *)0x400E825Cu) /* SEMC_DATA02 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_03 (*(volatile uint32_t *)0x400E8260u) /* SEMC_DATA03 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_04 (*(volatile uint32_t *)0x400E8264u) /* SEMC_DATA04 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_05 (*(volatile uint32_t *)0x400E8268u) /* SEMC_DATA05 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_06 (*(volatile uint32_t *)0x400E826Cu) /* SEMC_DATA06 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_07 (*(volatile uint32_t *)0x400E8270u) /* SEMC_DATA07 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_08 (*(volatile uint32_t *)0x400E8274u) /* SEMC_DM00 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_09 (*(volatile uint32_t *)0x400E8278u) /* SEMC_ADDR00 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_10 (*(volatile uint32_t *)0x400E827Cu) /* SEMC_ADDR01 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_11 (*(volatile uint32_t *)0x400E8280u) /* SEMC_ADDR02 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_12 (*(volatile uint32_t *)0x400E8284u) /* SEMC_ADDR03 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_13 (*(volatile uint32_t *)0x400E8288u) /* SEMC_ADDR04 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_14 (*(volatile uint32_t *)0x400E828Cu) /* SEMC_ADDR05 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_15 (*(volatile uint32_t *)0x400E8290u) /* SEMC_ADDR06 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_16 (*(volatile uint32_t *)0x400E8294u) /* SEMC_ADDR07 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_17 (*(volatile uint32_t *)0x400E8298u) /* SEMC_ADDR08 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_18 (*(volatile uint32_t *)0x400E829Cu) /* SEMC_ADDR09 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_19 (*(volatile uint32_t *)0x400E82A0u) /* SEMC_ADDR11 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_20 (*(volatile uint32_t *)0x400E82A4u) /* SEMC_ADDR12 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_21 (*(volatile uint32_t *)0x400E82A8u) /* SEMC_BA0 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_22 (*(volatile uint32_t *)0x400E82ACu) /* SEMC_BA1 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_23 (*(volatile uint32_t *)0x400E82B0u) /* SEMC_ADDR10 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_24 (*(volatile uint32_t *)0x400E82B4u) /* SEMC_CAS */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_25 (*(volatile uint32_t *)0x400E82B8u) /* SEMC_RAS */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_26 (*(volatile uint32_t *)0x400E82BCu) /* SEMC_CLK */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_27 (*(volatile uint32_t *)0x400E82C0u) /* SEMC_CKE */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_28 (*(volatile uint32_t *)0x400E82C4u) /* SEMC_WE */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_29 (*(volatile uint32_t *)0x400E82C8u) /* SEMC_CS0 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_30 (*(volatile uint32_t *)0x400E82CCu) /* SEMC_DATA08 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_31 (*(volatile uint32_t *)0x400E82D0u) /* SEMC_DATA09 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_32 (*(volatile uint32_t *)0x400E82D4u) /* SEMC_DATA10 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_33 (*(volatile uint32_t *)0x400E82D8u) /* SEMC_DATA11 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_34 (*(volatile uint32_t *)0x400E82DCu) /* SEMC_DATA12 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_35 (*(volatile uint32_t *)0x400E82E0u) /* SEMC_DATA13 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_36 (*(volatile uint32_t *)0x400E82E4u) /* SEMC_DATA14 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_37 (*(volatile uint32_t *)0x400E82E8u) /* SEMC_DATA15 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_38 (*(volatile uint32_t *)0x400E82ECu) /* SEMC_DM01 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_39 (*(volatile uint32_t *)0x400E82F0u) /* SEMC_DQS */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_40 (*(volatile uint32_t *)0x400E82F4u) /* SEMC_RDY */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B1_41 (*(volatile uint32_t *)0x400E82F8u) /* SEMC_CSX00 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_00 (*(volatile uint32_t *)0x400E82FCu) /* SEMC_DATA16 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_01 (*(volatile uint32_t *)0x400E8300u) /* SEMC_DATA17 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_02 (*(volatile uint32_t *)0x400E8304u) /* SEMC_DATA18 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_03 (*(volatile uint32_t *)0x400E8308u) /* SEMC_DATA19 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_04 (*(volatile uint32_t *)0x400E830Cu) /* SEMC_DATA20 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_05 (*(volatile uint32_t *)0x400E8310u) /* SEMC_DATA21 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_06 (*(volatile uint32_t *)0x400E8314u) /* SEMC_DATA22 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_07 (*(volatile uint32_t *)0x400E8318u) /* SEMC_DATA23 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_08 (*(volatile uint32_t *)0x400E831Cu) /* SEMC_DM02 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_09 (*(volatile uint32_t *)0x400E8320u) /* SEMC_DATA24 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_10 (*(volatile uint32_t *)0x400E8324u) /* SEMC_DATA25 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_11 (*(volatile uint32_t *)0x400E8328u) /* SEMC_DATA26 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_12 (*(volatile uint32_t *)0x400E832Cu) /* SEMC_DATA27 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_13 (*(volatile uint32_t *)0x400E8330u) /* SEMC_DATA28 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_14 (*(volatile uint32_t *)0x400E8334u) /* SEMC_DATA29 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_15 (*(volatile uint32_t *)0x400E8338u) /* SEMC_DATA30 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_16 (*(volatile uint32_t *)0x400E833Cu) /* SEMC_DATA31 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_17 (*(volatile uint32_t *)0x400E8340u) /* SEMC_DM03 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_18 (*(volatile uint32_t *)0x400E8344u) /* SEMC_DQS4 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_19 (*(volatile uint32_t *)0x400E8348u) /* SEMC_CLKX00 */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_20 (*(volatile uint32_t *)0x400E834Cu) /* SEMC_CLKX01 */
+
+/* SEMC clock: root 4 (kCLOCK_Root_Semc) = SYS_PLL2_PFD1 594MHz / 3 = 198MHz;
+ * gate LPCG33 (kCLOCK_Semc). semc_clock_hz = 198000000 for Task 2 timing. */
+#define CCM_CLOCK_ROOT4_CONTROL (*(volatile uint32_t *)0x40CC0200u) /* kCLOCK_Root_Semc */
+#define CCM_LPCG33_DIRECT       (*(volatile uint32_t *)0x40CC6420u) /* kCLOCK_Semc gate */
+#define SEMC_CLOCK_HZ 198000000u  /* SYS_PLL2_PFD1 (594 MHz) / 3 */
+
+/* External SDRAM attribute -> .externalram (imxrt1176.ld ERAM @ 0x80000000) */
+#ifndef EXTMEM
+#define EXTMEM __attribute__((section(".externalram"), used))
+#endif
+
 #endif
