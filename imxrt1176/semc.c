@@ -54,12 +54,12 @@
  * via the ported SEMC_ConvertTiming() helper — DO NOT hand-tune the cycle
  * counts; a wrong value works in QEMU (no timing model) but corrupts on silicon.
  *
- * CLOCK DEPENDENCY (see semc_sdram_init step 1): this routes the SEMC clock root
- * (CLOCK_ROOT4) at SYS_PLL2_PFD1/3 and ungates the SEMC LPCG, but it relies on
- * SYS_PLL2 + PFD1 already being powered.  The current minimal core clock bring-up
- * (set_arm_clock_rt1176) only brings up the ARM PLL and does NOT init SYS_PLL2 /
- * PFD1, and the boot header carries no DCD (bootdata.c dcd=0), so on silicon the
- * SEMC root is not yet 198 MHz until the clock task adds the SYS_PLL2/PFD1 init.
+ * CLOCK: semc_sdram_init step 1 routes the SEMC clock root (CLOCK_ROOT4) to
+ * SYS_PLL2_PFD1/3 and ungates the SEMC LPCG.  SYS_PLL2 and its PFDs are brought
+ * up by the boot ROM (HW-verified: PFD1 reads FRAC=16 -> 594 MHz, ungated; the
+ * SD card likewise rides SYS_PLL2_PFD2), so no explicit PLL bring-up is needed —
+ * and must NOT be added, as re-initing SYS_PLL2 would disturb the SD/audio PFDs.
+ * (set_arm_clock_rt1176 only touches the ARM PLL; the boot header has no DCD.)
  * QEMU models the clock tree as survival, so this is transparent there.
  * ========================================================================== */
 
@@ -165,8 +165,9 @@ void semc_sdram_init(void)
 	 *                                          CS0, DQS)
 	 *   idx 42..59 -> GPIO_EMC_B2_00..B2_17  (DATA16-31, DM02, DM03)
 	 * Skip idx 40/41 (RDY, CSX00) and stop before idx 60..62 (DQS4, CLKX00/01):
-	 * none are SDRAM signals.  DQS (B1_39) is programmed but its SION bit is not
-	 * needed here — we use internal-loopback DQS (MCR.DQSMD=0), not the pad.
+	 * none are SDRAM signals.  DQS (B1_39, idx 39) additionally gets SION (force
+	 * input path on) so the DQS-pad read-strobe loopback works (MCR.DQSMD=1) —
+	 * matching the cm7 SDK pin_mux, which sets "Software Input On Field" on DQS.
 	 */
 	{
 		volatile uint32_t *mux = &IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B1_00; /* 0x400E8010 */
@@ -175,7 +176,9 @@ void semc_sdram_init(void)
 			if (i == 40 || i == 41) {
 				continue;   /* RDY, CSX00 — not SDRAM */
 			}
-			mux[i] = SEMC_PAD_MUX_ALT;   /* ALT0 */
+			/* DQS pad (idx 39) needs SION (bit 4 = 0x10) to force its input
+			 * path on for the read-strobe loopback; other SDRAM pads are ALT0. */
+			mux[i] = (i == 39) ? (SEMC_PAD_MUX_ALT | 0x10u) : SEMC_PAD_MUX_ALT;
 			pad[i] = SEMC_PAD_CTL_VAL;   /* 0x08 */
 		}
 	}
@@ -195,12 +198,13 @@ void semc_sdram_init(void)
 
 	/* Disable the module while configuring.  Driver defaults from
 	 * SEMC_GetDefaultConfig: busTimeoutCycles=0x1F, cmdTimeoutCycles=0xFF.
-	 * DQSMD = kSEMC_Loopbackinternal (0): the DQS pad is not wired for the
-	 * controller strobe, so use the internally-looped-back read strobe. */
+	 * DQSMD = kSEMC_Loopbackdqspad (1): the EVKB routes the SDRAM read strobe
+	 * through the DQS-pad loopback (the cm7 SDK uses it "for more accurate
+	 * timing"); the DQS pad (B1_39) has SION forced on above. */
 	SEMC_MCR |= SEMC_MCR_MDIS_MASK |
 	            SEMC_MCR_BTO(0x1Fu) |
 	            SEMC_MCR_CTO(0xFFu) |
-	            SEMC_MCR_DQSMD(0u);
+	            SEMC_MCR_DQSMD(1u);
 
 	/* AXI command-queue arbitration weights — SEMC_GetDefaultConfig typical
 	 * values (queue A -> BMCR0, queue B -> BMCR1), constructed via the field
@@ -232,9 +236,10 @@ void semc_sdram_init(void)
 	 * SEMC-internal A8 mux, per SEMC_ConfigureSDRAM. */
 	SEMC_IOCR &= ~SEMC_IOCR_MUX_A8_MASK;
 
-	/* Delay chain: SDRAMVAL = delayChain-1 = 1 (delayChain = 2), SDRAMEN = 1. */
+	/* Delay chain: SDRAMVAL = delayChain-1 = 5 (delayChain = 6, the cm7 SDK value
+	 * "for all temperatures"; cm4 uses 2), SDRAMEN = 1. */
 	SEMC_DCCR = (SEMC_DCCR & ~(SEMC_DCCR_SDRAMVAL_MASK | SEMC_DCCR_SDRAMEN_MASK)) |
-	            SEMC_DCCR_SDRAMVAL(1u) | SEMC_DCCR_SDRAMEN_MASK;
+	            SEMC_DCCR_SDRAMVAL(5u) | SEMC_DCCR_SDRAMEN_MASK;
 
 	/* SDRAMCR1 timings (ns -> cycles @ SEMC_CLOCK_HZ). */
 	timing  = SEMC_SDRAMCR1_PRE2ACT(semc_convert_timing(15u, SEMC_CLOCK_HZ)); /* tRP  */
