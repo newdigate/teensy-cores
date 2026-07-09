@@ -25,11 +25,19 @@
 
 #include <inttypes.h>
 
-#define DMAMEM __attribute__ ((section(".dmabuffers"), used))
+/* DMAMEM/EXTMEM are also defined (guarded, with `used`) in imxrt1176.h.  Guard
+ * them here too and carry the identical `used` attribute so whichever header is
+ * included first wins with no redefinition warning and the section placement is
+ * never garbage-collected (EXTMEM previously lacked `used` here). */
+#ifndef DMAMEM
+#define DMAMEM __attribute__((section(".dmabuffers"), used))
+#endif
 #define FASTRUN __attribute__ ((section(".fastrun") ))
 #define PROGMEM __attribute__((section(".progmem")))
 #define FLASHMEM __attribute__((section(".flashmem")))
-#define EXTMEM __attribute__((section(".externalram")))
+#ifndef EXTMEM
+#define EXTMEM __attribute__((section(".externalram"), used))
+#endif
 
 #define PGM_P  const char *
 #define PSTR(str) ({static const char data[] PROGMEM = (str); &data[0];})
