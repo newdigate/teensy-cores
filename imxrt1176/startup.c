@@ -73,6 +73,7 @@ extern uint32_t _flexram_bank_config;   /* linker absolute symbol; its address I
 
 extern int main(void);
 extern void __libc_init_array(void); /* C++ static constructors            */
+extern void semc_sdram_init(void);   /* SEMC 64 MB SDRAM @ 0x80000000 (semc.c) */
 
 /* Core clock. Task 9 brings the ARM PLL up to 996 MHz and routes it to the M7
  * CLOCK_ROOT; set_arm_clock_rt1176() re-affirms this at runtime. Defined here as
@@ -225,6 +226,11 @@ void ResetHandler(void)
 	/* 1 kHz SysTick + DWT cycle counter (must follow the clock init so the
 	 * reload value matches the now-996 MHz core) */
 	systick_init();
+
+	/* Bring up the SEMC 64 MB SDRAM at 0x80000000 so the .externalram (EXTMEM)
+	 * region is live before C++ constructors or any external-RAM access. Runs
+	 * after the clocks are up and before __libc_init_array(). */
+	semc_sdram_init();
 
 	/* C++ static constructors, then the application */
 	__libc_init_array();
