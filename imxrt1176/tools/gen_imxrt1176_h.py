@@ -1243,6 +1243,32 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
           "#ifndef EXTMEM",
           "#define EXTMEM __attribute__((section(\".externalram\"), used))",
           "#endif"]
+    # --- SNVS RTC (Task: RTC via SNVS). Base 0x40C90000 (cm7 header). Offsets
+    #     identical to RT1062; only the base differs. Consumed by rtc.c +
+    #     startup.c; LPGPR0/1 used by the rtc_test gate as a warm-reset token. ---
+    L += ["", "/* --- SNVS RTC (Secure Non-Volatile Storage: HP RTC + LP secure RTC) --- */",
+          "#define SNVS_HPLR      (*(volatile uint32_t *)0x40C90000u)",
+          "#define SNVS_HPCOMR    (*(volatile uint32_t *)0x40C90004u)",
+          "#define SNVS_HPCR      (*(volatile uint32_t *)0x40C90008u)",
+          "#define SNVS_HPSR      (*(volatile uint32_t *)0x40C90014u)",
+          "#define SNVS_HPRTCMR   (*(volatile uint32_t *)0x40C90024u)",
+          "#define SNVS_HPRTCLR   (*(volatile uint32_t *)0x40C90028u)",
+          "#define SNVS_HPTAMR    (*(volatile uint32_t *)0x40C9002Cu)",
+          "#define SNVS_HPTALR    (*(volatile uint32_t *)0x40C90030u)",
+          "#define SNVS_LPLR      (*(volatile uint32_t *)0x40C90034u)",
+          "#define SNVS_LPCR      (*(volatile uint32_t *)0x40C90038u)",
+          "#define SNVS_LPSR      (*(volatile uint32_t *)0x40C9004Cu)",
+          "#define SNVS_LPSRTCMR  (*(volatile uint32_t *)0x40C90050u)",
+          "#define SNVS_LPSRTCLR  (*(volatile uint32_t *)0x40C90054u)",
+          "#define SNVS_LPGPR0    (*(volatile uint32_t *)0x40C90100u)",
+          "#define SNVS_LPGPR1    (*(volatile uint32_t *)0x40C90104u)",
+          "#define SNVS_LPGPR2    (*(volatile uint32_t *)0x40C90108u)",
+          "#define SNVS_LPGPR3    (*(volatile uint32_t *)0x40C9010Cu)",
+          "",
+          "/* SNVS bitfields (RT1176 RM / PERI_SNVS.h) */",
+          "#define SNVS_HPCR_RTC_EN     (1u << 0)   /* HP RTC enable            */",
+          "#define SNVS_HPCR_HP_TS      (1u << 16)  /* HP time-sync: load HP<-LP */",
+          "#define SNVS_LPCR_SRTC_ENV   (1u << 0)   /* LP secure RTC valid/enable */"]
     L += ["", "#endif"]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")
