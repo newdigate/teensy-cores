@@ -56,6 +56,7 @@
 #include <stdint.h>
 #include "imxrt1176.h"   /* CCM clock-root, ANADIG PLL/OSC, SysTick, DWT regs */
 #include "core_pins.h"   /* NVIC_NUM_INTERRUPTS, IRQ_NUMBER_t, _VectorsRam decl */
+#include "smalloc.h"     /* struct smalloc_pool (for the extmem_smalloc_pool definition) */
 
 /* ---- symbols exported by imxrt1176.ld ---- */
 extern uint32_t _stext;       /* ITCM .text.itcm VMA start                  */
@@ -68,6 +69,8 @@ extern uint32_t _sbss;        /* DTCM .bss VMA start                        */
 extern uint32_t _ebss;        /* DTCM .bss VMA end                          */
 extern uint32_t _sbss_dma;    /* OCRAM .dmabuffers (DMAMEM) start           */
 extern uint32_t _ebss_dma;    /* OCRAM .dmabuffers (DMAMEM) end             */
+extern uint32_t _extram_start; /* .bss.extram (EXTMEM statics) start (imxrt1176.ld) */
+extern uint32_t _extram_end;   /* .bss.extram end                                   */
 extern uint32_t _estack;      /* top of stack (DTCM)                        */
 extern uint32_t _flexram_bank_config;   /* linker absolute symbol; its address IS the value */
 
@@ -138,6 +141,9 @@ void (* const _VectorsFlash[16 + 16])(void) =
  * -------------------------------------------------------------------------- */
 __attribute__((section(".vectorsram"), used, aligned(1024)))
 void (* volatile _VectorsRam[16 + NVIC_NUM_INTERRUPTS])(void);
+
+uint8_t external_psram_size = 0;        /* reported external RAM size in MB (fixed 64) */
+struct smalloc_pool extmem_smalloc_pool; /* the EXTMEM heap pool (declared extern in smalloc.h) */
 
 /* ----------------------------------------------------------------------------
  * ResetHandler — boot-ROM entry. Bring RAM up and reach main().
@@ -231,6 +237,18 @@ void ResetHandler(void)
 	 * region is live before C++ constructors or any external-RAM access. Runs
 	 * after the clocks are up and before __libc_init_array(). */
 	semc_sdram_init();
+
+	/* Zero the static EXTMEM globals (.bss.extram — SDRAM is now live) so C++ static
+	 * constructors see zeroed EXTMEM members. D-cache is off in this core, so
+	 * memory_clear writes reach SDRAM directly (teensy4 needs a dcache flush here; we
+	 * do not). report the fixed 64 MB. The extmem_malloc *pool* is NOT handed to
+	 * smalloc from here: calling sm_set_pool() in this .startup boot path makes the
+	 * linker insert call veneers into the fixed vector/boot region at FLASH+0x2000,
+	 * which shifts the layout-sensitive RT1176 early-boot code and drops the core into
+	 * a reset loop before main(). extmem.c initialises the pool lazily on first
+	 * extmem_malloc/calloc/realloc instead (application context, SDRAM long live). */
+	memory_clear(&_extram_start, &_extram_end);
+	external_psram_size = 64;                       /* soldered 64 MB SDRAM — no probe */
 
 	/* C++ static constructors, then the application */
 	__libc_init_array();
