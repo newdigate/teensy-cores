@@ -233,6 +233,22 @@ void ResetHandler(void)
 	 * reload value matches the now-996 MHz core) */
 	systick_init();
 
+	/* SNVS real-time clock (battery-backed, always-on domain). Port of teensy4
+	 * startup.c: if the LP secure RTC isn't already running (cold boot / VBAT
+	 * lost), seed it with a default epoch (Jan 1 2019, 00:00:00 UTC); if it IS
+	 * running (warm reset / coin-cell held), leave it untouched so persisted time
+	 * survives. Then start + sync the HP RTC from the LP secure counter
+	 * (HPCR RTC_EN|HP_TS) so rtc_get() reads live, persisted time. MMIO-only, not
+	 * a memory-pool setup, so the extmem boot-path reset-loop hazard does NOT
+	 * apply here. If HW reset-loops anyway, move this to a lazy first-use guard in
+	 * rtc.c (Approach B). */
+	if (!(SNVS_LPCR & SNVS_LPCR_SRTC_ENV)) {
+		SNVS_LPSRTCLR = 1546300800u << 15;   /* Jan 1 2019 */
+		SNVS_LPSRTCMR = 1546300800u >> 17;
+		SNVS_LPCR |= SNVS_LPCR_SRTC_ENV;
+	}
+	SNVS_HPCR |= SNVS_HPCR_RTC_EN | SNVS_HPCR_HP_TS;
+
 	/* Bring up the SEMC 64 MB SDRAM at 0x80000000 so the .externalram (EXTMEM)
 	 * region is live before C++ constructors or any external-RAM access. Runs
 	 * after the clocks are up and before __libc_init_array(). */
