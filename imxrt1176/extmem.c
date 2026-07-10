@@ -50,15 +50,18 @@ extern uint32_t _extram_start;
 extern uint32_t _extram_end;
 
 // The 64 MB SDRAM heap is handed to smalloc lazily, on first use, rather than from
-// startup.c's ResetHandler.  Calling sm_set_pool() from the .startup boot path makes
-// the linker insert call veneers into the fixed vector/boot region at FLASH+0x2000,
-// which shifts the (very layout-sensitive) RT1176 early-boot code and drops the core
-// into a reset loop before it ever reaches main() -- a real fault, not a QEMU quirk.
-// Every extmem_* entry point below only ever runs in application context, long after
-// SDRAM is live, so a one-time init here is safe; running before the first allocation
-// (including from C++ static constructors) preserves "pool ready before use".  do_zero
-// gives calloc semantics via per-allocation zeroing in sm_malloc_pool(), so the pool
-// needs no eager zeroing beyond what sm_set_pool() itself does.
+// startup.c's ResetHandler.  Calling sm_set_pool() from the .startup boot path drops
+// the core into a reset loop before it ever reaches main() -- verified reproducible
+// and INDEPENDENT of do_zero / pool size (do_zero=0 fails identically), so it is the
+// boot-path CALL, not the pool zeroing.  The RT1176 early boot is extremely layout-
+// sensitive: the vector table lives at FLASH+0x2000 in .startup (see startup.c), and
+// pulling a cross-module call into that region shifts it (a linker call veneer is the
+// likely mechanism; not disassembled to confirm -- cf. the core's FlexRAM/veneer early-
+// boot history, where such diagnoses have been wrong before).  Every extmem_* entry
+// point below runs only in application context, long after SDRAM is live, so a one-time
+// init here is safe; running before the first allocation (including from C++ static
+// constructors) preserves "pool ready before use".  do_zero gives calloc semantics via
+// per-allocation zeroing in sm_malloc_pool().
 static void extmem_ensure_pool(void)
 {
 	if (extmem_smalloc_pool.pool == 0) {

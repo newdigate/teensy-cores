@@ -242,10 +242,10 @@ void ResetHandler(void)
 	 * constructors see zeroed EXTMEM members. D-cache is off in this core, so
 	 * memory_clear writes reach SDRAM directly (teensy4 needs a dcache flush here; we
 	 * do not). report the fixed 64 MB. The extmem_malloc *pool* is NOT handed to
-	 * smalloc from here: calling sm_set_pool() in this .startup boot path makes the
-	 * linker insert call veneers into the fixed vector/boot region at FLASH+0x2000,
-	 * which shifts the layout-sensitive RT1176 early-boot code and drops the core into
-	 * a reset loop before main(). extmem.c initialises the pool lazily on first
+	 * smalloc from here: a sm_set_pool() call in this .startup boot path reset-loops
+	 * the core before main() — verified reproducible and independent of do_zero/pool
+	 * size (so it is the boot-path call, not the pool zeroing), a layout-sensitivity
+	 * of the FLASH+0x2000 vector region. extmem.c initialises the pool lazily on first
 	 * extmem_malloc/calloc/realloc instead (application context, SDRAM long live). */
 	memory_clear(&_extram_start, &_extram_end);
 	external_psram_size = 64;                       /* soldered 64 MB SDRAM — no probe */
