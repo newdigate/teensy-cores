@@ -37,9 +37,9 @@
  * length @2, buffer pointer @4).  status/length are stored byte-swapped; see
  * the endianness note above. */
 typedef struct __attribute__((packed)) {
-    uint16_t status;
-    uint16_t length;
-    uint32_t buf;
+    volatile uint16_t status;   /* volatile: the MAC mutates these under us --  */
+    volatile uint16_t length;   /* without it -Os hoists the busy-wait load out */
+    volatile uint32_t buf;      /* of enet_send_frame's spin (regression vs FNET) */
 } enet_bd_t;
 
 /* ERR050396: ENET bus-master writes to CM7 TCM can corrupt via the NIC301
@@ -205,10 +205,15 @@ void enet_init(const uint8_t mac[6])
 {
     enet_clock_init();
 
-    /* Reset the MAC and wait for the reset to self-clear. */
+    /* Reset the MAC and wait for the reset to self-clear.  Bounded by a loop
+     * cap so a dead ENET clock on real HW can't hang here forever (QEMU clears
+     * RESET immediately); on timeout we press on best-effort (init is void). */
     ENET_ECR = ENET_ECR_RESET;
-    while (ENET_ECR & ENET_ECR_RESET) {
-        /* spin */
+    {
+        uint32_t timeout = 1000000u;
+        while ((ENET_ECR & ENET_ECR_RESET) && (--timeout != 0u)) {
+            /* spin */
+        }
     }
 
     enet_pins_init();
@@ -254,20 +259,22 @@ void enet_init(const uint8_t mac[6])
 int enet_send_frame(const uint8_t *frame, uint16_t len)
 {
     enet_bd_t *bd = &tx_bd[tx_idx];
-    uint32_t timeout = 2000000u;
+    uint32_t timeout = 2000000u;      /* loop-iteration bound, NOT wall-clock */
     uint16_t st;
 
+    if (len > ENET_BUF_SZ) {
+        return -1;                    /* frame too large for one TX buffer */
+    }
+
     /* Wait (bounded) for this descriptor to be free (R = ready/owned clears when
-     * the MAC has transmitted it). */
+     * the MAC has transmitted it).  NOTE: v1 does not inspect the written-back
+     * TX completion error bits (UN underrun / RL retry-limit / LC late-coll). */
     while (bswap16(bd->status) & ENET_TXBD_R) {
         if (--timeout == 0u) {
             return -2;
         }
     }
 
-    if (len > ENET_BUF_SZ) {
-        len = ENET_BUF_SZ;
-    }
     memcpy(&tx_buf[tx_idx][0], frame, len);
     /* Pad runt frames to the 60-byte Ethernet minimum; the MAC appends the
      * 4-byte FCS for 64 on the wire. */
@@ -302,15 +309,24 @@ int enet_read_frame(uint8_t *buf, uint16_t *len)
     uint16_t st;
     int ret;
 
+    *len = 0;                         /* always define the out-param */
+
     if (status & ENET_RXBD_E) {
         return 0;                     /* still empty/owned by the MAC engine */
     }
 
-    if (status & ENET_RXBD_ERR) {
-        ret = -1;                     /* drop frames with MAC-layer errors */
+    /* Deliver a frame ONLY if it is a complete, error-free, single-BD frame:
+     * L (last) set AND no error bits.  This v1 driver has no reassembly, and
+     * an over-length frame the FEC splits across BDs carries L/error bits only
+     * on the FINAL fragment -- a lead fragment comes back with no error and
+     * length == MRBR (ENET_BUF_SZ), which would memcpy past the caller's buffer.
+     * Normal <=1518B frames always fit one BD with L set, so this rejects
+     * nothing legitimate; an over-length single frame already trips LG->ERR. */
+    if (((status & ENET_RXBD_L) == 0u) || (status & ENET_RXBD_ERR)) {
+        ret = -1;                     /* fragment or MAC-layer error -> drop */
     } else {
         uint16_t n = bswap16(bd->length);
-        if (n > ENET_BUF_SZ) {
+        if (n > ENET_BUF_SZ) {        /* defensive: single-BD length <= MRBR */
             n = ENET_BUF_SZ;
         }
         memcpy(buf, &rx_buf[rx_idx][0], n);
