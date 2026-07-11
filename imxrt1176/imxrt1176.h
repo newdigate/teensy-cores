@@ -7,6 +7,7 @@
 #define ANADIG_OSC_BASE 0x40C84000u
 #define ANADIG_PLL_BASE 0x40C84000u
 #define CCM_BASE 0x40CC0000u
+#define ENET_BASE 0x40424000u
 #define FLEXSPI_BASE 0x400CC000u
 #define FLEXSPI2_BASE 0x400D0000u
 #define GPIO1_BASE 0x4012C000u
@@ -1578,6 +1579,76 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #ifndef EXTMEM
 #define EXTMEM __attribute__((section(".externalram"), used))
 #endif
+
+/* ==== ENET 10/100 (Freescale FEC) @ 0x40424000, IRQ 137 ==== */
+/* Register offsets verified against RT1170/periph/PERI_ENET.h */
+#define ENET_EIR   (*(volatile uint32_t *)(ENET_BASE + 0x004u))
+#define ENET_EIMR  (*(volatile uint32_t *)(ENET_BASE + 0x008u))
+#define ENET_RDAR  (*(volatile uint32_t *)(ENET_BASE + 0x010u))
+#define ENET_TDAR  (*(volatile uint32_t *)(ENET_BASE + 0x014u))
+#define ENET_ECR   (*(volatile uint32_t *)(ENET_BASE + 0x024u))
+#define ENET_MMFR  (*(volatile uint32_t *)(ENET_BASE + 0x040u))
+#define ENET_MSCR  (*(volatile uint32_t *)(ENET_BASE + 0x044u))
+#define ENET_MIBC  (*(volatile uint32_t *)(ENET_BASE + 0x064u))
+#define ENET_RCR   (*(volatile uint32_t *)(ENET_BASE + 0x084u))
+#define ENET_TCR   (*(volatile uint32_t *)(ENET_BASE + 0x0C4u))
+#define ENET_PALR  (*(volatile uint32_t *)(ENET_BASE + 0x0E4u))
+#define ENET_PAUR  (*(volatile uint32_t *)(ENET_BASE + 0x0E8u))
+#define ENET_OPD   (*(volatile uint32_t *)(ENET_BASE + 0x0ECu))
+#define ENET_TFWR  (*(volatile uint32_t *)(ENET_BASE + 0x144u))
+#define ENET_RDSR  (*(volatile uint32_t *)(ENET_BASE + 0x180u))
+#define ENET_TDSR  (*(volatile uint32_t *)(ENET_BASE + 0x184u))
+#define ENET_MRBR  (*(volatile uint32_t *)(ENET_BASE + 0x188u))
+#define ENET_TACC  (*(volatile uint32_t *)(ENET_BASE + 0x1C0u))
+#define ENET_RACC  (*(volatile uint32_t *)(ENET_BASE + 0x1C4u))
+/* ECR bits (verified: RESET=bit0, ETHEREN=bit1, EN1588=bit4, DBSWP=bit8) */
+#define ENET_ECR_RESET   (1u<<0)
+#define ENET_ECR_ETHEREN (1u<<1)
+#define ENET_ECR_EN1588  (1u<<4)
+#define ENET_ECR_DBSWP   (1u<<8)
+/* EIR/EIMR bits (verified: MII=bit23, RXF=bit25, TXF=bit27) */
+#define ENET_EIR_MII (1u<<23)
+#define ENET_EIR_RXF (1u<<25)
+#define ENET_EIR_TXF (1u<<27)
+/* RDAR/TDAR active bit (SDK names the field RDAR/TDAR; mask 0x1000000=bit24) */
+#define ENET_RDAR_ACTIVE (1u<<24)
+#define ENET_TDAR_ACTIVE (1u<<24)
+/* MSCR MII_SPEED field (verified mask 0x7E, shift 1 -> 6-bit field): MDC = ref/((MII_SPEED+1)*2) */
+#define ENET_MSCR_MII_SPEED(n) (((n)&0x3Fu)<<1)
+/* MMFR fields (clause-22; verified against ENET_MMFR_ST/OP/TA/PA/RA masks) */
+#define ENET_MMFR_ST_01   (1u<<30)
+#define ENET_MMFR_OP_READ (2u<<28)
+#define ENET_MMFR_OP_WRITE (1u<<28)
+#define ENET_MMFR_TA_10   (2u<<16)
+#define ENET_MMFR_PA(a)   (((a)&0x1Fu)<<23)
+#define ENET_MMFR_RA(r)   (((r)&0x1Fu)<<18)
+/* Legacy 8-byte buffer-descriptor status bits: these live in the BD memory
+ * structure, not the MMIO register map, so PERI_ENET.h has no masks for
+ * them -- standard Freescale/NXP FEC BD layout (same across i.MX RT/
+ * Kinetis/Vybrid), per the RT1170 RM ENET chapter. */
+#define ENET_TXBD_R  (1u<<15)
+#define ENET_TXBD_TO1 (1u<<14)
+#define ENET_TXBD_W  (1u<<13)
+#define ENET_TXBD_TO2 (1u<<12)
+#define ENET_TXBD_L  (1u<<11)
+#define ENET_TXBD_TC (1u<<10)
+#define ENET_RXBD_E  (1u<<15)
+#define ENET_RXBD_W  (1u<<13)
+#define ENET_RXBD_L  (1u<<11)
+/* IOMUXC_GPR ENET fields.  GPR4 offset 0x10, GPR28 offset 0x70 (both
+ * verified against the PERI_IOMUXC_GPR.h IOMUXC_GPR_Type struct); absolute-
+ * address style matches the existing GPR0/14/16/17/18 defines above (this
+ * codebase does not route GPR regs through IOMUXC_GPR_BASE even though that
+ * macro exists).  Neither GPR4 nor GPR28 was previously defined. */
+#define IOMUXC_GPR_GPR4  (*(volatile uint32_t *)0x400E4010u)
+#define IOMUXC_GPR_GPR4_ENET_REF_CLK_DIR (1u<<1)
+#define IOMUXC_GPR_GPR28 (*(volatile uint32_t *)0x400E4070u)
+#define IOMUXC_GPR_GPR28_CACHE_ENET (1u<<7)
+/* ENET clock: root 51 = kCLOCK_Root_Enet1, LPCG gate 112 = kCLOCK_Enet
+ * (both confirmed in fsl_clock.h clock_root_t/clock_lpcg_t).  Mux/div
+ * values (mux=4 SysPll1Div2, div=10 -> 50 MHz) are recon, NOT yet verified
+ * against a board example -- no CCM_CLOCK_ROOT51_CONTROL/CCM_LPCG112_DIRECT
+ * register define is emitted here; confirm before the enet.c clock task uses them. */
 
 /* --- SNVS RTC (Secure Non-Volatile Storage: HP RTC + LP secure RTC) --- */
 #define SNVS_HPLR      (*(volatile uint32_t *)0x40C90000u)

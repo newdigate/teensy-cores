@@ -61,7 +61,8 @@ typedef enum IRQ_NUMBER_t {
     IRQ_GPIO5_0_15 = 108, IRQ_GPIO5_16_31 = 109,
     IRQ_PIT1 = 155, IRQ_PIT2 = 156,
     IRQ_USDHC1 = 133, IRQ_USDHC2 = 134,
-    IRQ_USB_OTG2 = 135, IRQ_USB_OTG1 = 136   /* OTG2 = host (USBHost_t36) */
+    IRQ_USB_OTG2 = 135, IRQ_USB_OTG1 = 136,   /* OTG2 = host (USBHost_t36) */
+    IRQ_ENET = 137
 } IRQ_NUMBER_t;
 #define IRQ_PIT IRQ_PIT1   /* Teensy source-compat alias */
 #define IRQ_USB2 IRQ_USB_OTG2   /* USBHost_t36 utility/imxrt_usbhs.h expects IRQ_USB2 */
