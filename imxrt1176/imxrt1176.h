@@ -1615,6 +1615,16 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define ENET_TDAR_ACTIVE (1u<<24)
 /* MSCR MII_SPEED field (verified mask 0x7E, shift 1 -> 6-bit field): MDC = ref/((MII_SPEED+1)*2) */
 #define ENET_MSCR_MII_SPEED(n) (((n)&0x3Fu)<<1)
+/* RCR bits (RT1176 RM / FNET fnet_fec.h; QEMU imx_fec.h): MII_MODE=bit2,
+ * RMII_MODE=bit8, DRT(half-duplex)=bit1, FCE=bit5, MAX_FL=[29:16] (14-bit). */
+#define ENET_RCR_DRT       (1u<<1)
+#define ENET_RCR_MII_MODE  (1u<<2)
+#define ENET_RCR_FCE       (1u<<5)
+#define ENET_RCR_RMII_MODE (1u<<8)
+#define ENET_RCR_MAX_FL(n) (((n)&0x3FFFu)<<16)
+/* TCR bits: GTS=bit0, FDEN(full-duplex)=bit2 */
+#define ENET_TCR_GTS       (1u<<0)
+#define ENET_TCR_FDEN      (1u<<2)
 /* MMFR fields (clause-22; verified against ENET_MMFR_ST/OP/TA/PA/RA masks) */
 #define ENET_MMFR_ST_01   (1u<<30)
 #define ENET_MMFR_OP_READ (2u<<28)
@@ -1635,6 +1645,16 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define ENET_RXBD_E  (1u<<15)
 #define ENET_RXBD_W  (1u<<13)
 #define ENET_RXBD_L  (1u<<11)
+/* RX BD error/status bits (RM legacy RxBD; match FNET + QEMU imx_fec.h) */
+#define ENET_RXBD_M  (1u<<8)   /* MISS (promiscuous)          */
+#define ENET_RXBD_BC (1u<<7)   /* broadcast                   */
+#define ENET_RXBD_MC (1u<<6)   /* multicast                   */
+#define ENET_RXBD_LG (1u<<5)   /* frame length violation      */
+#define ENET_RXBD_NO (1u<<4)   /* non-octet aligned frame     */
+#define ENET_RXBD_CR (1u<<2)   /* CRC/frame error             */
+#define ENET_RXBD_OV (1u<<1)   /* FIFO overrun                */
+#define ENET_RXBD_TR (1u<<0)   /* frame truncated             */
+#define ENET_RXBD_ERR (ENET_RXBD_LG|ENET_RXBD_NO|ENET_RXBD_CR|ENET_RXBD_OV|ENET_RXBD_TR)
 /* IOMUXC_GPR ENET fields.  GPR4 offset 0x10, GPR28 offset 0x70 (both
  * verified against the PERI_IOMUXC_GPR.h IOMUXC_GPR_Type struct); absolute-
  * address style matches the existing GPR0/14/16/17/18 defines above (this
@@ -1645,10 +1665,39 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define IOMUXC_GPR_GPR28 (*(volatile uint32_t *)0x400E4070u)
 #define IOMUXC_GPR_GPR28_CACHE_ENET (1u<<7)
 /* ENET clock: root 51 = kCLOCK_Root_Enet1, LPCG gate 112 = kCLOCK_Enet
- * (both confirmed in fsl_clock.h clock_root_t/clock_lpcg_t).  Mux/div
- * values (mux=4 SysPll1Div2, div=10 -> 50 MHz) are recon, NOT yet verified
- * against a board example -- no CCM_CLOCK_ROOT51_CONTROL/CCM_LPCG112_DIRECT
- * register define is emitted here; confirm before the enet.c clock task uses them. */
+ * (both confirmed in fsl_clock.h clock_root_t/clock_lpcg_t).  mux=4
+ * (SysPll1Div2), div=10 -> 50 MHz matches the SDK enet/txrx_transfer
+ * BOARD_InitModuleClock {.mux=4,.div=10}.  Root/LPCG addresses follow the
+ * generator's own CCM strides (ROOT n @ 0x40CC0000 + n*0x80; LPCG n DIRECT
+ * @ 0x40CC6000 + n*0x20), cross-checked vs ROOT58/LPCG117 above. */
+#define CCM_CLOCK_ROOT51_CONTROL (*(volatile uint32_t *)0x40CC1980u)
+#define CCM_LPCG112_DIRECT       (*(volatile uint32_t *)0x40CC6E00u)
+/* ENET RMII + MDIO + PHY-reset pads (Task 3) -- verified vs fsl_iomuxc.h.
+ * DISP_B2/AD pads in the main IOMUXC block @ 0x400E8000; LPSR_12 in the
+ * LPSR block @ 0x40C08000.  ENET_*_SELECT_INPUT daisy regs are one-offs,
+ * written to literal addresses directly in enet.c (not emitted here). */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_32       (*(volatile uint32_t *)0x400E818Cu) /* ENET_MDC   ALT3 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_33       (*(volatile uint32_t *)0x400E8190u) /* ENET_MDIO  ALT3 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_02  (*(volatile uint32_t *)0x400E821Cu) /* ENET_TX_DATA00 ALT1 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_03  (*(volatile uint32_t *)0x400E8220u) /* ENET_TX_DATA01 ALT1 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_04  (*(volatile uint32_t *)0x400E8224u) /* ENET_TX_EN     ALT1 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_05  (*(volatile uint32_t *)0x400E8228u) /* ENET_REF_CLK   ALT2 (SION) */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_06  (*(volatile uint32_t *)0x400E822Cu) /* ENET_RX_DATA00 ALT1 (SION) */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_07  (*(volatile uint32_t *)0x400E8230u) /* ENET_RX_DATA01 ALT1 (SION) */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_08  (*(volatile uint32_t *)0x400E8234u) /* ENET_RX_EN     ALT1 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_09  (*(volatile uint32_t *)0x400E8238u) /* ENET_RX_ER     ALT1 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_12     (*(volatile uint32_t *)0x40C08030u) /* GPIO12_IO12 ALT0xA (PHY reset) */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_32       (*(volatile uint32_t *)0x400E83D0u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_33       (*(volatile uint32_t *)0x400E83D4u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_02  (*(volatile uint32_t *)0x400E8460u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_03  (*(volatile uint32_t *)0x400E8464u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_04  (*(volatile uint32_t *)0x400E8468u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_05  (*(volatile uint32_t *)0x400E846Cu)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_06  (*(volatile uint32_t *)0x400E8470u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_07  (*(volatile uint32_t *)0x400E8474u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_08  (*(volatile uint32_t *)0x400E8478u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_09  (*(volatile uint32_t *)0x400E847Cu)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_12     (*(volatile uint32_t *)0x40C08070u)
 
 /* --- SNVS RTC (Secure Non-Volatile Storage: HP RTC + LP secure RTC) --- */
 #define SNVS_HPLR      (*(volatile uint32_t *)0x40C90000u)
