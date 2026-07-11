@@ -349,22 +349,43 @@ int enet_read_frame(uint8_t *buf, uint16_t *len)
 }
 
 /* --------------------------------------------------------------------------
- * MDIO / PHY link -- Task 4 fills these in.  Minimal compiling stubs.
- * (PHY on the EVKB is an RTL8201 at MDIO address 0x03.)
+ * MDIO / PHY link.  Ported from fnet_fec.c _fnet_fec_phy_read/_fnet_fec_phy_write
+ * (~:925/:984); field defs (ENET_MMFR_*, ENET_EIR_MII) live in imxrt1176.h and
+ * are verified bit-for-bit against FNET's FNET_FEC_MMFR_xxx / FNET_FEC_EIR_MII.
+ * This driver polls (EIMR masked to 0 in enet_init), so unlike FNET's
+ * mask/restore-EIMR dance around each MII transfer, no EIMR save/restore is
+ * needed here.  (PHY on the EVKB is an RTL8201 at MDIO address 0x03.)
  * -------------------------------------------------------------------------- */
-uint16_t enet_mdio_read(uint8_t phy, uint8_t reg)
-{
-    (void)phy; (void)reg;
-    return 0xffffu;
+uint16_t enet_mdio_read(uint8_t phy, uint8_t reg) {
+    ENET_EIR = ENET_EIR_MII;                 /* clear MII-done */
+    ENET_MMFR = ENET_MMFR_ST_01 | ENET_MMFR_OP_READ | ENET_MMFR_PA(phy)
+              | ENET_MMFR_RA(reg) | ENET_MMFR_TA_10;
+    uint32_t spin = 0;
+    while (!(ENET_EIR & ENET_EIR_MII)) { if (++spin > 1000000u) return 0xffffu; }
+    ENET_EIR = ENET_EIR_MII;
+    return (uint16_t)(ENET_MMFR & 0xFFFFu);
 }
-
-void enet_mdio_write(uint8_t phy, uint8_t reg, uint16_t v)
-{
-    (void)phy; (void)reg; (void)v;
+void enet_mdio_write(uint8_t phy, uint8_t reg, uint16_t val) {
+    ENET_EIR = ENET_EIR_MII;
+    ENET_MMFR = ENET_MMFR_ST_01 | ENET_MMFR_OP_WRITE | ENET_MMFR_PA(phy)
+              | ENET_MMFR_RA(reg) | ENET_MMFR_TA_10 | val;
+    uint32_t spin = 0;
+    while (!(ENET_EIR & ENET_EIR_MII)) { if (++spin > 1000000u) return; }
+    ENET_EIR = ENET_EIR_MII;
 }
-
-int enet_phy_link_up(uint32_t timeout_ms)
-{
-    (void)timeout_ms;
+/* Generic clause-22 bring-up, PHY at MDIO addr 3 (RTL8201 on the EVKB).
+   No vendor pages, no OUI check -- Zephyr uses the same generic driver for this PHY. */
+int enet_phy_link_up(uint32_t timeout_ms) {
+    const uint8_t A = 3;
+    enet_mdio_write(A, 0, 0x8000);           /* BMCR soft reset */
+    uint32_t s = 0; while ((enet_mdio_read(A, 0) & 0x8000) && ++s < 100000u) { }
+    enet_mdio_write(A, 4, 0x01E1);           /* ANAR: advertise 100F/100H/10F/10H + 802.3 */
+    enet_mdio_write(A, 0, 0x1200);           /* BMCR: autoneg enable + restart */
+    uint32_t t0 = millis();
+    do {
+        (void)enet_mdio_read(A, 1);          /* BMSR latches low: read twice */
+        if (enet_mdio_read(A, 1) & 0x0004) return 1;   /* link up */
+        delay(5);
+    } while ((millis() - t0) < timeout_ms);
     return 0;
 }
