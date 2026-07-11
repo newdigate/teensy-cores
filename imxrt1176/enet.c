@@ -89,25 +89,134 @@ static inline void enet_dmb(void)
 #define ENET_MII_SPEED_N (((ENET_MDIO_SRC_HZ + (2u * ENET_MDC_HZ) - 1u) / (2u * ENET_MDC_HZ)) - 1u)
 
 /* --------------------------------------------------------------------------
- * Clock init (Sub-step 3f).  QEMU no-op (no CCM model); HW-critical, and the
- * one part the gate cannot verify -- flagged HW-unverified in the report.
+ * SysPll1 (1 GHz) bring-up + /2 divider = the ENET 50 MHz RMII ref-clock.
+ * ★HW-CRITICAL, HW-PROVEN: on this board the boot ROM leaves SysPll1 powered
+ * down (SYS_PLL1_CTRL reads 0x4000 = GATE only, STABLE clear).  MDIO + PHY link
+ * work off the peripheral clock, but RMII RX/TX need this 50 MHz ref-clock -
+ * without it the MAC receives ZERO frames (confirmed: no SysPll1 -> no ping;
+ * SYS_PLL1_CTRL 0x4000 -> 0x62002000 -> board answers ping).  Exact port of the
+ * SDK CLOCK_InitSysPll1({.pllDiv2En=true}) via the analog-interface (AI) indirect
+ * protocol (fsl_clock.c / fsl_anatop_ai.c), verified register-by-register.
+ * ANADIG_PLL/_MISC/_PMU are one overlapping block @0x40C84000; these one-off regs
+ * are kept local (like the ENET SELECT_INPUT regs above), not in the auto-gen
+ * header.  AI polls are BOUNDED so the QEMU gate (no analog-interface model)
+ * proceeds instead of hanging; on silicon DONE/STABLE assert in ~us.
+ * -------------------------------------------------------------------------- */
+#define ENET_SP1_CTRL    (*(volatile uint32_t *)0x40C842C0u)
+#define  ENET_SP1_ENCLK  0x00002000u
+#define  ENET_SP1_GATE   0x00004000u
+#define  ENET_SP1_DIV2   0x02000000u
+#define  ENET_SP1_DIV5   0x04000000u
+#define  ENET_SP1_STABLE 0x20000000u
+#define ENET_AI1G_CTRL   (*(volatile uint32_t *)0x40C84850u)
+#define ENET_AI1G_WDATA  (*(volatile uint32_t *)0x40C84860u)
+#define ENET_AI1G_RDATA  (*(volatile uint32_t *)0x40C84870u)
+#define ENET_AILDO_CTRL  (*(volatile uint32_t *)0x40C84820u)
+#define ENET_AILDO_WDAT  (*(volatile uint32_t *)0x40C84830u)
+#define ENET_AILDO_RDAT  (*(volatile uint32_t *)0x40C84840u)
+#define ENET_PMU_LDOPLL  (*(volatile uint32_t *)0x40C84500u)
+#define ENET_PMU_REFCTL  (*(volatile uint32_t *)0x40C84570u)
+#define  ENET_AI_ADDRM   0x000000FFu
+#define  ENET_AI_RWB     0x00010000u
+#define  ENET_AI1G_TOG   0x00000100u
+#define  ENET_AI1G_DONE  0x00000200u
+#define  ENET_PMU_TOG    0x00010000u
+#define  ENET_PMU_VREF   0x00000010u
+#define  ENET_AIR_C0     0x00u
+#define  ENET_AIR_C0SET  0x04u
+#define  ENET_AIR_C0CLR  0x08u
+#define  ENET_AIR_C2     0x20u
+#define  ENET_AIR_C3     0x30u
+#define  ENET_AIR_LDO0   0x00u
+#define  ENET_1G_HOLDR   0x00002000u
+#define  ENET_1G_PWRUP   0x00004000u
+#define  ENET_1G_EN      0x00008000u
+#define  ENET_1G_BYP     0x00010000u
+#define  ENET_1G_REGEN   0x00400000u
+#define  ENET_1G_DIVM    0x0000007Fu
+#define  ENET_LDO_LINR   0x00000001u
+#define  ENET_LDO_LIMIT  0x00000004u
+#define  ENET_LDO_1V0    0x00000100u
+
+/* AI transport: 1G PLL interface (toggle + wait-done handshake, bounded). */
+static void enet_ai1g_write(uint32_t a, uint32_t d)
+{
+    uint32_t pre = ENET_AI1G_CTRL & ENET_AI1G_DONE, to = 100000u, t;
+    ENET_AI1G_CTRL &= ~ENET_AI_RWB;                                 /* write mode */
+    t = ENET_AI1G_CTRL; t = (t & ~ENET_AI_ADDRM) | (a & ENET_AI_ADDRM); ENET_AI1G_CTRL = t;
+    ENET_AI1G_WDATA = d;
+    ENET_AI1G_CTRL ^= ENET_AI1G_TOG;                                /* kick */
+    while (((ENET_AI1G_CTRL & ENET_AI1G_DONE) == pre) && --to) { }  /* wait done (bounded) */
+}
+static uint32_t enet_ai1g_read(uint32_t a)
+{
+    uint32_t pre = ENET_AI1G_CTRL & ENET_AI1G_DONE, to = 100000u, t;
+    t = ENET_AI1G_CTRL | ENET_AI_RWB; ENET_AI1G_CTRL = t;           /* read mode */
+    t = ENET_AI1G_CTRL; t = (t & ~ENET_AI_ADDRM) | (a & ENET_AI_ADDRM); ENET_AI1G_CTRL = t;
+    ENET_AI1G_CTRL ^= ENET_AI1G_TOG;
+    while (((ENET_AI1G_CTRL & ENET_AI1G_DONE) == pre) && --to) { }
+    return ENET_AI1G_RDATA;
+}
+/* AI transport: LDO interface (toggle PMU_LDO_PLL, no done-wait). */
+static void enet_aildo_write(uint32_t a, uint32_t d)
+{
+    uint32_t t;
+    ENET_AILDO_CTRL &= ~ENET_AI_RWB;
+    t = ENET_AILDO_CTRL; t = (t & ~ENET_AI_ADDRM) | (a & ENET_AI_ADDRM); ENET_AILDO_CTRL = t;
+    ENET_AILDO_WDAT = d;
+    ENET_PMU_LDOPLL ^= ENET_PMU_TOG;
+}
+static uint32_t enet_aildo_read(uint32_t a)
+{
+    uint32_t t = ENET_AILDO_CTRL | ENET_AI_RWB; ENET_AILDO_CTRL = t;
+    t = ENET_AILDO_CTRL; t = (t & ~ENET_AI_ADDRM) | (a & ENET_AI_ADDRM); ENET_AILDO_CTRL = t;
+    ENET_PMU_LDOPLL ^= ENET_PMU_TOG;
+    return ENET_AILDO_RDAT;
+}
+static void enet_sys_pll1_init(void)
+{
+    uint32_t to, r;
+    if (ENET_SP1_CTRL & ENET_SP1_STABLE) return;                    /* already locked */
+    /* PLL LDO (1.0 V) enable + 100us soft-start (skip if already on). */
+    if (enet_aildo_read(ENET_AIR_LDO0) != (ENET_LDO_1V0 | ENET_LDO_LINR)) {
+        enet_aildo_write(ENET_AIR_LDO0, ENET_LDO_1V0 | ENET_LDO_LINR | ENET_LDO_LIMIT);
+        delayMicroseconds(100);
+        enet_aildo_write(ENET_AIR_LDO0, ENET_LDO_1V0 | ENET_LDO_LINR);
+        ENET_PMU_REFCTL |= ENET_PMU_VREF;
+    }
+    enet_ai1g_write(ENET_AIR_C0SET, ENET_1G_BYP);                   /* bypass on */
+    ENET_SP1_CTRL |= ENET_SP1_ENCLK;                                /* sw enable clk */
+    enet_ai1g_write(ENET_AIR_C3, 0x0FFFFFFFu);                      /* denominator 2^28-1 */
+    enet_ai1g_write(ENET_AIR_C2, 178956970u);                       /* numerator 0x0AAAAAAA */
+    r = enet_ai1g_read(ENET_AIR_C0); r = (r & ~ENET_1G_DIVM) | (41u & ENET_1G_DIVM);
+    enet_ai1g_write(ENET_AIR_C0, r);                                /* loop divider 41 -> 1000 MHz */
+    enet_ai1g_write(ENET_AIR_C0SET, ENET_1G_REGEN);                 /* PLL reg enable */
+    delayMicroseconds(100);
+    enet_ai1g_write(ENET_AIR_C0SET, ENET_1G_PWRUP | ENET_1G_HOLDR); /* power up */
+    enet_ai1g_write(ENET_AIR_C0SET, ENET_1G_HOLDR);                 /* toggle hold-ring-off */
+    delayMicroseconds(225);
+    enet_ai1g_write(ENET_AIR_C0CLR, ENET_1G_HOLDR);
+    to = 1000000u; while (((ENET_SP1_CTRL & ENET_SP1_STABLE) == 0u) && --to) { } /* wait lock */
+    enet_ai1g_write(ENET_AIR_C0SET, ENET_1G_EN);                    /* enable clk out */
+    ENET_SP1_CTRL &= ~ENET_SP1_GATE;                                /* ungate */
+    ENET_SP1_CTRL |= ENET_SP1_DIV2;                                 /* /2 tap (500 MHz -> ENET) */
+    ENET_SP1_CTRL &= ~ENET_SP1_DIV5;
+    enet_ai1g_write(ENET_AIR_C0CLR, ENET_1G_BYP);                   /* bypass off */
+}
+
+/* --------------------------------------------------------------------------
+ * Clock init (Sub-step 3f).  Brings SysPll1 up (above), THEN routes the ENET
+ * root off its /2 output.  CCM writes are QEMU no-ops (no CCM model).
  * -------------------------------------------------------------------------- */
 static void enet_clock_init(void)
 {
+    enet_sys_pll1_init();   /* SysPll1 1 GHz + /2 (500 MHz) = the ENET root source */
     /* Route the ENET1 clock root (root 51) to SysPll1Div2 (mux 4), divide-by-10
-     * -> 50 MHz.  Matches the SDK enet/txrx_transfer BOARD_InitModuleClock
-     * clock_root_config_t {.mux = 4, .div = 10}.  The CCM ROOT DIV field encodes
-     * (divider - 1), so .div=10 -> field 9. */
+     * -> 50 MHz (SDK BOARD_InitModuleClock {.mux=4,.div=10}; CCM ROOT DIV encodes
+     * divider-1, so .div=10 -> field 9). */
     CCM_CLOCK_ROOT51_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(4) |
                                CCM_CLOCK_ROOT_CONTROL_DIV(9);
-    /* Ungate the ENET peripheral clock (LPCG112 / kCLOCK_Enet). */
-    CCM_LPCG112_DIRECT = 1u;
-
-    /* NOTE: the SDK ALSO calls CLOCK_InitSysPll1({.pllDiv2En = true}) to power
-     * SysPll1 and its /2 output before this.  We deliberately do NOT fabricate a
-     * PLL bring-up here: re-initing a boot-ROM-managed PLL can reset-loop this
-     * core, and SysPll1's boot state is board-dependent.  SysPll1Div2 enablement
-     * is a HW follow-up (board/Task-4).  On QEMU none of this matters. */
+    CCM_LPCG112_DIRECT = 1u;   /* ungate the ENET peripheral clock (LPCG112) */
 }
 
 /* --------------------------------------------------------------------------
