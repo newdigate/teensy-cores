@@ -42,15 +42,17 @@ static void lpadc_init(int i) {
     lpadc_inited[i] = 1;
 }
 
-/* Scale a RESFIFO sample to `bits` resolution. The RT1176 LPADC returns the
- * conversion result LEFT-justified in the 16-bit RESFIFO.D field (a standard
- * 12-bit single-ended result occupies D[15:4]), so the full-scale value is
- * 0xFFFF -> right-shift by (16 - bits). (bits is clamped to 1..16 by
- * analogReadRes.) The ISR passes a snapshot of read_res_bits (ISR-safety);
- * scale_res() uses the live value. Single source of truth. */
+/* Scale a RESFIFO sample to `bits` resolution. A standard-resolution 12-bit
+ * single-ended result occupies RESFIFO.D[14:3] -- bit 15 is the differential
+ * sign bit, NOT data (SDK lpadc examples: convValue >> 3; full range 4096).
+ * So full scale is 0x7FF8 -> right-shift by (15 - bits). (bits is clamped to
+ * 1..16 by analogReadRes.) HW-verified 2026-07-13 via the DAC->ADC1_CH6A
+ * loopback: the earlier D[15:4] assumption halved every reading. The ISR
+ * passes a snapshot of read_res_bits (ISR-safety); scale_res() uses the live
+ * value. Single source of truth. */
 static uint16_t scale_res_bits(uint16_t d, uint8_t bits) {
-    if (bits >= 16) return d;
-    return (uint16_t)(d >> (16 - bits));
+    if (bits >= 15) return (uint16_t)(d << (bits - 15));
+    return (uint16_t)(d >> (15 - bits));
 }
 static uint16_t scale_res(uint16_t d) { return scale_res_bits(d, read_res_bits); }
 
@@ -58,7 +60,8 @@ uint16_t analogReadChannel(uint8_t instance, uint8_t channel) {
     if (instance > 1) return 0;
     const lpadc_regs_t *a = &LPADC[instance];
     lpadc_init(instance);
-    *a->CMDL1  = ADC_CMDL_ADCH(channel);   /* command buffer 1: channel */
+    *a->CMDL1  = ADC_CMDL_ADCH(channel)    /* command buffer 1: channel */
+               | ADC_CMDL_CSCALE;           /* full-scale input (CSCALE=0 attenuates 30/64) */
     *a->CMDH1  = 0u;                        /* single sample, no average/loop */
     *a->TCTRL0 = ADC_TCTRL_TCMD(1);        /* trigger 0 -> command 1 */
     *a->SWTRIG = 1u;                        /* software-trigger 0 */
@@ -125,7 +128,7 @@ static int lpadc_start_async(int i, uint8_t channel, void (*callback)(uint16_t))
     *a->IE = ADC_IE_FWMIE;
     attachInterruptVector(a->irq, (i == 0) ? &lpadc1_isr : &lpadc2_isr);
     NVIC_ENABLE_IRQ(a->irq);
-    *a->CMDL1  = ADC_CMDL_ADCH(channel);
+    *a->CMDL1  = ADC_CMDL_ADCH(channel) | ADC_CMDL_CSCALE;
     *a->CMDH1  = 0u;
     *a->TCTRL0 = ADC_TCTRL_TCMD(1);
     *a->SWTRIG = 1u;                        /* fires; ISR delivers the result */
