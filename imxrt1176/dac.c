@@ -6,6 +6,11 @@
 // no HW trigger, PTAT current ref unavailable -> internal (CR2.IREF).
 // A current reference MUST be selected or the DAC silently doesn't convert.
 // Non-FIFO mode: every DATA write converts immediately (no trigger).
+//
+// First-use init is assumed to happen in app context; every register write in
+// dac_init() is idempotent, so a racing ISR caller at worst re-runs it benignly.
+// The output scale intentionally tracks analogWriteResolution() — shared state
+// with analogWrite(), exactly as on Teensy 3.x.
 
 #include "imxrt1176.h"
 #include "core_pins.h"

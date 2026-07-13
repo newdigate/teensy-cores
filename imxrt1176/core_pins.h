@@ -2793,14 +2793,18 @@ void init_pins(void);
 // PWM frequency may be configured with analogWriteFrequency().
 void analogWrite(uint8_t pin, int value);
 uint32_t analogWriteRes(uint32_t bits);
-uint32_t analogWriteResBits(void);        // current analogWriteResolution bits (pwm.c)
-void analogWriteDAC0(uint32_t value);     // 12-bit DAC on TP18 (dac.c); Teensy 3.x API
 // Configure PWM resolution for the analogWrite() function.  For example, 12
 // bits gives a range of 0 to 4096.  This function returns the prior
 // resolution, allowing you to temporarily change resolution, call analogWrite()
 // and then restore the resolution, so other code or libraries using analogWrite()
 // are not impacted.
 static inline uint32_t analogWriteResolution(uint32_t bits) { return analogWriteRes(bits); }
+uint32_t analogWriteResBits(void);        // current analogWriteResolution bits (pwm.c)
+// True analog voltage output on the 12-bit DAC (TP18 on the EVKB — a test
+// point, not a header pin).  Teensy 3.x API: the value is interpreted at the
+// current analogWriteResolution() (shared with analogWrite) and scaled to the
+// DAC's native 12 bits.  Implemented in dac.c.
+void analogWriteDAC0(uint32_t value);
 // Configure the PWM carrier frequency used by a specific PWM pin.  The frequency
 // is a floating point number, so you are not limited to integer frequency.  You can
 // have 261.63 Hz (musical note C4), if you like.  analogWriteFrequency() should
