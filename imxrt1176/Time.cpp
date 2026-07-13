@@ -1,127 +1,107 @@
-/*
-  time.c - low level time and date functions
-  Copyright (c) Michael Margolis 2009-2014
+/* Time.cpp - civil-time conversion (breakTime / makeTime) for the
+ * imxrt1176 core.
+ *
+ * Clean-room MIT implementation: written from the documented API contract
+ * (Unix-epoch <-> DateTimeFields conversion) using Howard Hinnant's
+ * public-domain civil-from-days / days-from-civil algorithms; not derived
+ * from the LGPL Arduino/Teensyduino Time.cpp.
+ *
+ * Copyright (c) 2026 Nicholas Newdigate
+ * SPDX-License-Identifier: MIT
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
+#include <stdint.h>
+#include "core_pins.h"
 
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
+// Every representable time (0 .. 0xFFFFFFFF) is 1970-01-01 .. 2106-02-07, so
+// all dates are on or after the Unix epoch and every quantity below is
+// non-negative: the math is done entirely in uint32_t.
+//
+// Day <-> date conversion uses Howard Hinnant's public-domain algorithms
+// ("chrono-Compatible Low-Level Date Algorithms": days_from_civil and
+// civil_from_days).  They work on a proleptic Gregorian calendar shifted to
+// begin years on March 1, grouped into 400-year eras of exactly 146097 days;
+// 719468 is the day offset between 0000-03-01 and 1970-01-01.
 
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#define SECS_PER_DAY   86400u
+#define SECS_PER_HOUR   3600u
+#define SECS_PER_MIN      60u
+#define DAYS_PER_ERA  146097u   // days in one 400-year Gregorian era
+#define EPOCH_SHIFT   719468u   // days from 0000-03-01 to 1970-01-01
+#define EPOCH_WDAY         4u   // 1970-01-01 was a Thursday
 
-  1.0  6  Jan 2010 - initial release
-  1.1  12 Feb 2010 - fixed leap year calculation error
-  1.2  1  Nov 2010 - fixed setTime bug (thanks to Korman for this)
-  1.3  24 Mar 2012 - many edits by Paul Stoffregen: fixed timeStatus() to update
-                     status, updated examples for Arduino 1.0, fixed ARM
-                     compatibility issues, added TimeArduinoDue and TimeTeensy3
-                     examples, add error checking and messages to RTC examples,
-                     add examples to DS1307RTC library.
-  1.4  5  Sep 2014 - compatibility with Arduino 1.5.7
-*/
+// days_from_civil (Hinnant): calendar date -> days since 1970-01-01.
+// y = full calendar year (>= 1970), m = 1-12, d = 1-31.
+static uint32_t days_from_civil(uint32_t y, uint32_t m, uint32_t d)
+{
+	y -= (m <= 2) ? 1u : 0u;             // shift Jan/Feb to previous March-year
+	uint32_t era = y / 400u;
+	uint32_t yoe = y - era * 400u;                            // [0, 399]
+	uint32_t mp  = m + ((m > 2u) ? (uint32_t)-3 : 9u);        // [0, 11], Mar=0
+	uint32_t doy = (153u * mp + 2u) / 5u + d - 1u;            // [0, 365]
+	uint32_t doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;  // [0, 146096]
+	return era * DAYS_PER_ERA + doe - EPOCH_SHIFT;
+}
 
-#include <Arduino.h>
-
-
-// TODO: replace this slow Time library code with faster 32 bit approach
-
-
-// leap year calculator expects year argument as years offset from 1970
-#define LEAP_YEAR(Y)     ( ((1970+(Y))>0) && !((1970+(Y))%4) && ( ((1970+(Y))%100) || !((1970+(Y))%400) ) )
-static const uint8_t monthDays[]={31,28,31,30,31,30,31,31,30,31,30,31};
-#define SECS_PER_MIN  60
-#define SECS_PER_HOUR 3600
-#define SECS_PER_DAY  86400
-
+// civil_from_days (Hinnant): days since 1970-01-01 -> calendar date.
+static void civil_from_days(uint32_t days, uint32_t *y, uint32_t *m, uint32_t *d)
+{
+	uint32_t z   = days + EPOCH_SHIFT;
+	uint32_t era = z / DAYS_PER_ERA;
+	uint32_t doe = z - era * DAYS_PER_ERA;                    // [0, 146096]
+	uint32_t yoe = (doe - doe / 1460u + doe / 36524u - doe / 146096u) / 365u;
+	uint32_t yy  = yoe + era * 400u;
+	uint32_t doy = doe - (365u * yoe + yoe / 4u - yoe / 100u);// [0, 365]
+	uint32_t mp  = (5u * doy + 2u) / 153u;                    // [0, 11], Mar=0
+	*d = doy - (153u * mp + 2u) / 5u + 1u;                    // [1, 31]
+	*m = mp + ((mp < 10u) ? 3u : (uint32_t)-9);               // [1, 12]
+	*y = yy + ((*m <= 2u) ? 1u : 0u);
+}
 
 void breakTime(uint32_t time, DateTimeFields &tm)
 {
-// break the given time_t into time components
-// this is a more compact version of the C library localtime function
-// note that year is offset from 1970 !!!
+	uint32_t days = time / SECS_PER_DAY;   // <= 49710, fits easily
+	uint32_t secs = time - days * SECS_PER_DAY;
 
-  uint8_t year;
-  uint8_t month, monthLength;
-  unsigned long days;
+	tm.hour = (uint8_t)(secs / SECS_PER_HOUR);
+	secs -= (uint32_t)tm.hour * SECS_PER_HOUR;
+	tm.min = (uint8_t)(secs / SECS_PER_MIN);
+	tm.sec = (uint8_t)(secs - (uint32_t)tm.min * SECS_PER_MIN);
 
-  tm.sec = time % 60;
-  time /= 60; // now it is minutes
-  tm.min = time % 60;
-  time /= 60; // now it is hours
-  tm.hour = time % 24;
-  time /= 24; // now it is days
-  tm.wday = ((time + 4) % 7);  // Sunday is day 0
+	tm.wday = (uint8_t)((days + EPOCH_WDAY) % 7u);   // 0 = Sunday
 
-  year = 0;
-  days = 0;
-  while((unsigned)(days += (LEAP_YEAR(year) ? 366 : 365)) <= time) {
-    year++;
-  }
-  tm.year = year + 70; // year is offset from 1970
-
-  days -= LEAP_YEAR(year) ? 366 : 365;
-  time  -= days; // now it is days in this year, starting at 0
-
-  days=0;
-  month=0;
-  monthLength=0;
-  for (month=0; month<12; month++) {
-    if (month==1) { // february
-      if (LEAP_YEAR(year)) {
-        monthLength=29;
-      } else {
-        monthLength=28;
-      }
-    } else {
-      monthLength = monthDays[month];
-    }
-
-    if (time >= monthLength) {
-      time -= monthLength;
-    } else {
-        break;
-    }
-  }
-  tm.mon = month;  // jan is month 0
-  tm.mday = time + 1;     // day of month
+	uint32_t y, m, d;
+	civil_from_days(days, &y, &m, &d);
+	tm.mday = (uint8_t)d;
+	tm.mon  = (uint8_t)(m - 1u);      // 0-11
+	tm.year = (uint8_t)(y - 1900u);   // 70-206
 }
 
 uint32_t makeTime(const DateTimeFields &tm)
 {
-// assemble time elements into time_t
-// note year argument is offset from 1970 (see macros in time.h to convert to other formats)
-// previous version used full four digit year (or digits since 2000),i.e. 2009 was 2009 or 9
-
-  int i;
-  uint32_t seconds;
-
-  // seconds from 1970 till 1 jan 00:00:00 of the given year
-  int year = tm.year - 70;
-  seconds = year * (SECS_PER_DAY * 365);
-  for (i = 0; i < year; i++) {
-    if (LEAP_YEAR(i)) {
-      seconds += SECS_PER_DAY;   // add extra days for leap years
-    }
-  }
-
-  // add days for this year, months start from 1
-  for (i = 0; i < tm.mon; i++) {
-    if ( (i == 1) && LEAP_YEAR(year)) {
-      seconds += SECS_PER_DAY * 29;
-    } else {
-      seconds += SECS_PER_DAY * monthDays[i];
-    }
-  }
-  seconds += (tm.mday-1) * SECS_PER_DAY;
-  seconds += tm.hour * SECS_PER_HOUR;
-  seconds += tm.min * SECS_PER_MIN;
-  seconds += tm.sec;
-  return /*(time_t)*/ seconds;
+	uint32_t days = days_from_civil((uint32_t)tm.year + 1900u,
+	                                (uint32_t)tm.mon + 1u,
+	                                (uint32_t)tm.mday);
+	return days * SECS_PER_DAY
+	     + (uint32_t)tm.hour * SECS_PER_HOUR
+	     + (uint32_t)tm.min * SECS_PER_MIN
+	     + (uint32_t)tm.sec;
 }
