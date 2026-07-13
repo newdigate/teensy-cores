@@ -34,20 +34,20 @@
  * unsigned char / EOF; the Arduino API takes plain (possibly signed) chars,
  * so every wrapper casts through unsigned char first. */
 
-static inline bool isAlpha(int c)             { return isalpha((unsigned char)c) != 0; }
-static inline bool isAlphaNumeric(int c)      { return isalnum((unsigned char)c) != 0; }
-static inline bool isAscii(int c)             { return c >= 0 && c <= 127; }
-static inline bool isControl(int c)           { return iscntrl((unsigned char)c) != 0; }
-static inline bool isDigit(int c)             { return isdigit((unsigned char)c) != 0; }
-static inline bool isGraph(int c)             { return isgraph((unsigned char)c) != 0; }
-static inline bool isHexadecimalDigit(int c)  { return isxdigit((unsigned char)c) != 0; }
-static inline bool isLowerCase(int c)         { return islower((unsigned char)c) != 0; }
-static inline bool isPrintable(int c)         { return isprint((unsigned char)c) != 0; }
-static inline bool isPunct(int c)             { return ispunct((unsigned char)c) != 0; }
-static inline bool isSpace(int c)             { return isspace((unsigned char)c) != 0; }
-static inline bool isUpperCase(int c)         { return isupper((unsigned char)c) != 0; }
-static inline bool isWhitespace(int c)        { return c == ' ' || c == '\t'; }
+inline bool isAlpha(int c)             { return isalpha((unsigned char)c) != 0; }
+inline bool isAlphaNumeric(int c)      { return isalnum((unsigned char)c) != 0; }
+inline bool isAscii(int c)             { return c >= 0 && c <= 127; }
+inline bool isControl(int c)           { return iscntrl((unsigned char)c) != 0; }
+inline bool isDigit(int c)             { return isdigit((unsigned char)c) != 0; }
+inline bool isGraph(int c)             { return isgraph((unsigned char)c) != 0; }
+inline bool isHexadecimalDigit(int c)  { return isxdigit((unsigned char)c) != 0; }
+inline bool isLowerCase(int c)         { return islower((unsigned char)c) != 0; }
+inline bool isPrintable(int c)         { return isprint((unsigned char)c) != 0; }
+inline bool isPunct(int c)             { return ispunct((unsigned char)c) != 0; }
+inline bool isSpace(int c)             { return isspace((unsigned char)c) != 0; }
+inline bool isUpperCase(int c)         { return isupper((unsigned char)c) != 0; }
+inline bool isWhitespace(int c)        { return c == ' ' || c == '\t'; }
 
-static inline int toAscii(int c)              { return c & 0x7f; }
-static inline int toLowerCase(int c)          { return tolower((unsigned char)c); }
-static inline int toUpperCase(int c)          { return toupper((unsigned char)c); }
+inline int toAscii(int c)              { return c & 0x7f; }
+inline int toLowerCase(int c)          { return tolower((unsigned char)c); }
+inline int toUpperCase(int c)          { return toupper((unsigned char)c); }
