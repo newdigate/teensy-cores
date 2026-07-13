@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include "imxrt1176.h"
 #include "pins_arduino.h"
+#include "wiring.h"   /* micros() prototype (core_pins.h), for pulseIn() below */
 
 /* INPUT/OUTPUT/HIGH/LOW come from core_pins.h; define fallbacks so this file
  * also builds standalone (e.g. against the gpio probe).  Values must match
@@ -122,4 +123,64 @@ uint8_t digitalRead(uint8_t pin)
 	if (p->gpio == 0) return 0;
 
 	return (uint8_t)((GPIO_PSR(p->gpio) >> p->bit) & 1u);
+}
+
+/* pulseIn: teensy4 digital.c port, adapted to our pin table (digital_pin_to_info
+ * entries carry a GPIO base + bit instead of teensy4's raw reg pointers; the
+ * PSR read replaces teensy4's *(p->reg + 2)). Same control flow otherwise. */
+uint32_t pulseIn_high(uint8_t pin, uint32_t timeout)
+{
+	const struct digital_pin_info_struct *p = digital_pin_to_info + pin;
+	const uint32_t mask = 1u << p->bit;
+	uint32_t usec_start, usec_stop;
+
+	// wait for any previous pulse to end
+	usec_start = micros();
+	while (GPIO_PSR(p->gpio) & mask) {
+		if (micros() - usec_start > timeout) return 0;
+	}
+	// wait for the pulse to start
+	usec_start = micros();
+	while (!(GPIO_PSR(p->gpio) & mask)) {
+		if (micros() - usec_start > timeout) return 0;
+	}
+	usec_start = micros();
+	// wait for the pulse to stop
+	while (GPIO_PSR(p->gpio) & mask) {
+		if (micros() - usec_start > timeout) return 0;
+	}
+	usec_stop = micros();
+	return usec_stop - usec_start;
+}
+
+uint32_t pulseIn_low(uint8_t pin, uint32_t timeout)
+{
+	const struct digital_pin_info_struct *p = digital_pin_to_info + pin;
+	const uint32_t mask = 1u << p->bit;
+	uint32_t usec_start, usec_stop;
+
+	// wait for any previous pulse to end
+	usec_start = micros();
+	while (!(GPIO_PSR(p->gpio) & mask)) {
+		if (micros() - usec_start > timeout) return 0;
+	}
+	// wait for the pulse to start
+	usec_start = micros();
+	while (GPIO_PSR(p->gpio) & mask) {
+		if (micros() - usec_start > timeout) return 0;
+	}
+	usec_start = micros();
+	// wait for the pulse to stop
+	while (!(GPIO_PSR(p->gpio) & mask)) {
+		if (micros() - usec_start > timeout) return 0;
+	}
+	usec_stop = micros();
+	return usec_stop - usec_start;
+}
+
+uint32_t pulseIn(uint8_t pin, uint8_t state, uint32_t timeout)
+{
+	if (pin >= CORE_NUM_DIGITAL) return 0;
+	if (state) return pulseIn_high(pin, timeout);
+	return pulseIn_low(pin, timeout);
 }
