@@ -71,6 +71,19 @@ static inline void GPIO_CLRBIT_ATOMIC(volatile uint32_t *reg, uint32_t mask) {
 // SPI Data Register ­ SPDR
 
 
+// AVR SPI/PORT/DDR/PIN register-emulation classes below are a verbatim
+// teensy4 carry-over. They depend on two things this minimal imxrt1176 core
+// does not yet provide: (1) an LPSPI4 alias for "SPI0" (the board's Arduino
+// SPI header is LPSPI1 here, see imxrt1176/imxrt1176.h and the LPSPI1-only
+// register set), and (2) per-pin CORE_PINnn_CONFIG/PADCONFIG/BITMASK/
+// DDRREG/PORTREG macros + IOMUXC_PAD_DSE/PKE/PUE/PUS/HYS bitfield macros
+// (imxrt1176/core_pins.h drives pins through a table-driven pinMode()/
+// digital_pin_to_info instead). Nothing in the imxrt1176 core or its
+// libraries instantiates SPCR/SPSR/SPDR/PORTx/DDRx/PINx today, so rather
+// than hand-wave a port, this is guarded off until a real one lands.
+// TODO(avr-emulation milestone): port these to the imxrt1176 pin/SPI model.
+#if !defined(__IMXRT1176__)
+
 class SPCRemulation;
 class SPSRemulation;
 class SPDRemulation;
@@ -1095,6 +1108,8 @@ private:
 };
 
 extern DDRCemulation DDRC;
+
+#endif // !__IMXRT1176__
 
 
 #define PINB0 0
