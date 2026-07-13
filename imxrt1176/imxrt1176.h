@@ -1723,4 +1723,48 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define SNVS_HPCR_HP_TS      (1u << 16)  /* HP time-sync: load HP<-LP */
 #define SNVS_LPCR_SRTC_ENV   (1u << 0)   /* LP secure RTC valid/enable */
 
+/* --- DAC12 (12-bit DAC, base 0x40064000, IRQ 63, LPCG 57; Task: analogWriteDAC0) ---
+ * PERI_DAC.h / RM ch.89. RT1170 chip-specifics (RM 89.1): VREFH is the ONLY
+ * reference (CR.DACRFS must be 1), no HW trigger, no ITRM register, IREF2/PTAT
+ * current ref unavailable. DATA is write-only on silicon. */
+#define DAC_VERID (*(volatile uint32_t *)0x40064000u)
+#define DAC_PARAM (*(volatile uint32_t *)0x40064004u)   /* FIFOSZ[2:0]=0b011 -> 16-word FIFO */
+#define DAC_DATA  (*(volatile uint32_t *)0x40064008u)   /* write-only: DATA0[11:0] */
+#define DAC_CR    (*(volatile uint32_t *)0x4006400Cu)
+#define DAC_PTR   (*(volatile uint32_t *)0x40064010u)
+#define DAC_CR2   (*(volatile uint32_t *)0x40064014u)
+#define DAC_PARAM_FIFOSZ_MASK   0x7u
+#define DAC_DATA_DATA0_MASK     0xFFFu
+#define DAC_CR_FULLF_MASK       0x1u        /* ro: FIFO full */
+#define DAC_CR_NEMPTF_MASK      0x2u        /* ro: one datum left */
+#define DAC_CR_WMF_MASK         0x4u        /* ro: remaining < WML */
+#define DAC_CR_UDFF_MASK        0x8u        /* w1c: trigger underflow */
+#define DAC_CR_OVFF_MASK        0x10u       /* w1c: FIFO overflow */
+#define DAC_CR_FULLIE_MASK      0x100u
+#define DAC_CR_EMPTIE_MASK      0x200u
+#define DAC_CR_WTMIE_MASK       0x400u
+#define DAC_CR_SWTRG_MASK       0x1000u     /* self-clearing */
+#define DAC_CR_TRGSEL_MASK      0x2000u     /* 1 = SW trigger (only option on RT1170) */
+#define DAC_CR_DACRFS_MASK      0x4000u     /* MUST be 1 on RT1170 (VREFH) */
+#define DAC_CR_DACEN_MASK       0x8000u
+#define DAC_CR_FIFOEN_MASK      0x10000u
+#define DAC_CR_SWMD_MASK        0x20000u
+#define DAC_CR_UVIE_MASK        0x40000u
+#define DAC_CR_FIFORST_MASK     0x200000u   /* self-clearing */
+#define DAC_CR_SWRST_MASK       0x400000u   /* self-clearing */
+#define DAC_CR_DMAEN_MASK       0x800000u
+#define DAC_CR_WML_SHIFT        24
+#define DAC_CR_WML_MASK         0xFF000000u
+#define DAC_PTR_DACWFP_MASK     0xFFu
+#define DAC_PTR_DACRFP_SHIFT    16
+#define DAC_PTR_DACRFP_MASK     0xFF0000u
+#define DAC_CR2_BFEN_MASK       0x1u        /* opamp buffer */
+#define DAC_CR2_OEN_MASK        0x2u        /* buffer bypassed */
+#define DAC_CR2_BFMS_MASK       0x4u
+#define DAC_CR2_BFHS_MASK       0x8u
+#define DAC_CR2_IREF1_MASK      0x20u       /* ZTC current ref */
+#define DAC_CR2_IREF_MASK       0x40u       /* internal current ref (SDK default) */
+/* DAC clock gate: kCLOCK_Dac = LPCG 57 (0x40CC6000 + 57*0x20). */
+#define CCM_LPCG57_DIRECT (*(volatile uint32_t *)0x40CC6720u)
+
 #endif

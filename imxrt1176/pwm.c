@@ -109,6 +109,8 @@ uint32_t analogWriteRes(uint32_t bits) {
 	return prev;
 }
 
+uint32_t analogWriteResBits(void) { return pwm_res_bits; }
+
 void analogWrite(uint8_t pin, int value) {
 	uint32_t range = 1u << pwm_res_bits;                 // full-scale (value==range => 100%)
 	if (value < 0) value = 0;

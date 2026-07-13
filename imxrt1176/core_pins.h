@@ -56,6 +56,7 @@ typedef enum IRQ_NUMBER_t {
      * aliases GPIO8/9/11/12 have NO interrupt line to the CM7.
      */
     IRQ_GPIO6_0_15 = 61, IRQ_GPIO6_16_31 = 62,
+    IRQ_DAC = 63,
     IRQ_GPIO2_0_15 = 102, IRQ_GPIO2_16_31 = 103,
     IRQ_GPIO3_0_15 = 104, IRQ_GPIO3_16_31 = 105,
     IRQ_GPIO5_0_15 = 108, IRQ_GPIO5_16_31 = 109,
@@ -2792,6 +2793,8 @@ void init_pins(void);
 // PWM frequency may be configured with analogWriteFrequency().
 void analogWrite(uint8_t pin, int value);
 uint32_t analogWriteRes(uint32_t bits);
+uint32_t analogWriteResBits(void);        // current analogWriteResolution bits (pwm.c)
+void analogWriteDAC0(uint32_t value);     // 12-bit DAC on TP18 (dac.c); Teensy 3.x API
 // Configure PWM resolution for the analogWrite() function.  For example, 12
 // bits gives a range of 0 to 4096.  This function returns the prior
 // resolution, allowing you to temporarily change resolution, call analogWrite()
