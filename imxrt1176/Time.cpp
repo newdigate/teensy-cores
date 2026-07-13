@@ -55,7 +55,7 @@ static uint32_t days_from_civil(uint32_t y, uint32_t m, uint32_t d)
 	y -= (m <= 2) ? 1u : 0u;             // shift Jan/Feb to previous March-year
 	uint32_t era = y / 400u;
 	uint32_t yoe = y - era * 400u;                            // [0, 399]
-	uint32_t mp  = m + ((m > 2u) ? (uint32_t)-3 : 9u);        // [0, 11], Mar=0
+	uint32_t mp  = (m + 9u) % 12u;                            // [0, 11], Mar=0
 	uint32_t doy = (153u * mp + 2u) / 5u + d - 1u;            // [0, 365]
 	uint32_t doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;  // [0, 146096]
 	return era * DAYS_PER_ERA + doe - EPOCH_SHIFT;
@@ -67,12 +67,14 @@ static void civil_from_days(uint32_t days, uint32_t *y, uint32_t *m, uint32_t *d
 	uint32_t z   = days + EPOCH_SHIFT;
 	uint32_t era = z / DAYS_PER_ERA;
 	uint32_t doe = z - era * DAYS_PER_ERA;                    // [0, 146096]
+	// 1460/36524/146096 = 4-year, 100-year, and last-day-of-era corrections
+	// (146096 = DAYS_PER_ERA - 1, intentionally, per Hinnant).
 	uint32_t yoe = (doe - doe / 1460u + doe / 36524u - doe / 146096u) / 365u;
 	uint32_t yy  = yoe + era * 400u;
 	uint32_t doy = doe - (365u * yoe + yoe / 4u - yoe / 100u);// [0, 365]
 	uint32_t mp  = (5u * doy + 2u) / 153u;                    // [0, 11], Mar=0
 	*d = doy - (153u * mp + 2u) / 5u + 1u;                    // [1, 31]
-	*m = mp + ((mp < 10u) ? 3u : (uint32_t)-9);               // [1, 12]
+	*m = (mp + 2u) % 12u + 1u;                                // [1, 12]
 	*y = yy + ((*m <= 2u) ? 1u : 0u);
 }
 
