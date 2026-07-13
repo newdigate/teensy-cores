@@ -130,7 +130,9 @@ uint8_t digitalRead(uint8_t pin)
  * PSR read replaces teensy4's *(p->reg + 2)). Same control flow otherwise. */
 uint32_t pulseIn_high(uint8_t pin, uint32_t timeout)
 {
+	if (pin >= CORE_NUM_DIGITAL) return 0;
 	const struct digital_pin_info_struct *p = digital_pin_to_info + pin;
+	if (p->gpio == 0) return 0;
 	const uint32_t mask = 1u << p->bit;
 	uint32_t usec_start, usec_stop;
 
@@ -155,7 +157,9 @@ uint32_t pulseIn_high(uint8_t pin, uint32_t timeout)
 
 uint32_t pulseIn_low(uint8_t pin, uint32_t timeout)
 {
+	if (pin >= CORE_NUM_DIGITAL) return 0;
 	const struct digital_pin_info_struct *p = digital_pin_to_info + pin;
+	if (p->gpio == 0) return 0;
 	const uint32_t mask = 1u << p->bit;
 	uint32_t usec_start, usec_stop;
 
