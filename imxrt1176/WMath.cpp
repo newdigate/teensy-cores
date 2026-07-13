@@ -33,10 +33,7 @@
  * ignored (same contract as Arduino: a zero seed leaves the sequence alone). */
 static uint32_t rng_state = 0x11760001u;
 
-void randomSeed(uint32_t newseed)
-{
-	if (newseed != 0) rng_state = newseed;
-}
+extern "C" {
 
 void srandom(unsigned int newseed)
 {
@@ -54,6 +51,15 @@ int32_t random(void)
 	return (int32_t)(x >> 1);
 }
 
+} // extern "C" — must match newlib's C-linkage random()/srandom() so these
+  // definitions (not libc_nano's) are what sketch calls bind to.
+
+void randomSeed(uint32_t newseed)
+{
+	if (newseed != 0) rng_state = newseed;
+}
+
+/* Modulo has slight bias and xorshift32's low bits are its weakest — fine for the Arduino API contract, don't use for crypto. */
 uint32_t random(uint32_t howbig)
 {
 	if (howbig == 0) return 0;
@@ -63,7 +69,9 @@ uint32_t random(uint32_t howbig)
 int32_t random(int32_t howsmall, int32_t howbig)
 {
 	if (howsmall >= howbig) return howsmall;
-	return (int32_t)random((uint32_t)(howbig - howsmall)) + howsmall;
+	/* Cast operands BEFORE subtracting: int32 overflow is UB, uint32 wraps. */
+	uint32_t span = (uint32_t)howbig - (uint32_t)howsmall;
+	return (int32_t)((uint32_t)howsmall + random(span));
 }
 
 uint16_t makeWord(uint16_t w)
