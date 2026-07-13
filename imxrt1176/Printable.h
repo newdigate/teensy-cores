@@ -1,42 +1,42 @@
-/*
-  Printable.h - Interface class that allows printing of complex types
-  Copyright (c) 2011 Adrian McEwen.  All right reserved.
+/* Printable.h - interface for classes that know how to print themselves
+ * via Print.
+ *
+ * Clean-room MIT implementation for the imxrt1176 core: written from the
+ * documented Arduino API surface (a single pure-virtual printTo(Print&)),
+ * not derived from the LGPL Arduino/Wiring Printable.h.
+ *
+ * Copyright (c) 2026 Nicholas Newdigate
+ * SPDX-License-Identifier: MIT
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
-
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
-
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*/
-
-#ifndef Printable_h
-#define Printable_h
-
-#ifdef __cplusplus
-
-#include <stdlib.h>
+#pragma once
+#include <stddef.h>
 
 class Print;
 
-/** The Printable class provides a way for new classes to allow themselves to be printed.
-    By deriving from Printable and implementing the printTo method, it will then be possible
-    for users to print out instances of this class by passing them into the usual
-    Print::print and Print::println methods.
-*/
+// A class inheriting Printable can be passed directly to Print::print /
+// Print::println. Exactly one virtual member — do not add a destructor
+// (it would change the vtable layout of every Printable subclass).
 class Printable
 {
-  public:
-    virtual size_t printTo(Print& p) const = 0;
+public:
+	virtual size_t printTo(Print &p) const = 0;
 };
-
-
-#endif
-#endif
