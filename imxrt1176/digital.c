@@ -60,6 +60,12 @@ const struct digital_pin_info_struct digital_pin_to_info[CORE_NUM_DIGITAL] = {
 	 * .gpio = normal GPIO port base (ALT5 / GPIO_MUXn), .mux_mode = 0x5.
 	 * Port map: AD_01..31 -> GPIO3, AD_00 -> GPIO2, DISP_B2 -> GPIO5,
 	 * LPSR -> GPIO6.  .bit is the port bit (same as the old fast-alias bit).
+	 *
+	 * Every pad below is verified against the RevC3 schematic (SPF-55139 C3
+	 * sheet 26: J9/J10/J26 even-numbered pins, all via populated 0R) and the
+	 * BOM -- physical connector pin numbers in docs/arduino-header-revc3.md.
+	 * CAUTION: AD_00..AD_05 also appear raw on J25 ODD pins (motor-control
+	 * column) and in the SIM circuit (sheet 22); see the doc before probing.
 	 */
 	[0]  = { .gpio=GPIO5_BASE, .bit=12, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_11, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_11 },
 	[1]  = { .gpio=GPIO5_BASE, .bit=11, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_10, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_10 },

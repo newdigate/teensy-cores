@@ -369,6 +369,7 @@
 #define ADC_STAT_FOF     (1u << 1)
 #define ADC_IE_FWMIE     (1u << 0)
 #define ADC_CMDL_ADCH(x)   ((uint32_t)(x) & 0x1Fu)
+#define ADC_CMDL_ABSEL     (1u << 5)   /* single-ended: 0 = A-side pad, 1 = B-side pad */
 #define ADC_CMDL_CSCALE    (1u << 13)  /* 1 = full scale (SDK default); 0 = input scaled 30/64 */
 #define ADC_CMDH_STS(x)    (((uint32_t)(x) & 0x7u) << 8)  /* sample time: 0=3.5 ADCK .. 7=131.5 ADCK */
 #define ADC_TCTRL_TCMD(x)  (((uint32_t)(x) & 0xFu) << 24)

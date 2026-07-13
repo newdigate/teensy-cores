@@ -9,9 +9,18 @@
 #include "imxrt1176.h"
 #include "pins_arduino.h"
 
-/* The verified analog pin table (declared extern in pins_arduino.h). */
+/* The verified analog pin table (declared extern in pins_arduino.h).
+ * Channel/side per RT1170 RM "ADC external signals" (ADC1_CHnA/B are dedicated
+ * pad functions, no muxing) cross-checked against the RevC3 schematic sheet 26
+ * (J26 socket nets, all via populated 0R) -- see docs/arduino-header-revc3.md.
+ * NOTE the header order is NOT channel order: A4/A5 sit on the LOWER channels. */
 const analog_pin_info_t analog_pin_to_info[NUM_ANALOG_INPUTS] = {
-    { A0, 0, 0, 0 },   /* A0 -> LPADC1, channel 0, side A */
+    { A0, 0, 2, 0 },   /* A0 -> GPIO_AD_10 = ADC1 CH2 side A */
+    { A1, 0, 2, 1 },   /* A1 -> GPIO_AD_11 = ADC1 CH2 side B */
+    { A2, 0, 3, 0 },   /* A2 -> GPIO_AD_12 = ADC1 CH3 side A */
+    { A3, 0, 3, 1 },   /* A3 -> GPIO_AD_13 = ADC1 CH3 side B */
+    { A4, 0, 1, 1 },   /* A4 -> GPIO_AD_09 = ADC1 CH1 side B (also LPI2C1 SDA) */
+    { A5, 0, 1, 0 },   /* A5 -> GPIO_AD_08 = ADC1 CH1 side A (also LPI2C1 SCL) */
 };
 
 typedef struct {
@@ -56,11 +65,12 @@ static uint16_t scale_res_bits(uint16_t d, uint8_t bits) {
 }
 static uint16_t scale_res(uint16_t d) { return scale_res_bits(d, read_res_bits); }
 
-uint16_t analogReadChannel(uint8_t instance, uint8_t channel) {
+static uint16_t lpadc_read(uint8_t instance, uint8_t channel, uint8_t side) {
     if (instance > 1) return 0;
     const lpadc_regs_t *a = &LPADC[instance];
     lpadc_init(instance);
     *a->CMDL1  = ADC_CMDL_ADCH(channel)    /* command buffer 1: channel */
+               | (side ? ADC_CMDL_ABSEL : 0u)  /* B-side input select */
                | ADC_CMDL_CSCALE;           /* full-scale input (CSCALE=0 attenuates 30/64) */
     *a->CMDH1  = 0u;                        /* single sample, no average/loop */
     *a->TCTRL0 = ADC_TCTRL_TCMD(1);        /* trigger 0 -> command 1 */
@@ -74,10 +84,17 @@ uint16_t analogReadChannel(uint8_t instance, uint8_t channel) {
     return scale_res((uint16_t)(r & ADC_RESFIFO_D));
 }
 
+/* Test hook / raw access: A-side single-ended conversion. */
+uint16_t analogReadChannel(uint8_t instance, uint8_t channel) {
+    return lpadc_read(instance, channel, 0);
+}
+
 int analogRead(uint8_t pin) {
     for (uint8_t k = 0; k < NUM_ANALOG_INPUTS; k++) {
         if (analog_pin_to_info[k].pin == pin)
-            return analogReadChannel(analog_pin_to_info[k].instance, analog_pin_to_info[k].channel);
+            return lpadc_read(analog_pin_to_info[k].instance,
+                              analog_pin_to_info[k].channel,
+                              analog_pin_to_info[k].side);
     }
     return 0;   /* not an analog pin */
 }
@@ -116,8 +133,8 @@ static void lpadc_isr(int i) {
 static void lpadc1_isr(void) { lpadc_isr(0); }
 static void lpadc2_isr(void) { lpadc_isr(1); }
 
-/* Shared start routine for a raw (instance,channel) async conversion. */
-static int lpadc_start_async(int i, uint8_t channel, void (*callback)(uint16_t)) {
+/* Shared start routine for a raw (instance,channel,side) async conversion. */
+static int lpadc_start_async(int i, uint8_t channel, uint8_t side, void (*callback)(uint16_t)) {
     if (i < 0 || i > 1) return 0;
     if (async_pending[i]) return 0;         /* one conversion per instance */
     lpadc_init(i);
@@ -128,7 +145,7 @@ static int lpadc_start_async(int i, uint8_t channel, void (*callback)(uint16_t))
     *a->IE = ADC_IE_FWMIE;
     attachInterruptVector(a->irq, (i == 0) ? &lpadc1_isr : &lpadc2_isr);
     NVIC_ENABLE_IRQ(a->irq);
-    *a->CMDL1  = ADC_CMDL_ADCH(channel) | ADC_CMDL_CSCALE;
+    *a->CMDL1  = ADC_CMDL_ADCH(channel) | (side ? ADC_CMDL_ABSEL : 0u) | ADC_CMDL_CSCALE;
     *a->CMDH1  = 0u;
     *a->TCTRL0 = ADC_TCTRL_TCMD(1);
     *a->SWTRIG = 1u;                        /* fires; ISR delivers the result */
@@ -139,12 +156,13 @@ int analogReadAsync(uint8_t pin, void (*callback)(uint16_t value)) {
     for (uint8_t k = 0; k < NUM_ANALOG_INPUTS; k++) {
         if (analog_pin_to_info[k].pin == pin)
             return lpadc_start_async(analog_pin_to_info[k].instance,
-                                     analog_pin_to_info[k].channel, callback);
+                                     analog_pin_to_info[k].channel,
+                                     analog_pin_to_info[k].side, callback);
     }
     return 0;   /* not an analog pin */
 }
 
-/* Test hook: start an async conversion on a raw (instance,channel). */
+/* Test hook: start an async conversion on a raw (instance,channel), A side. */
 int analogReadAsyncChannel(uint8_t instance, uint8_t channel, void (*callback)(uint16_t value)) {
-    return lpadc_start_async((int)instance, channel, callback);
+    return lpadc_start_async((int)instance, channel, 0, callback);
 }

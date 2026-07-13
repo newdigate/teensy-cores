@@ -54,8 +54,19 @@
 #define LED_BUILTIN       3    /* GPIO3_IO03, pad GPIO_AD_04 via ALT5 (green User LED, D3) */
 #define CORE_NUM_DIGITAL  22
 #define NUM_DIGITAL_PINS  CORE_NUM_DIGITAL
-#define NUM_ANALOG_INPUTS 1
-#define A0 16   /* Arduino analog pin 0 -> LPADC1 channel 0 side A (pad GPIO_AD_06) */
+#define NUM_ANALOG_INPUTS 6
+
+/* Arduino analog header J26 (RevC3 schematic sheet 26), even/socket pins.
+ * ADC channel/side are the pads' dedicated ADC1 inputs (RM, no muxing):
+ *   A0 = GPIO_AD_10 = ADC1 CH2A     A3 = GPIO_AD_13 = ADC1 CH3B
+ *   A1 = GPIO_AD_11 = ADC1 CH2B     A4 = GPIO_AD_09 = ADC1 CH1B (LPI2C1 SDA)
+ *   A2 = GPIO_AD_12 = ADC1 CH3A     A5 = GPIO_AD_08 = ADC1 CH1A (LPI2C1 SCL) */
+#define A0 16
+#define A1 17
+#define A2 18
+#define A3 19
+#define A4 20
+#define A5 21
 
 typedef struct analog_pin_info_struct {
     uint8_t pin;       /* Arduino pin id */
@@ -105,8 +116,12 @@ static const uint8_t MOSI = 11;
 static const uint8_t MISO = 12;
 static const uint8_t SCK = 13;
 
-#define PIN_WIRE_SDA  (18)
-#define PIN_WIRE_SCL  (19)
+/* Wire (LPI2C1) rides the classic-Uno A4/A5 positions = our pins 20/21.
+ * (The stock teensy4 values 18/19 land on A2/A3 in THIS numbering; the socket
+ * positions silkscreened SDA/SCL next to AREF are D14/D15 = LPI2C5 = Wire2,
+ * shared with the WM8962 codec.) */
+#define PIN_WIRE_SDA  (20)
+#define PIN_WIRE_SCL  (21)
 
 #define PIN_SERIAL_RX (0)
 #define PIN_SERIAL_TX (1)
