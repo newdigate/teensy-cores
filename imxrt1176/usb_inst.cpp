@@ -12,3 +12,9 @@
 usb_serial_class Serial;
 usb_serial_class &SerialUSB = Serial;
 #endif
+
+// Keyboard is provided by usb_keyboard.h (pulled in via Arduino.h), backed by
+// the C functions in usb_keyboard.c.
+#if defined(KEYBOARD_INTERFACE)
+usb_keyboard_class Keyboard;
+#endif

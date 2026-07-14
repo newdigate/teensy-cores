@@ -87,6 +87,11 @@ static uint8_t endpoint0_buffer[8] DMAMEM;
 // sized for the largest descriptor: the config descriptor (CONFIG_DESC_SIZE).
 static uint8_t usb_descriptor_buffer[CONFIG_DESC_SIZE] DMAMEM;
 
+#if defined(KEYBOARD_INTERFACE)
+extern volatile uint8_t keyboard_leds;   // HID SET_REPORT target (defined in usb_keyboard.c)
+void usb_keyboard_configure(void);
+#endif
+
 // RT1176 480 MHz USB-PHY PLL bring-up (replaces teensy4 imxrt1062 clock block)
 static void usb_pll_phy_init(void);
 
@@ -265,8 +270,14 @@ static void endpoint0_setup(uint64_t setupdata)
 		#if defined(ENDPOINT4_CONFIG)
 		USB1_ENDPTCTRL4 = ENDPOINT4_CONFIG;
 		#endif
+		#if defined(ENDPOINT5_CONFIG)
+		USB1_ENDPTCTRL5 = ENDPOINT5_CONFIG;
+		#endif
 		#if defined(CDC_STATUS_INTERFACE) && defined(CDC_DATA_INTERFACE)
 		usb_serial_configure();
+		#endif
+		#if defined(KEYBOARD_INTERFACE)
+		usb_keyboard_configure();
 		#endif
 		endpoint0_receive(NULL, 0, 0);
 		return;
@@ -352,6 +363,16 @@ static void endpoint0_setup(uint64_t setupdata)
 		endpoint0_receive(endpoint0_buffer, 7, 1);
 		return;
 #endif
+#if defined(KEYBOARD_INTERFACE)
+	  case 0x0921: // HID SET_REPORT (e.g. keyboard LEDs)
+		if (setup.wLength <= sizeof(endpoint0_buffer)) {
+			endpoint0_setupdata.bothwords = setup.bothwords;
+			endpoint0_buffer[0] = 0xE9;
+			endpoint0_receive(endpoint0_buffer, setup.wLength, 1);
+			return;
+		}
+		break;
+#endif
 	}
 	USB1_ENDPTCTRL0 = 0x000010001; // stall
 }
@@ -424,6 +445,13 @@ static void endpoint0_complete(void)
 	// 0x2021 is CDC_SET_LINE_CODING
 	if (setup.wRequestAndType == 0x2021 && setup.wIndex == CDC_STATUS_INTERFACE) {
 		memcpy(usb_cdc_line_coding, endpoint0_buffer, 7);
+	}
+#endif
+#ifdef KEYBOARD_INTERFACE
+	// 0x0921 HID SET_REPORT to the keyboard interface carries the LED output report
+	if (setup.word1 == 0x02000921 && setup.word2 == ((1 << 16) | KEYBOARD_INTERFACE)) {
+		keyboard_leds = endpoint0_buffer[0];
+		endpoint0_transmit(NULL, 0, 0);
 	}
 #endif
 }

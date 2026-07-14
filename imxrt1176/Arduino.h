@@ -12,5 +12,6 @@
 // standard Arduino `Serial` (e.g. SdFat's FatFile/FatVolume ls()/printName()
 // under ENABLE_ARDUINO_SERIAL) fails to compile with "'Serial' not declared".
 #include "usb_serial.h"
+#include "usb_keyboard.h"   // Keyboard, KEY_* (guarded by KEYBOARD_INTERFACE)
 
 #endif
