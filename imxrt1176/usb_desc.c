@@ -43,10 +43,23 @@ static uint8_t mouse_report_desc[] = {
 };
 #endif
 
-/* Configuration descriptor: composite CDC + Keyboard + Mouse, 4 interfaces, 125 bytes. */
+/* Joystick HID report descriptor (JOYSTICK_SIZE==12 variant, 85 bytes; teensy4
+ * usb_desc.c): 32 buttons + hat + 6 10-bit axes; no REPORT_ID. */
+#if defined(JOYSTICK_INTERFACE)
+static uint8_t joystick_report_desc[] = {
+    0x05,0x01, 0x09,0x04, 0xA1,0x01, 0x15,0x00, 0x25,0x01, 0x75,0x01, 0x95,0x20,
+    0x05,0x09, 0x19,0x01, 0x29,0x20, 0x81,0x02, 0x15,0x00, 0x25,0x07, 0x35,0x00,
+    0x46,0x3B,0x01, 0x75,0x04, 0x95,0x01, 0x65,0x14, 0x05,0x01, 0x09,0x39, 0x81,0x42,
+    0x05,0x01, 0x09,0x01, 0xA1,0x00, 0x15,0x00, 0x26,0xFF,0x03, 0x75,0x0A, 0x95,0x04,
+    0x09,0x30, 0x09,0x31, 0x09,0x32, 0x09,0x35, 0x81,0x02, 0xC0,
+    0x15,0x00, 0x26,0xFF,0x03, 0x75,0x0A, 0x95,0x02, 0x09,0x36, 0x09,0x36, 0x81,0x02, 0xC0
+};
+#endif
+
+/* Configuration descriptor: composite CDC + Keyboard + Mouse + Joystick, 5 interfaces, 150 bytes. */
 static const uint8_t config_descriptor[CONFIG_DESC_SIZE] = {
     /* configuration (9) */
-    9, 2, LSB(CONFIG_DESC_SIZE), MSB(CONFIG_DESC_SIZE), 4, 1, 0, 0xC0, 50,
+    9, 2, LSB(CONFIG_DESC_SIZE), MSB(CONFIG_DESC_SIZE), 5, 1, 0, 0xC0, 50,
     /* interface association (8) */
     8, 11, CDC_STATUS_INTERFACE, 2, 0x02, 0x02, 0x01, 0,
     /* CDC communication interface (9) */
@@ -80,7 +93,14 @@ static const uint8_t config_descriptor[CONFIG_DESC_SIZE] = {
     9, 0x21, 0x11, 0x01, 0, 1, 0x22,
         LSB(sizeof(mouse_report_desc)), MSB(sizeof(mouse_report_desc)),
     /* mouse endpoint, EP6 IN (7) */
-    7, 5, MOUSE_ENDPOINT | 0x80, 0x03, MOUSE_SIZE, 0, MOUSE_INTERVAL
+    7, 5, MOUSE_ENDPOINT | 0x80, 0x03, MOUSE_SIZE, 0, MOUSE_INTERVAL,
+    /* joystick interface (9) -- NON-boot: subclass/protocol 0x00 */
+    9, 4, JOYSTICK_INTERFACE, 0, 1, 0x03, 0x00, 0x00, 0,
+    /* HID descriptor (9) */
+    9, 0x21, 0x11, 0x01, 0, 1, 0x22,
+        LSB(sizeof(joystick_report_desc)), MSB(sizeof(joystick_report_desc)),
+    /* joystick endpoint, EP7 IN (7) */
+    7, 5, JOYSTICK_ENDPOINT | 0x80, 0x03, JOYSTICK_SIZE, 0, JOYSTICK_INTERVAL
 };
 
 /* String descriptors. */
@@ -100,6 +120,10 @@ const usb_descriptor_list_t usb_descriptor_list[] = {
 #if defined(MOUSE_INTERFACE)
     {0x2200, MOUSE_INTERFACE, mouse_report_desc, sizeof(mouse_report_desc)},
     {0x2100, MOUSE_INTERFACE, config_descriptor + MOUSE_HID_DESC_OFFSET, 9},
+#endif
+#if defined(JOYSTICK_INTERFACE)
+    {0x2200, JOYSTICK_INTERFACE, joystick_report_desc, sizeof(joystick_report_desc)},
+    {0x2100, JOYSTICK_INTERFACE, config_descriptor + JOYSTICK_HID_DESC_OFFSET, 9},
 #endif
     {0x0300, 0x0000, (const uint8_t *)&string0,    4},
     {0x0301, 0x0409, (const uint8_t *)&string1,    14},

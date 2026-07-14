@@ -14,5 +14,6 @@
 #include "usb_serial.h"
 #include "usb_keyboard.h"   // Keyboard, KEY_* (guarded by KEYBOARD_INTERFACE)
 #include "usb_mouse.h"      // Mouse, MOUSE_LEFT/... (guarded by MOUSE_INTERFACE)
+#include "usb_joystick.h"   // Joystick (guarded by JOYSTICK_INTERFACE)
 
 #endif

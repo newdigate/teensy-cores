@@ -22,3 +22,9 @@ usb_keyboard_class Keyboard;
 #if defined(MOUSE_INTERFACE)
 usb_mouse_class Mouse;
 #endif
+
+// Joystick has a static manual_mode member that needs a single definition here.
+#if defined(JOYSTICK_INTERFACE)
+usb_joystick_class Joystick;
+uint8_t usb_joystick_class::manual_mode = 0;
+#endif

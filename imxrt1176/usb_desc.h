@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 #define VENDOR_ID            0x1209   /* pid.codes generic (placeholder, not PJRC) */
-#define PRODUCT_ID           0x0003   /* bumped per composite-shape change (kbd 0x0002 -> +mouse 0x0003): forces a macOS descriptor re-read */
+#define PRODUCT_ID           0x0004   /* bumped per composite-shape change (+joystick 0x0004): forces a macOS descriptor re-read */
 #define EP0_SIZE             64
-#define NUM_ENDPOINTS        6        /* CDC 4 + keyboard EP5 + mouse EP6 */
-#define NUM_INTERFACE        4        /* CDC(0,1) + keyboard(2) + mouse(3) */
+#define NUM_ENDPOINTS        7        /* CDC 4 + keyboard EP5 + mouse EP6 + joystick EP7 */
+#define NUM_INTERFACE        5        /* CDC(0,1) + keyboard(2) + mouse(3) + joystick(4) */
 #define CDC_STATUS_INTERFACE 0
 #define CDC_DATA_INTERFACE   1
 #define CDC_ACM_ENDPOINT     2        /* interrupt IN (0x82) */
@@ -36,7 +36,14 @@
 #define MOUSE_INTERVAL        2
 #define MOUSE_HID_DESC_OFFSET 109      /* 100 (end of keyboard block) + 9 (mouse iface desc) */
 
-#define CONFIG_DESC_SIZE     125     /* 75 CDC + 25 keyboard + 25 mouse */
+/* Joystick HID (12-byte report: 32 buttons + hat + 6 axes; no REPORT_ID) */
+#define JOYSTICK_INTERFACE       4
+#define JOYSTICK_ENDPOINT        7        /* interrupt IN (0x87) */
+#define JOYSTICK_SIZE            12
+#define JOYSTICK_INTERVAL        1
+#define JOYSTICK_HID_DESC_OFFSET 134      /* 125 (end of mouse block) + 9 (joystick iface desc) */
+
+#define CONFIG_DESC_SIZE     150     /* 75 CDC + 25 keyboard + 25 mouse + 25 joystick */
 
 /* Values written to USB1_ENDPTCTRLn in SET_CONFIGURATION (from teensy4 usb_desc.h). */
 #define ENDPOINT_TRANSMIT_UNUSED    0x00020000
@@ -50,6 +57,7 @@
 #define ENDPOINT4_CONFIG  (ENDPOINT_RECEIVE_UNUSED | ENDPOINT_TRANSMIT_BULK)      /* 0x00C80002 */
 #define ENDPOINT5_CONFIG  (ENDPOINT_RECEIVE_UNUSED | ENDPOINT_TRANSMIT_INTERRUPT) /* 0x00CC0002 */
 #define ENDPOINT6_CONFIG  (ENDPOINT_RECEIVE_UNUSED | ENDPOINT_TRANSMIT_INTERRUPT) /* 0x00CC0002 */
+#define ENDPOINT7_CONFIG  (ENDPOINT_RECEIVE_UNUSED | ENDPOINT_TRANSMIT_INTERRUPT) /* 0x00CC0002 */
 
 #define LSB(n) ((n) & 255)
 #define MSB(n) (((n) >> 8) & 255)

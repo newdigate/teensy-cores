@@ -94,6 +94,9 @@ void usb_keyboard_configure(void);
 #if defined(MOUSE_INTERFACE)
 void usb_mouse_configure(void);
 #endif
+#if defined(JOYSTICK_INTERFACE)
+void usb_joystick_configure(void);
+#endif
 
 // RT1176 480 MHz USB-PHY PLL bring-up (replaces teensy4 imxrt1062 clock block)
 static void usb_pll_phy_init(void);
@@ -279,6 +282,9 @@ static void endpoint0_setup(uint64_t setupdata)
 		#if defined(ENDPOINT6_CONFIG)
 		USB1_ENDPTCTRL6 = ENDPOINT6_CONFIG;
 		#endif
+		#if defined(ENDPOINT7_CONFIG)
+		USB1_ENDPTCTRL7 = ENDPOINT7_CONFIG;
+		#endif
 		#if defined(CDC_STATUS_INTERFACE) && defined(CDC_DATA_INTERFACE)
 		usb_serial_configure();
 		#endif
@@ -287,6 +293,9 @@ static void endpoint0_setup(uint64_t setupdata)
 		#endif
 		#if defined(MOUSE_INTERFACE)
 		usb_mouse_configure();
+		#endif
+		#if defined(JOYSTICK_INTERFACE)
+		usb_joystick_configure();
 		#endif
 		endpoint0_receive(NULL, 0, 0);
 		return;
