@@ -91,6 +91,9 @@ static uint8_t usb_descriptor_buffer[CONFIG_DESC_SIZE] DMAMEM;
 extern volatile uint8_t keyboard_leds;   // HID SET_REPORT target (defined in usb_keyboard.c)
 void usb_keyboard_configure(void);
 #endif
+#if defined(MOUSE_INTERFACE)
+void usb_mouse_configure(void);
+#endif
 
 // RT1176 480 MHz USB-PHY PLL bring-up (replaces teensy4 imxrt1062 clock block)
 static void usb_pll_phy_init(void);
@@ -273,11 +276,17 @@ static void endpoint0_setup(uint64_t setupdata)
 		#if defined(ENDPOINT5_CONFIG)
 		USB1_ENDPTCTRL5 = ENDPOINT5_CONFIG;
 		#endif
+		#if defined(ENDPOINT6_CONFIG)
+		USB1_ENDPTCTRL6 = ENDPOINT6_CONFIG;
+		#endif
 		#if defined(CDC_STATUS_INTERFACE) && defined(CDC_DATA_INTERFACE)
 		usb_serial_configure();
 		#endif
 		#if defined(KEYBOARD_INTERFACE)
 		usb_keyboard_configure();
+		#endif
+		#if defined(MOUSE_INTERFACE)
+		usb_mouse_configure();
 		#endif
 		endpoint0_receive(NULL, 0, 0);
 		return;

@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 #define VENDOR_ID            0x1209   /* pid.codes generic (placeholder, not PJRC) */
-#define PRODUCT_ID           0x0002   /* was 0x0001: bump forces macOS descriptor re-read for the composite */
+#define PRODUCT_ID           0x0003   /* bumped per composite-shape change (kbd 0x0002 -> +mouse 0x0003): forces a macOS descriptor re-read */
 #define EP0_SIZE             64
-#define NUM_ENDPOINTS        5        /* was 4: + keyboard interrupt-IN (EP5) */
-#define NUM_INTERFACE        3        /* was 2: + keyboard HID interface */
+#define NUM_ENDPOINTS        6        /* CDC 4 + keyboard EP5 + mouse EP6 */
+#define NUM_INTERFACE        4        /* CDC(0,1) + keyboard(2) + mouse(3) */
 #define CDC_STATUS_INTERFACE 0
 #define CDC_DATA_INTERFACE   1
 #define CDC_ACM_ENDPOINT     2        /* interrupt IN (0x82) */
@@ -29,7 +29,14 @@
 #define LAYOUT_US_ENGLISH
 #endif
 
-#define CONFIG_DESC_SIZE     100     /* was 75: +25 = 9 iface + 9 HID + 7 endpoint */
+/* Mouse HID (relative report-ID 1 + absolute report-ID 2; NON-boot interface) */
+#define MOUSE_INTERFACE       3
+#define MOUSE_ENDPOINT        6        /* interrupt IN (0x86) */
+#define MOUSE_SIZE            8
+#define MOUSE_INTERVAL        2
+#define MOUSE_HID_DESC_OFFSET 109      /* 100 (end of keyboard block) + 9 (mouse iface desc) */
+
+#define CONFIG_DESC_SIZE     125     /* 75 CDC + 25 keyboard + 25 mouse */
 
 /* Values written to USB1_ENDPTCTRLn in SET_CONFIGURATION (from teensy4 usb_desc.h). */
 #define ENDPOINT_TRANSMIT_UNUSED    0x00020000
@@ -42,6 +49,7 @@
 #define ENDPOINT3_CONFIG  (ENDPOINT_RECEIVE_BULK   | ENDPOINT_TRANSMIT_UNUSED)    /* 0x000200C8 */
 #define ENDPOINT4_CONFIG  (ENDPOINT_RECEIVE_UNUSED | ENDPOINT_TRANSMIT_BULK)      /* 0x00C80002 */
 #define ENDPOINT5_CONFIG  (ENDPOINT_RECEIVE_UNUSED | ENDPOINT_TRANSMIT_INTERRUPT) /* 0x00CC0002 */
+#define ENDPOINT6_CONFIG  (ENDPOINT_RECEIVE_UNUSED | ENDPOINT_TRANSMIT_INTERRUPT) /* 0x00CC0002 */
 
 #define LSB(n) ((n) & 255)
 #define MSB(n) (((n) >> 8) & 255)

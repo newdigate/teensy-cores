@@ -18,3 +18,7 @@ usb_serial_class &SerialUSB = Serial;
 #if defined(KEYBOARD_INTERFACE)
 usb_keyboard_class Keyboard;
 #endif
+
+#if defined(MOUSE_INTERFACE)
+usb_mouse_class Mouse;
+#endif

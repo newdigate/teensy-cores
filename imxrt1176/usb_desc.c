@@ -28,10 +28,25 @@ static uint8_t keyboard_report_desc[] = {
 };
 #endif
 
-/* Configuration descriptor: composite CDC + Keyboard, 3 interfaces, 100 bytes. */
+/* Mouse HID report descriptor (84 bytes; teensy4 usb_desc.c): report-ID 1 relative
+ * (buttons + X/Y/wheel/AC-pan) + report-ID 2 absolute. */
+#if defined(MOUSE_INTERFACE)
+static uint8_t mouse_report_desc[] = {
+    0x05,0x01, 0x09,0x02, 0xA1,0x01, 0x85,0x01, 0x05,0x09,
+    0x19,0x01, 0x29,0x08, 0x15,0x00, 0x25,0x01, 0x95,0x08,
+    0x75,0x01, 0x81,0x02, 0x05,0x01, 0x09,0x30, 0x09,0x31,
+    0x09,0x38, 0x15,0x81, 0x25,0x7F, 0x75,0x08, 0x95,0x03,
+    0x81,0x06, 0x05,0x0C, 0x0A,0x38,0x02, 0x15,0x81, 0x25,0x7F,
+    0x75,0x08, 0x95,0x01, 0x81,0x06, 0xC0, 0x05,0x01, 0x09,0x02,
+    0xA1,0x01, 0x85,0x02, 0x05,0x01, 0x09,0x30, 0x09,0x31,
+    0x15,0x00, 0x26,0xFF,0x7F, 0x75,0x10, 0x95,0x02, 0x81,0x02, 0xC0
+};
+#endif
+
+/* Configuration descriptor: composite CDC + Keyboard + Mouse, 4 interfaces, 125 bytes. */
 static const uint8_t config_descriptor[CONFIG_DESC_SIZE] = {
     /* configuration (9) */
-    9, 2, LSB(CONFIG_DESC_SIZE), MSB(CONFIG_DESC_SIZE), 3, 1, 0, 0xC0, 50,
+    9, 2, LSB(CONFIG_DESC_SIZE), MSB(CONFIG_DESC_SIZE), 4, 1, 0, 0xC0, 50,
     /* interface association (8) */
     8, 11, CDC_STATUS_INTERFACE, 2, 0x02, 0x02, 0x01, 0,
     /* CDC communication interface (9) */
@@ -58,7 +73,14 @@ static const uint8_t config_descriptor[CONFIG_DESC_SIZE] = {
     9, 0x21, 0x11, 0x01, 0, 1, 0x22,
         LSB(sizeof(keyboard_report_desc)), MSB(sizeof(keyboard_report_desc)),
     /* keyboard endpoint, EP5 IN (7) */
-    7, 5, KEYBOARD_ENDPOINT | 0x80, 0x03, KEYBOARD_SIZE, 0, KEYBOARD_INTERVAL
+    7, 5, KEYBOARD_ENDPOINT | 0x80, 0x03, KEYBOARD_SIZE, 0, KEYBOARD_INTERVAL,
+    /* mouse interface (9) -- NON-boot: subclass/protocol 0x00 */
+    9, 4, MOUSE_INTERFACE, 0, 1, 0x03, 0x00, 0x00, 0,
+    /* HID descriptor (9) */
+    9, 0x21, 0x11, 0x01, 0, 1, 0x22,
+        LSB(sizeof(mouse_report_desc)), MSB(sizeof(mouse_report_desc)),
+    /* mouse endpoint, EP6 IN (7) */
+    7, 5, MOUSE_ENDPOINT | 0x80, 0x03, MOUSE_SIZE, 0, MOUSE_INTERVAL
 };
 
 /* String descriptors. */
@@ -74,6 +96,10 @@ const usb_descriptor_list_t usb_descriptor_list[] = {
 #if defined(KEYBOARD_INTERFACE)
     {0x2200, KEYBOARD_INTERFACE, keyboard_report_desc, sizeof(keyboard_report_desc)},
     {0x2100, KEYBOARD_INTERFACE, config_descriptor + KEYBOARD_HID_DESC_OFFSET, 9},
+#endif
+#if defined(MOUSE_INTERFACE)
+    {0x2200, MOUSE_INTERFACE, mouse_report_desc, sizeof(mouse_report_desc)},
+    {0x2100, MOUSE_INTERFACE, config_descriptor + MOUSE_HID_DESC_OFFSET, 9},
 #endif
     {0x0300, 0x0000, (const uint8_t *)&string0,    4},
     {0x0301, 0x0409, (const uint8_t *)&string1,    14},

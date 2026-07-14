@@ -13,5 +13,6 @@
 // under ENABLE_ARDUINO_SERIAL) fails to compile with "'Serial' not declared".
 #include "usb_serial.h"
 #include "usb_keyboard.h"   // Keyboard, KEY_* (guarded by KEYBOARD_INTERFACE)
+#include "usb_mouse.h"      // Mouse, MOUSE_LEFT/... (guarded by MOUSE_INTERFACE)
 
 #endif
