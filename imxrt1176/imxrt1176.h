@@ -331,6 +331,16 @@
 #define IOMUXC_LPUART1_TXD_SELECT_INPUT (*(volatile uint32_t *)0x400E8620u)
 #define IOMUXC_LPUART1_RXD_SELECT_INPUT (*(volatile uint32_t *)0x400E861Cu)
 
+/* FlexCAN3 (J47): clock root 24 (mux 1 = Osc24MOut, div 1 = 24 MHz) +
+ * LPCG 85, and the CAN3 TX/RX pads in the LPSR IOMUXC (0x40C08000). */
+#define CCM_CLOCK_ROOT24_CONTROL (*(volatile uint32_t *)0x40CC0C00u)
+#define CCM_LPCG85_DIRECT        (*(volatile uint32_t *)0x40CC6AA0u)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_00 (*(volatile uint32_t *)0x40C08000u)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_01 (*(volatile uint32_t *)0x40C08004u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_00 (*(volatile uint32_t *)0x40C08040u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_01 (*(volatile uint32_t *)0x40C08044u)
+#define IOMUXC_FLEXCAN3_RX_SELECT_INPUT    (*(volatile uint32_t *)0x40C08080u)
+
 /* --- LPADC register blocks (Task: analogRead) --- */
 #define ADC1_VERID (*(volatile uint32_t *)0x40050000u)
 #define ADC1_PARAM (*(volatile uint32_t *)0x40050004u)
