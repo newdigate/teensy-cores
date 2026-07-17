@@ -61,6 +61,7 @@ typedef enum IRQ_NUMBER_t {
     IRQ_GPIO2_0_15 = 102, IRQ_GPIO2_16_31 = 103,
     IRQ_GPIO3_0_15 = 104, IRQ_GPIO3_16_31 = 105,
     IRQ_GPIO5_0_15 = 108, IRQ_GPIO5_16_31 = 109,
+    IRQ_MU = 118,   /* CM7<->CM4 messaging unit (ORed tx/rx/gp) */
     IRQ_PIT1 = 155, IRQ_PIT2 = 156,
     IRQ_USDHC1 = 133, IRQ_USDHC2 = 134,
     IRQ_USB_OTG2 = 135, IRQ_USB_OTG1 = 136,   /* OTG2 = host (USBHost_t36) */

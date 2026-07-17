@@ -406,6 +406,67 @@
 #define SRC_SRMR (*(volatile uint32_t *)0x40C04004u)  /* [7:6] M4LOCKUP_RESET_MODE, [11:10] M4REQ_RESET_MODE */
 #define SRC_SRSR (*(volatile uint32_t *)0x40C04010u)  /* reset status (write 1 to clear) */
 
+/* --- Dual-core (CM7 boots CM4): SRC core-release + IOMUXC_LPSR_GPR CM4 VTOR
+ *     + CM4 TCM backdoor + MU messaging unit.  RM ch.25 (SRC), ch.12
+ *     (IOMUXC_LPSR_GPR), ch.35 (MU).  Every register/quirk below was
+ *     HW-verified on the EVKB by evkb/dualcore_mu_test (2026-07-16).
+ *     Consumed by Multicore.{h,cpp} + MessagingUnit.{h,cpp}. --- */
+/* SRC dual-core reset/release (base 0x40C04000). */
+#define SRC_SCR         (*(volatile uint32_t *)0x40C04000u)  /* boot-release control */
+#define SRC_CTRL_M4CORE (*(volatile uint32_t *)0x40C04284u)  /* CM4 reset-slice control */
+#define SRC_STAT_M4CORE (*(volatile uint32_t *)0x40C04290u)  /* CM4 reset-slice status */
+#define SRC_SCR_BT_RELEASE_M4     (1u << 0)  /* write-1-ONLY: release CM4 from reset (a 0 write is ignored on silicon) */
+#define SRC_SCR_BT_RELEASE_M7     (1u << 1)
+#define SRC_CTRL_M4CORE_SW_RESET  (1u << 0)  /* self-clearing: SW-reset the CM4 slice (reboots a released CM4 from its VTOR) */
+#define SRC_STAT_M4CORE_UNDER_RST (1u << 0)  /* 1 = CM4 held, 0 = released -- the RELIABLE hold indicator (MU ASR.RS bit7 never sets on silicon) */
+
+/* IOMUXC_LPSR_GPR CM4 initial vector table (base 0x40C0C000):
+ * GPR0[15:3] = CM4_INIT_VTOR[15:3], GPR1[15:0] = CM4_INIT_VTOR[31:16]. */
+#define IOMUXC_LPSR_GPR0 (*(volatile uint32_t *)0x40C0C000u)
+#define IOMUXC_LPSR_GPR1 (*(volatile uint32_t *)0x40C0C004u)
+
+/* CM4 image staging window: the CM7 reaches the CM4 TCMs through this OCRAM
+ * backdoor alias (RM Table 3-1: 0x20200000 -> CM4 ITCM, 0x20220000 -> CM4
+ * DTCM).  Stage the image here AND boot from here (VTOR = 0x20200000); a
+ * CM4-private TCM-window VTOR (0x1FFE0000) releases the slice but never
+ * fetches (EVKB-verified). */
+#define CM4_TCM_BACKDOOR   0x20200000u
+#define CM4_BOOT_ADDRESS   CM4_TCM_BACKDOOR
+
+/* CCM LPCG1 DIRECT: CM4 core clock gate (0x40CC6000 + 1*0x20).  The boot ROM
+ * ungates it and the SDK/Zephyr never touch it; writing 1 is defensive
+ * (HW-verified already-on: dualcore_mu_test lpcg=1). */
+#define CCM_LPCG1_DIRECT (*(volatile uint32_t *)0x40CC6020u)
+
+/* MU (Messaging Unit), RM ch.35.  This core is Processor A (MUA @ 0x40C48000);
+ * the CM4 is Processor B (MUB @ 0x40C4C000).  Classic single-SR/CR layout:
+ * TR[4]@0x00 (WO), RR[4]@0x10 (RO), SR@0x20 (GIPn is W1C), CR@0x24.  In every
+ * 4-bit field n=0 is the HIGH-order bit (channel 0 -> +3, channel 3 -> +0). */
+#define MUA_BASE 0x40C48000u
+#define MUB_BASE 0x40C4C000u
+#define MUA_TR(n) (*(volatile uint32_t *)(MUA_BASE + 0x00u + ((unsigned)(n) << 2)))
+#define MUA_RR(n) (*(volatile uint32_t *)(MUA_BASE + 0x10u + ((unsigned)(n) << 2)))
+#define MUA_SR    (*(volatile uint32_t *)(MUA_BASE + 0x20u))
+#define MUA_CR    (*(volatile uint32_t *)(MUA_BASE + 0x24u))
+#define MUB_SR    (*(volatile uint32_t *)(MUB_BASE + 0x20u))
+/* SR fields (n = 0..3): */
+#define MU_SR_GIP(n) (1u << (31 - (n)))   /* general-purpose interrupt pending (W1C) */
+#define MU_SR_RF(n)  (1u << (27 - (n)))   /* receive-register n full */
+#define MU_SR_TE(n)  (1u << (23 - (n)))   /* transmit-register n empty */
+#define MU_SR_FUP    (1u << 8)
+#define MU_SR_RS     (1u << 7)            /* RM "B in reset"; NEVER sets on RT1176 silicon -- do NOT use */
+#define MU_SR_BIT9   (1u << 9)            /* undocumented; ALWAYS reads 1 on RT1176 silicon -- mask off before flag compares */
+#define MU_SR_EP     (1u << 4)
+#define MU_SR_Fn_MASK 0x7u
+/* CR fields (n = 0..3): */
+#define MU_CR_GIE(n) (1u << (31 - (n)))   /* general-purpose interrupt enable */
+#define MU_CR_RIE(n) (1u << (27 - (n)))   /* receive interrupt enable */
+#define MU_CR_TIE(n) (1u << (23 - (n)))   /* transmit interrupt enable */
+#define MU_CR_GIR(n) (1u << (19 - (n)))   /* general-purpose interrupt request (auto-clears when peer W1C-acks its GIP) */
+#define MU_CR_MUR    (1u << 5)
+#define MU_CR_Fn_MASK 0x7u
+#define MU_IRQ 118u   /* NVIC line for MU (ORed tx/rx/gp), both cores (RM interrupt table) */
+
 /* LPI2C1 (Arduino-header I2C master), base 0x40104000 */
 #define LPI2C1_MCR    (*(volatile uint32_t *)0x40104010u)
 #define LPI2C1_MSR    (*(volatile uint32_t *)0x40104014u)
