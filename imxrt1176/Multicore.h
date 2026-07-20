@@ -44,6 +44,13 @@ public:
      * begin() has not run. */
     void restart();
 
+    /* Reboot the CM4 into an ALREADY-STAGED image at a (possibly different)
+     * backdoor address by reprogramming GPR0/1 and re-pulsing SW_RESET WITHOUT
+     * re-copying the image. begin() must have released the CM4 first (no-op
+     * otherwise). Enables switching the boot VTOR between two co-resident CM4
+     * images with no re-staging. */
+    void switchImage(uint32_t stageAddr);
+
     /* True while the CM4 is running (STAT_M4CORE.UNDER_RST == 0). */
     bool running();
 

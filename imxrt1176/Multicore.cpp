@@ -90,6 +90,25 @@ void MulticoreClass::restart()
     }
 }
 
+void MulticoreClass::switchImage(uint32_t stageAddr)
+{
+    if (!released_) {
+        return;
+    }
+    /* Re-point the CM4 boot VTOR (GPR0 = VTOR[15:3], GPR1 = VTOR[31:16]) at an
+     * already-staged image, then reboot it -- no image copy. */
+    IOMUXC_LPSR_GPR0 = stageAddr & 0xFFF8u;
+    IOMUXC_LPSR_GPR1 = (stageAddr >> 16) & 0xFFFFu;
+    boot_addr_ = stageAddr;
+    multicore_barrier();
+    SRC_CTRL_M4CORE = SRC_CTRL_M4CORE_SW_RESET;
+    for (volatile uint32_t n = MULTICORE_SETTLE_SPINS; n; n--) {
+        if (running()) {
+            break;
+        }
+    }
+}
+
 bool MulticoreClass::running()
 {
     return (SRC_STAT_M4CORE & SRC_STAT_M4CORE_UNDER_RST) == 0;
