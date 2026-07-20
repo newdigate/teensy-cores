@@ -14,8 +14,12 @@ int Cm4ImageBank::add(const void *blob, uint32_t bytes, uint32_t stageAddr,
                       const char *name)
 {
     if (n_ >= MAX_IMAGES) return -1;
+    /* Fit within the 128K ITCM backdoor window, overflow-safe: stageAddr becomes
+     * untrusted once images are loaded from storage (spec Future/SD path), so
+     * avoid the wrap in `stageAddr + bytes`. */
     if (stageAddr < CM4_ITCM_BACKDOOR_BASE ||
-        stageAddr + bytes > CM4_ITCM_BACKDOOR_BASE + CM4_ITCM_BACKDOOR_SIZE)
+        bytes > CM4_ITCM_BACKDOOR_SIZE ||
+        stageAddr - CM4_ITCM_BACKDOOR_BASE > CM4_ITCM_BACKDOOR_SIZE - bytes)
         return -1;
     for (int i = 0; i < n_; i++)                 /* partial overlap with a */
         if (imgs_[i].stageAddr != stageAddr &&   /* *different* slot = layout bug */
@@ -31,18 +35,22 @@ bool Cm4ImageBank::switchTo(int h)
 {
     if (h < 0 || h >= n_) return false;
     bool ok;
-    if (resident_[h] && Multicore.running()) {           /* FAST PATH: VTOR flip */
+    if (resident_[h] && Multicore.running()) {           /* FAST PATH: VTOR flip, no copy */
         Multicore.switchImage(imgs_[h].stageAddr);
         ok = Multicore.running();
     } else {                                             /* STAGE PATH: copy + boot */
         ok = Multicore.begin(imgs_[h].blob, imgs_[h].bytes, imgs_[h].stageAddr);
-        if (ok) {
-            for (int i = 0; i < n_; i++)                 /* evict same-slot siblings */
-                if (imgs_[i].stageAddr == imgs_[h].stageAddr) resident_[i] = false;
-            resident_[h] = true;
-        }
+        /* begin() copies h into its slot and pulses SW_RESET UNCONDITIONALLY,
+         * before its settle-timeout -- so h is physically resident and any
+         * same-slot sibling is evicted regardless of whether the boot confirmed.
+         * Track that even when ok==false, or a later fast-flip could reboot a
+         * slot whose bytes we already replaced (a silent wrong-image boot). */
+        for (int i = 0; i < n_; i++)                     /* evict same-slot siblings */
+            if (imgs_[i].stageAddr == imgs_[h].stageAddr) resident_[i] = false;
+        resident_[h] = true;
     }
-    if (ok) current_ = h;
+    current_ = ok ? h : -1;   /* both paths pulse reset; a failed boot leaves the
+                               * running image unknown, not the stale previous one */
     return ok;
 }
 
