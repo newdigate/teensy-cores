@@ -1841,4 +1841,91 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 /* DAC clock gate: kCLOCK_Dac = LPCG 57 (0x40CC6000 + 57*0x20). */
 #define CCM_LPCG57_DIRECT (*(volatile uint32_t *)0x40CC6720u)
 
+/* --- PXP (Pixel Pipeline) 2D graphics accelerator --------------------------
+ * RM rev.5 ch.52.  Base 0x40814000, IRQ 57, clock gate LPCG127 (BUS_CLK_ROOT).
+ * NOTE: CTRL resets to 0xC000_0000 - SFTRST and CLKGATE are BOTH SET, so the
+ * block is held dead until the RM 52.5 sequence runs (set SFTRST; then clear
+ * SFTRST and CLKGATE).  Registers at +0x4/+0x8/+0xC are MXS SET/CLR/TOG
+ * aliases of the base register.
+ */
+#define IMXRT_PXP_BASE            0x40814000u
+#define PXP_REG(off)              (*(volatile uint32_t *)(IMXRT_PXP_BASE + (off)))
+
+#define PXP_CTRL                  PXP_REG(0x000)
+#define PXP_CTRL_SET              PXP_REG(0x004)
+#define PXP_CTRL_CLR              PXP_REG(0x008)
+#define PXP_CTRL_TOG              PXP_REG(0x00C)
+#define PXP_STAT                  PXP_REG(0x010)
+#define PXP_STAT_SET              PXP_REG(0x014)
+#define PXP_STAT_CLR              PXP_REG(0x018)
+#define PXP_STAT_TOG              PXP_REG(0x01C)
+#define PXP_OUT_CTRL              PXP_REG(0x020)
+#define PXP_OUT_CTRL_SET          PXP_REG(0x024)
+#define PXP_OUT_CTRL_CLR          PXP_REG(0x028)
+#define PXP_OUT_CTRL_TOG          PXP_REG(0x02C)
+#define PXP_OUT_BUF               PXP_REG(0x030)
+#define PXP_OUT_BUF2              PXP_REG(0x040)
+#define PXP_OUT_PITCH             PXP_REG(0x050)
+#define PXP_OUT_LRC               PXP_REG(0x060)
+#define PXP_OUT_PS_ULC            PXP_REG(0x070)
+#define PXP_OUT_PS_LRC            PXP_REG(0x080)
+#define PXP_OUT_AS_ULC            PXP_REG(0x090)
+#define PXP_OUT_AS_LRC            PXP_REG(0x0A0)
+#define PXP_PS_CTRL               PXP_REG(0x0B0)
+#define PXP_PS_CTRL_SET           PXP_REG(0x0B4)
+#define PXP_PS_CTRL_CLR           PXP_REG(0x0B8)
+#define PXP_PS_CTRL_TOG           PXP_REG(0x0BC)
+#define PXP_PS_BUF                PXP_REG(0x0C0)
+#define PXP_PS_UBUF               PXP_REG(0x0D0)
+#define PXP_PS_VBUF               PXP_REG(0x0E0)
+#define PXP_PS_PITCH              PXP_REG(0x0F0)
+#define PXP_PS_BACKGROUND         PXP_REG(0x100)
+#define PXP_PS_SCALE              PXP_REG(0x110)
+#define PXP_PS_OFFSET             PXP_REG(0x120)
+#define PXP_PS_CLRKEYLOW          PXP_REG(0x130)
+#define PXP_PS_CLRKEYHIGH         PXP_REG(0x140)
+#define PXP_AS_CTRL               PXP_REG(0x150)
+#define PXP_AS_BUF                PXP_REG(0x160)
+#define PXP_AS_PITCH              PXP_REG(0x170)
+#define PXP_AS_CLRKEYLOW          PXP_REG(0x180)
+#define PXP_AS_CLRKEYHIGH         PXP_REG(0x190)
+#define PXP_CSC1_COEF0            PXP_REG(0x1A0)
+#define PXP_CSC1_COEF1            PXP_REG(0x1B0)
+#define PXP_CSC1_COEF2            PXP_REG(0x1C0)
+#define PXP_POWER                 PXP_REG(0x320)
+#define PXP_NEXT                  PXP_REG(0x400)
+#define PXP_PORTER_DUFF_CTRL      PXP_REG(0x440)
+
+/* CTRL bits */
+#define PXP_CTRL_ENABLE           ((uint32_t)(1u<<0))
+#define PXP_CTRL_IRQ_ENABLE       ((uint32_t)(1u<<1))
+#define PXP_CTRL_NEXT_IRQ_ENABLE  ((uint32_t)(1u<<2))
+#define PXP_CTRL_ROTATE_SHIFT     8
+#define PXP_CTRL_ROTATE_MASK      ((uint32_t)(3u<<8))
+#define PXP_CTRL_HFLIP            ((uint32_t)(1u<<10))
+#define PXP_CTRL_VFLIP            ((uint32_t)(1u<<11))
+#define PXP_CTRL_CLKGATE          ((uint32_t)(1u<<30))
+#define PXP_CTRL_SFTRST           ((uint32_t)(1u<<31))
+
+/* STAT bits - all confirmed against RM 52.6.2 (see Step 1). */
+#define PXP_STAT_IRQ              ((uint32_t)(1u<<0))
+#define PXP_STAT_AXI_WRITE_ERROR  ((uint32_t)(1u<<1))
+#define PXP_STAT_AXI_READ_ERROR   ((uint32_t)(1u<<2))
+#define PXP_STAT_NEXT_IRQ         ((uint32_t)(1u<<3))
+
+/* FORMAT fields - three DIFFERENT widths, deliberately not one shared mask.
+ * The library translates an abstract PXPFormat into the right encoding per
+ * role (pxpPsFormat/pxpOutFormat); these masks only bound the field. */
+#define PXP_PS_FORMAT_MASK        ((uint32_t)0x3Fu)   /* PS_CTRL  [5:0] */
+#define PXP_OUT_FORMAT_MASK       ((uint32_t)0x1Fu)   /* OUT_CTRL [4:0] */
+#define PXP_AS_FORMAT_MASK        ((uint32_t)0x0Fu)   /* AS_CTRL  [7:4] */
+#define PXP_AS_FORMAT_SHIFT       4
+
+/* Coordinate registers: X in [29:16], Y in [13:0]. */
+#define PXP_COORD(x, y) \
+    ((((uint32_t)(x) & 0x3FFFu) << 16) | ((uint32_t)(y) & 0x3FFFu))
+
+/* PXP clock gate: LPCG127 = 0x40CC6000 + 127*0x20 */
+#define CCM_LPCG127_DIRECT        (*(volatile uint32_t *)0x40CC6FE0u)
+
 #endif
