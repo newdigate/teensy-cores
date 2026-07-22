@@ -1846,10 +1846,9 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
  * NOTE: CTRL resets to 0xC000_0000 - SFTRST and CLKGATE are BOTH SET, so the
  * block is held dead until the RM 52.5 sequence runs (set SFTRST; then clear
  * SFTRST and CLKGATE).  Registers at +0x4/+0x8/+0xC are MXS SET/CLR/TOG
- * aliases of the base register.
- */
-#define IMXRT_PXP_BASE            0x40814000u
-#define PXP_REG(off)              (*(volatile uint32_t *)(IMXRT_PXP_BASE + (off)))
+ * aliases of the base register. */
+#define PXP_BASE                  0x40814000u
+#define PXP_REG(off)              (*(volatile uint32_t *)(PXP_BASE + (off)))
 
 #define PXP_CTRL                  PXP_REG(0x000)
 #define PXP_CTRL_SET              PXP_REG(0x004)
@@ -1896,7 +1895,9 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define PXP_NEXT                  PXP_REG(0x400)
 #define PXP_PORTER_DUFF_CTRL      PXP_REG(0x440)
 
-/* CTRL bits */
+/* CTRL bits - bitmasks, not registers (PXP_CTRL_SET/_CLR/_TOG above are the
+ * registers; same PXP_CTRL_ prefix, NXP MXS style) - OR into PXP_CTRL, or
+ * write one alone into PXP_CTRL_SET/_CLR for an atomic set/clear. */
 #define PXP_CTRL_ENABLE           ((uint32_t)(1u<<0))
 #define PXP_CTRL_IRQ_ENABLE       ((uint32_t)(1u<<1))
 #define PXP_CTRL_NEXT_IRQ_ENABLE  ((uint32_t)(1u<<2))
@@ -1904,10 +1905,17 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define PXP_CTRL_ROTATE_MASK      ((uint32_t)(3u<<8))
 #define PXP_CTRL_HFLIP            ((uint32_t)(1u<<10))
 #define PXP_CTRL_VFLIP            ((uint32_t)(1u<<11))
+#define PXP_CTRL_ROT_POS          ((uint32_t)(1u<<22))  /* 0=rotate after composite */
+#define PXP_CTRL_BLOCK_SIZE       ((uint32_t)(1u<<23))  /* 0=8x8, 1=16x16 blocks   */
 #define PXP_CTRL_CLKGATE          ((uint32_t)(1u<<30))
 #define PXP_CTRL_SFTRST           ((uint32_t)(1u<<31))
 
-/* STAT bits - all confirmed against RM 52.6.2 (see Step 1). */
+/* STAT bits - all confirmed against RM 52.6.2 (see Step 1). Bitmasks, not
+ * registers (PXP_STAT_SET/_CLR/_TOG above are the registers; same
+ * PXP_STAT_ prefix, NXP MXS style) - OR into PXP_STAT, or write one alone
+ * into PXP_STAT_SET/_CLR for an atomic set/clear.
+ * Bit 8 (LUT_DMA_LOAD_DONE_IRQ) is deliberately NOT defined here: it is a
+ * doc artefact carried over from i.MX6 - this PXP has no LUT registers. */
 #define PXP_STAT_IRQ              ((uint32_t)(1u<<0))
 #define PXP_STAT_AXI_WRITE_ERROR  ((uint32_t)(1u<<1))
 #define PXP_STAT_AXI_READ_ERROR   ((uint32_t)(1u<<2))
@@ -1915,7 +1923,10 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 
 /* FORMAT fields - three DIFFERENT widths, deliberately not one shared mask.
  * The library translates an abstract PXPFormat into the right encoding per
- * role (pxpPsFormat/pxpOutFormat); these masks only bound the field. */
+ * role (pxpPsFormat/pxpOutFormat); these masks only bound the field.
+ * PS_CTRL/OUT_CTRL's FORMAT field starts at bit 0, so the mask can be OR'd
+ * in directly with no shift; AS_CTRL's FORMAT sits at [7:4] instead, hence
+ * the one PXP_AS_FORMAT_SHIFT below (PS/OUT have no shift to name). */
 #define PXP_PS_FORMAT_MASK        ((uint32_t)0x3Fu)   /* PS_CTRL  [5:0] */
 #define PXP_OUT_FORMAT_MASK       ((uint32_t)0x1Fu)   /* OUT_CTRL [4:0] */
 #define PXP_AS_FORMAT_MASK        ((uint32_t)0x0Fu)   /* AS_CTRL  [7:4] */
