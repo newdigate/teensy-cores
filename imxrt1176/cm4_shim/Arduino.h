@@ -6,6 +6,10 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>   // freestanding prototypes; impls from runtime_stubs.c
+#include <stdlib.h>   // abs()/labs() — mirrors the real core (wiring.h:35). Node
+                      // code (e.g. analyze_peak.h read()) uses Arduino's abs();
+                      // GCC lowers abs(int) to __builtin_abs, so this stays a
+                      // pure declaration with no -nostdlib link dependency.
 
 #define EVKB_CM4_WORLD 1
 
