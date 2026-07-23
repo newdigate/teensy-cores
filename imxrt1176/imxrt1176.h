@@ -2180,6 +2180,60 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define DSI_DPHY_CO_MASK          ((uint32_t)0x3u)
 #define DSI_DPHY_LOCK_MASK        ((uint32_t)0x1u)
 
+/* --- Display-interface plumbing (SoC-level, OUTSIDE the DSI register file) --
+ * The MIPI-DSI host does NOT come out of chip reset usable, and nothing in its
+ * own register file says so.  Three separate blocks gate it, and NXP's
+ * BOARD_InitDisplayInterface() (mcuxsdk-examples _boards/evkbmimxrt1170/
+ * display_support.c, BSD-3-Clause) touches all three:
+ *   - IOMUXC_GPR62[19:16]: the four MIPI-DSI clock-domain soft resets.  ALL
+ *     ACTIVE LOW and NOT self-clearing -- writing 1 RELEASES that domain, and
+ *     the POR value 0000_02DBh has all four CLEAR ("by default it holds the
+ *     MIPI DSI in reset state").  GPR62 must be READ-MODIFY-WRITTEN: bits 13:0
+ *     of that POR value are D-PHY trim defaults that a blind write destroys.
+ *   - VIDEO_MUX VID_MUX_CTRL[MIPI_DSI_SEL]: which display controller feeds the
+ *     DSI's DPI input (POR 0 = eLCDIF, NOT LCDIFv2).
+ *   - PGMC_BPC4 BPC_POWER_CTRL: the MIPI power domain's soft power-switch /
+ *     isolation controls (POR 0 = powered off, isolated).
+ * Addresses/offsets/bit positions from the RM sections cited per line below,
+ * cross-checked against the SDK peripheral-access headers PERI_IOMUXC_GPR.h /
+ * PERI_VIDEO_MUX.h / PERI_PGMC.h (BSD-3-Clause; facts only, re-expressed in
+ * this file's #define idiom -- NXP struct typedefs NOT copied). */
+
+/* IOMUXC_GPR62 @ IOMUXC_GPR + F8h -- RM 12.4.5.58 (POR 0000_02DBh, RW). */
+#define IOMUXC_GPR62              (*(volatile uint32_t *)(IOMUXC_GPR_BASE + 0xF8u))
+/* GPR62 MIPI-DSI soft resets -- RM 12.4.5.58.4.  Active LOW: set = out of
+ * reset.  RM field names are by clock domain ("APB"/"Byte"/"Pixel"/"Escape");
+ * the mnemonics below are PERI_IOMUXC_GPR.h's. */
+#define IOMUXC_GPR62_MIPI_DSI_PCLK_SOFT_RESET_N  ((uint32_t)(1u<<16))  /* APB clock domain    */
+#define IOMUXC_GPR62_MIPI_DSI_BYTE_SOFT_RESET_N  ((uint32_t)(1u<<17))  /* byte clock domain   */
+#define IOMUXC_GPR62_MIPI_DSI_DPI_SOFT_RESET_N   ((uint32_t)(1u<<18))  /* pixel clock domain  */
+#define IOMUXC_GPR62_MIPI_DSI_ESC_SOFT_RESET_N   ((uint32_t)(1u<<19))  /* escape clock domain */
+
+/* VIDEO_MUX @ 4081_8000h -- RM 50.6.1.1.  Every control register is a 16-byte
+ * RW/SET/CLR/TOG quad; all reset to 0000_0000h.  v1 only needs VID_MUX_CTRL. */
+#define VIDEO_MUX_BASE            0x40818000u
+#define VIDEO_MUX_REG(off)        (*(volatile uint32_t *)(VIDEO_MUX_BASE + (off)))
+#define VIDEO_MUX_VID_MUX_CTRL        VIDEO_MUX_REG(0x00)  /* RM 50.6.1.2            */
+#define VIDEO_MUX_VID_MUX_CTRL_SET    VIDEO_MUX_REG(0x04)  /* write 1 = set bit      */
+#define VIDEO_MUX_VID_MUX_CTRL_CLR    VIDEO_MUX_REG(0x08)  /* write 1 = clear bit    */
+#define VIDEO_MUX_VID_MUX_CTRL_TOG    VIDEO_MUX_REG(0x0C)  /* write 1 = toggle bit   */
+/* VID_MUX_CTRL fields -- RM 50.6.1.2. */
+#define VIDEO_MUX_VID_MUX_CTRL_CSI_SEL      ((uint32_t)(1u<<0))  /* CSI sensor data source     */
+#define VIDEO_MUX_VID_MUX_CTRL_LCDIF2_SEL   ((uint32_t)(1u<<1))  /* LCDIFv2 sensor data source */
+#define VIDEO_MUX_VID_MUX_CTRL_MIPI_DSI_SEL ((uint32_t)(1u<<2))  /* 0=DSI from eLCDIF, 1=from LCDIFv2 */
+#define VIDEO_MUX_VID_MUX_CTRL_PARA_LCD_SEL ((uint32_t)(1u<<3))  /* parallel LCDIF data source */
+/* VIDEO_MUX clock gate: LPCG136 (kCLOCK_Video_Mux, fsl_clock.h) =
+ * 0x40CC6000 + 136*0x20.  BOARD_InitDisplayInterface() ungates it first. */
+#define CCM_LPCG136_DIRECT        (*(volatile uint32_t *)0x40CC7100u)
+
+/* PGMC basic power controllers: PGMC_BPCn @ 40C8_8000h + n*200h -- RM 20.6.1.1.
+ * BPC4 (40C8_8800h) is the MIPI power domain. */
+#define PGMC_BPC4_BASE            0x40C88800u
+#define PGMC_BPC4_BPC_POWER_CTRL  (*(volatile uint32_t *)(PGMC_BPC4_BASE + 0x14u)) /* RM 20.6.1.4, POR 0 */
+/* BPC_POWER_CTRL fields -- RM 20.6.1.4.4. */
+#define PGMC_BPC_POWER_CTRL_PSW_ON_SOFT   ((uint32_t)(1u<<10))  /* software power-on trigger    */
+#define PGMC_BPC_POWER_CTRL_ISO_OFF_SOFT  ((uint32_t)(1u<<11))  /* software isolation-off trigger */
+
 /* --- Display clocks (Task 6 consumes these) --------------------------------
  * VIDEO PLL in ANATOP (base 0x40C84000, same block as ARM/AUDIO PLL above);
  * offsets from PERI_ANADIG_PLL.h.  On RT1176 the fractional-N config
@@ -2215,5 +2269,10 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define CCM_CLOCK_ROOT72_CONTROL      (*(volatile uint32_t *)0x40CC2400u)  /* MIPI_ESC root */
 #define CCM_LPCG131_DIRECT            (*(volatile uint32_t *)0x40CC7060u)  /* MIPI_DSI gate */
 #define CCM_CLOCK_ROOT_MUX_VIDEO_PLL  7u   /* MUX value: VideoPllOut on LCDIFv2/MIPI_REF/MIPI_ESC roots */
+/* MUX value 1 = MuxOsc24MOut (the 24 MHz crystal oscillator) on those same
+ * three roots -- fsl_clock.h kCLOCK_{LCDIFV2,MIPI_REF,MIPI_ESC}_ClockRoot_
+ * MuxOsc24MOut, all = 1U.  BOARD_InitMipiDsiClock() uses it (mux 1, div 1) for
+ * the MIPI D-PHY reference clock. */
+#define CCM_CLOCK_ROOT_MUX_OSC_24M    1u
 
 #endif
