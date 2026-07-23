@@ -1891,6 +1891,12 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define PXP_CSC1_COEF0            PXP_REG(0x1A0)
 #define PXP_CSC1_COEF1            PXP_REG(0x1B0)
 #define PXP_CSC1_COEF2            PXP_REG(0x1C0)
+/* CSC1_COEF0 bits.  BYPASS resets to 0, so the PS datapath runs every source
+ * pixel through the YUV->RGB colour matrix by default - it MUST be set for an
+ * RGB source, or the copy is colour-mangled (HW-confirmed; QEMU does not model
+ * CSC1). */
+#define PXP_CSC1_BYPASS          ((uint32_t)(1u<<30))
+#define PXP_CSC1_YCBCR_MODE      ((uint32_t)(1u<<31))
 #define PXP_POWER                 PXP_REG(0x320)
 #define PXP_NEXT                  PXP_REG(0x400)
 #define PXP_PORTER_DUFF_CTRL      PXP_REG(0x440)
