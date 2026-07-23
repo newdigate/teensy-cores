@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Generate a standalone Teensy-idiom imxrt1176.h from the NXP CMSIS header.
+"""RETIRED -- historical generator for imxrt1176.h.  DO NOT RUN.
+
+imxrt1176.h is now HAND-MAINTAINED and is the single source of truth.  This
+script bootstrapped the header early in the project, but the header has since
+been hand-edited for many peripherals that were never mirrored back here
+(ADC_CMDL_ABSEL, the DAC12 block's position, the whole PXP block, ...), so
+regenerating would OVERWRITE those hand-edits and break the build.  The
+__main__ entry point below is therefore disabled; the file is kept only as
+provenance and as a bootstrap template for a future chip port.  See
+tools/attic/README.md.
+
+--- original description ---------------------------------------------------
+Generate a standalone Teensy-idiom imxrt1176.h from the NXP CMSIS header.
 
 Emits `#define <PREFIX>_<REG> (*(volatile uint32_t *)0x...)` for the peripherals
 Phase 0 needs.  Reads peripheral base addresses from the NXP MIMXRT1176_cm7_COMMON.h
@@ -1515,4 +1527,13 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    # RETIRED: imxrt1176.h is hand-maintained; regenerating would overwrite it.
+    sys.exit(
+        "gen_imxrt1176_h.py is RETIRED. imxrt1176.h is hand-maintained and is "
+        "the single source of truth; running this would OVERWRITE it, dropping "
+        "hand-added definitions (ADC_CMDL_ABSEL, the PXP block, DAC12 ordering, "
+        "...) and breaking the build. See tools/attic/README.md and the header "
+        "banner. (main() is left intact above as a template for future ports; "
+        "invoke it explicitly only if you truly intend to regenerate.)"
+    )
