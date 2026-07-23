@@ -2032,7 +2032,7 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define LCDIFV2_VSYN_PARA_FP_V(x)        (((uint32_t)(x) << 0) & 0x000001FFu)
 #define LCDIFV2_VSYN_PARA_PW_V(x)        (((uint32_t)(x) << 11) & 0x000FF800u)
 #define LCDIFV2_VSYN_PARA_BP_V(x)        (((uint32_t)(x) << 22) & 0x7FC00000u)
-/* INT_STATUS / INT_ENABLE (same bit layout; _EN names are the ENABLE reg) */
+/* Same bit positions apply to both INT_STATUS(d) and INT_ENABLE(d). */
 #define LCDIFV2_INT_VSYNC         ((uint32_t)(1u<<0))
 #define LCDIFV2_INT_UNDERRUN      ((uint32_t)(1u<<1))
 #define LCDIFV2_INT_VS_BLANK      ((uint32_t)(1u<<2))
@@ -2134,9 +2134,9 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
  * These sub-field positions are not broken out in PERI_DSI_HOST_APB_PKT_IF.h
  * (which gives only the aggregate [26:0] CTRL field); the layout is
  * transcribed from the NXP driver fsl_mipi_dsi.c (BSD-3-Clause). */
-#define DSI_APB_PKT_CONTROL_WORD_COUNT(wc) (((uint32_t)(wc)) << 0)   /* [15:0] */
-#define DSI_APB_PKT_CONTROL_VC(vc)         (((uint32_t)(vc)) << 16)  /* [17:16] virtual channel */
-#define DSI_APB_PKT_CONTROL_HEADER_TYPE(t) (((uint32_t)(t)) << 18)   /* [23:18] DSI data type   */
+#define DSI_APB_PKT_CONTROL_WORD_COUNT(wc) ((((uint32_t)(wc)) << 0) & 0x0000FFFFu)   /* [15:0] */
+#define DSI_APB_PKT_CONTROL_VC(vc)         ((((uint32_t)(vc)) << 16) & 0x00030000u)  /* [17:16] virtual channel */
+#define DSI_APB_PKT_CONTROL_HEADER_TYPE(t) ((((uint32_t)(t)) << 18) & 0x00FC0000u)   /* [23:18] DSI data type */
 #define DSI_APB_PKT_CONTROL_HS             ((uint32_t)(1u<<24))      /* send in high-speed      */
 #define DSI_APB_PKT_CONTROL_BTA            ((uint32_t)(1u<<25))      /* bus-turnaround after tx */
 #define DSI_APB_PKT_CONTROL_BTA_ONLY       ((uint32_t)(1u<<26))
