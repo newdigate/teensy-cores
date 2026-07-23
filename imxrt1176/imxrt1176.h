@@ -1957,4 +1957,263 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 /* PXP clock gate: LPCG127 = 0x40CC6000 + 127*0x20 */
 #define CCM_LPCG127_DIRECT        (*(volatile uint32_t *)0x40CC6FE0u)
 
+/* ===========================================================================
+ * DISPLAY: LCDIFv2 display controller + MIPI DSI host (RPi 7" MIPI-DSI panel).
+ * Register offsets/bitmasks transcribed (facts only, re-expressed in this
+ * file's #define idiom -- NXP struct typedefs NOT copied) from the NXP
+ * MCUXpresso SDK (BSD-3-Clause) peripheral-access headers for MIMXRT1176:
+ *   PERI_LCDIFV2.h, PERI_DSI_HOST.h, PERI_DSI_HOST_DPI_INTFC.h,
+ *   PERI_DSI_HOST_APB_PKT_IF.h, PERI_DSI_HOST_NXP_FDSOI28_DPHY_INTFC.h.
+ * Instance/sub-block bases + IRQs from MIMXRT1176_cm7_COMMON.h; clock-root and
+ * LPCG-gate indices from the SDK fsl_clock.h clock_root_t/clock_lpcg_t enums.
+ * =========================================================================== */
+
+/* --- LCDIFv2 display controller --------------------------------------------
+ * LCDIFv2 @ 0x40808000, IRQ 55 (LCDIFv2_IRQn), clock gate LPCG130.
+ * Full register file per PERI_LCDIFV2.h.  The layer descriptor block is an
+ * 8-entry array LAYER[0..7] (array step 0x40 starting at 0x200); v1 scans out
+ * RGB565 from LAYER 0.  LCDIFv2 has NXP MXS SET/CLR/TOG aliases ONLY on CTRL
+ * (+0x4/+0x8/+0xC) -- no other LCDIFv2 register has them. */
+#define LCDIFV2_BASE              0x40808000u
+#define LCDIFV2_REG(off)          (*(volatile uint32_t *)(LCDIFV2_BASE + (off)))
+
+#define LCDIFV2_CTRL              LCDIFV2_REG(0x00)   /* display control        */
+#define LCDIFV2_CTRL_SET          LCDIFV2_REG(0x04)   /* MXS atomic set alias   */
+#define LCDIFV2_CTRL_CLR          LCDIFV2_REG(0x08)   /* MXS atomic clear alias */
+#define LCDIFV2_CTRL_TOG          LCDIFV2_REG(0x0C)   /* MXS atomic toggle alias*/
+#define LCDIFV2_DISP_PARA         LCDIFV2_REG(0x10)   /* display parameters     */
+#define LCDIFV2_DISP_SIZE         LCDIFV2_REG(0x14)   /* active resolution      */
+#define LCDIFV2_HSYN_PARA         LCDIFV2_REG(0x18)   /* H front/pulse/back     */
+#define LCDIFV2_VSYN_PARA         LCDIFV2_REG(0x1C)   /* V front/pulse/back     */
+/* Interrupt status/enable are a 2-entry array INT[domain] (step 0x10):
+ * domain 0 @ 0x20/0x24, domain 1 @ 0x30/0x34. */
+#define LCDIFV2_INT_STATUS(d)     LCDIFV2_REG(0x20 + (d)*0x10)
+#define LCDIFV2_INT_ENABLE(d)     LCDIFV2_REG(0x24 + (d)*0x10)
+#define LCDIFV2_INT_STATUS_D0     LCDIFV2_REG(0x20)
+#define LCDIFV2_INT_ENABLE_D0     LCDIFV2_REG(0x24)
+#define LCDIFV2_INT_STATUS_D1     LCDIFV2_REG(0x30)
+#define LCDIFV2_INT_ENABLE_D1     LCDIFV2_REG(0x34)
+#define LCDIFV2_PDI_PARA          LCDIFV2_REG(0x40)
+/* Layer n descriptor registers: base 0x200 + n*0x40, n in [0..7].  These are
+ * the NXP CTRLDESCL1..6 register names within one layer descriptor (NOT a
+ * layer index) -- e.g. LCDIFV2_CTRLDESCL1(0) is layer-0 width/height. */
+#define LCDIFV2_CTRLDESCL1(n)     LCDIFV2_REG(0x200 + (n)*0x40)  /* WIDTH/HEIGHT */
+#define LCDIFV2_CTRLDESCL2(n)     LCDIFV2_REG(0x204 + (n)*0x40)  /* POSX/POSY    */
+#define LCDIFV2_CTRLDESCL3(n)     LCDIFV2_REG(0x208 + (n)*0x40)  /* PITCH        */
+#define LCDIFV2_CTRLDESCL4(n)     LCDIFV2_REG(0x20C + (n)*0x40)  /* buffer ADDR  */
+#define LCDIFV2_CTRLDESCL5(n)     LCDIFV2_REG(0x210 + (n)*0x40)  /* BPP/EN/blend */
+#define LCDIFV2_CTRLDESCL6(n)     LCDIFV2_REG(0x214 + (n)*0x40)  /* BCLR bkgnd   */
+#define LCDIFV2_CSC_COEF0(n)      LCDIFV2_REG(0x218 + (n)*0x40)
+#define LCDIFV2_CSC_COEF1(n)      LCDIFV2_REG(0x21C + (n)*0x40)
+#define LCDIFV2_CSC_COEF2(n)      LCDIFV2_REG(0x220 + (n)*0x40)
+#define LCDIFV2_CLUT_LOAD         LCDIFV2_REG(0x400)
+
+/* CTRL bits */
+#define LCDIFV2_CTRL_INV_HS       ((uint32_t)(1u<<0))   /* invert HSYNC (active low)  */
+#define LCDIFV2_CTRL_INV_VS       ((uint32_t)(1u<<1))   /* invert VSYNC (active low)  */
+#define LCDIFV2_CTRL_INV_DE       ((uint32_t)(1u<<2))   /* invert data-enable         */
+#define LCDIFV2_CTRL_INV_PXCK     ((uint32_t)(1u<<3))   /* sample data on rising edge */
+#define LCDIFV2_CTRL_NEG          ((uint32_t)(1u<<4))   /* negate pixel output        */
+#define LCDIFV2_CTRL_SW_RESET     ((uint32_t)(1u<<31))
+/* DISP_PARA */
+#define LCDIFV2_DISP_PARA_BGND_B(x)      (((uint32_t)(x) << 0) & 0x000000FFu)
+#define LCDIFV2_DISP_PARA_BGND_G(x)      (((uint32_t)(x) << 8) & 0x0000FF00u)
+#define LCDIFV2_DISP_PARA_BGND_R(x)      (((uint32_t)(x) << 16) & 0x00FF0000u)
+#define LCDIFV2_DISP_PARA_DISP_MODE(x)   (((uint32_t)(x) << 24) & 0x03000000u) /* 0=normal */
+#define LCDIFV2_DISP_PARA_LINE_PATTERN(x)(((uint32_t)(x) << 26) & 0x1C000000u) /* 0=RGB    */
+#define LCDIFV2_DISP_PARA_DISP_ON        ((uint32_t)(1u<<31))
+/* DISP_SIZE */
+#define LCDIFV2_DISP_SIZE_DELTA_X(x)     (((uint32_t)(x) << 0) & 0x00000FFFu)  /* width  */
+#define LCDIFV2_DISP_SIZE_DELTA_Y(x)     (((uint32_t)(x) << 16) & 0x0FFF0000u) /* height */
+/* HSYN_PARA / VSYN_PARA: FP=front porch, PW=sync pulse width, BP=back porch */
+#define LCDIFV2_HSYN_PARA_FP_H(x)        (((uint32_t)(x) << 0) & 0x000001FFu)
+#define LCDIFV2_HSYN_PARA_PW_H(x)        (((uint32_t)(x) << 11) & 0x000FF800u)
+#define LCDIFV2_HSYN_PARA_BP_H(x)        (((uint32_t)(x) << 22) & 0x7FC00000u)
+#define LCDIFV2_VSYN_PARA_FP_V(x)        (((uint32_t)(x) << 0) & 0x000001FFu)
+#define LCDIFV2_VSYN_PARA_PW_V(x)        (((uint32_t)(x) << 11) & 0x000FF800u)
+#define LCDIFV2_VSYN_PARA_BP_V(x)        (((uint32_t)(x) << 22) & 0x7FC00000u)
+/* INT_STATUS / INT_ENABLE (same bit layout; _EN names are the ENABLE reg) */
+#define LCDIFV2_INT_VSYNC         ((uint32_t)(1u<<0))
+#define LCDIFV2_INT_UNDERRUN      ((uint32_t)(1u<<1))
+#define LCDIFV2_INT_VS_BLANK      ((uint32_t)(1u<<2))
+#define LCDIFV2_INT_DMA_ERR_MASK  ((uint32_t)0x0000FF00u)   /* [15:8]  per-plane */
+#define LCDIFV2_INT_DMA_DONE_MASK ((uint32_t)0x00FF0000u)   /* [23:16] per-plane */
+#define LCDIFV2_INT_FIFO_EMPTY_MASK ((uint32_t)0xFF000000u) /* [31:24] per-plane */
+/* CTRLDESCL1: layer WIDTH/HEIGHT in pixels */
+#define LCDIFV2_CTRLDESCL1_WIDTH(x)      (((uint32_t)(x) << 0) & 0x00000FFFu)
+#define LCDIFV2_CTRLDESCL1_HEIGHT(x)     (((uint32_t)(x) << 16) & 0x0FFF0000u)
+/* CTRLDESCL2: layer position */
+#define LCDIFV2_CTRLDESCL2_POSX(x)       (((uint32_t)(x) << 0) & 0x00000FFFu)
+#define LCDIFV2_CTRLDESCL2_POSY(x)       (((uint32_t)(x) << 16) & 0x0FFF0000u)
+/* CTRLDESCL3: layer PITCH in bytes ([15:0]) */
+#define LCDIFV2_CTRLDESCL3_PITCH(x)      (((uint32_t)(x) << 0) & 0x0000FFFFu)
+/* CTRLDESCL5: format / blend / enable */
+#define LCDIFV2_CTRLDESCL5_BPP(x)        (((uint32_t)(x) << 24) & 0x0F000000u)
+#define LCDIFV2_CTRLDESCL5_BPP_RGB565    4u    /* BPP field value for 16bpp RGB565 */
+#define LCDIFV2_CTRLDESCL5_BPP_RGB888    8u    /* 24bpp RGB888                     */
+#define LCDIFV2_CTRLDESCL5_BPP_ARGB8888  9u    /* 32bpp ARGB8888                   */
+#define LCDIFV2_CTRLDESCL5_GLOBAL_ALPHA(x) (((uint32_t)(x) << 16) & 0x00FF0000u)
+#define LCDIFV2_CTRLDESCL5_AB_MODE(x)    (((uint32_t)(x) << 0) & 0x00000003u) /* alpha-blend mode */
+#define LCDIFV2_CTRLDESCL5_SAFETY_EN     ((uint32_t)(1u<<28))
+#define LCDIFV2_CTRLDESCL5_SHADOW_LOAD_EN ((uint32_t)(1u<<30))
+#define LCDIFV2_CTRLDESCL5_EN            ((uint32_t)(1u<<31))  /* enable layer DMA */
+/* CTRLDESCL6: per-layer background colour */
+#define LCDIFV2_CTRLDESCL6_BCLR_B(x)     (((uint32_t)(x) << 0) & 0x000000FFu)
+#define LCDIFV2_CTRLDESCL6_BCLR_G(x)     (((uint32_t)(x) << 8) & 0x0000FF00u)
+#define LCDIFV2_CTRLDESCL6_BCLR_R(x)     (((uint32_t)(x) << 16) & 0x00FF0000u)
+/* CLUT_LOAD */
+#define LCDIFV2_CLUT_LOAD_UPDATE_EN      ((uint32_t)(1u<<0))
+#define LCDIFV2_CLUT_LOAD_SEL_CLUT_NUM(x)(((uint32_t)(x) << 4) & 0x00000070u)
+
+/* --- MIPI DSI host ---------------------------------------------------------
+ * A 4-sub-block design.  Sub-block bases are absolute instance addresses from
+ * MIMXRT1176_cm7_COMMON.h (they happen to be contiguous offsets inside the DSI
+ * region at 0x4080C000): core @ +0x000, DPI @ +0x200, APB @ +0x280,
+ * D-PHY @ +0x300.  IRQ 59 (MIPI_DSI_IRQn), clock gate LPCG131.  None of the
+ * DSI sub-blocks has SET/CLR/TOG register aliases. */
+
+/* DSI_HOST core (config/timeouts) @ 0x4080C000 -- PERI_DSI_HOST.h */
+#define DSI_HOST_BASE             0x4080C000u
+#define DSI_HOST_REG(off)         (*(volatile uint32_t *)(DSI_HOST_BASE + (off)))
+#define DSI_HOST_CFG_NUM_LANES            DSI_HOST_REG(0x00)  /* [1:0] NUM_LANES   */
+#define DSI_HOST_CFG_NONCONTINUOUS_CLK    DSI_HOST_REG(0x04)  /* bit0 CLK_MODE     */
+#define DSI_HOST_CFG_T_PRE                DSI_HOST_REG(0x08)  /* [7:0] TCLK-PRE    */
+#define DSI_HOST_CFG_T_POST               DSI_HOST_REG(0x0C)  /* [7:0] TCLK wait   */
+#define DSI_HOST_CFG_TX_GAP               DSI_HOST_REG(0x10)  /* [7:0] TX gap      */
+#define DSI_HOST_CFG_AUTOINSERT_EOTP      DSI_HOST_REG(0x14)  /* bit0 auto EoTp    */
+#define DSI_HOST_CFG_EXTRA_CMDS_AFTER_EOTP DSI_HOST_REG(0x18) /* [7:0]             */
+#define DSI_HOST_CFG_HTX_TO_COUNT         DSI_HOST_REG(0x1C)  /* [23:0] HS-TX to   */
+#define DSI_HOST_CFG_LRX_H_TO_COUNT       DSI_HOST_REG(0x20)  /* [23:0] LP-RX to   */
+#define DSI_HOST_CFG_BTA_H_TO_COUNT       DSI_HOST_REG(0x24)  /* [23:0] BTA to     */
+#define DSI_HOST_CFG_TWAKEUP              DSI_HOST_REG(0x28)  /* [18:0] Twakeup    */
+#define DSI_HOST_CFG_STATUS_OUT           DSI_HOST_REG(0x2C)  /* RO status         */
+#define DSI_HOST_RX_ERROR_STATUS          DSI_HOST_REG(0x30)  /* RO [10:0] errors  */
+
+/* DSI DPI video interface @ 0x4080C200 -- PERI_DSI_HOST_DPI_INTFC.h */
+#define DSI_DPI_BASE              0x4080C200u
+#define DSI_DPI_REG(off)          (*(volatile uint32_t *)(DSI_DPI_BASE + (off)))
+#define DSI_DPI_PIXEL_PAYLOAD_SIZE        DSI_DPI_REG(0x00)  /* [15:0] pixels/line   */
+#define DSI_DPI_PIXEL_FIFO_SEND_LEVEL     DSI_DPI_REG(0x04)  /* [15:0]               */
+#define DSI_DPI_INTERFACE_COLOR_CODING    DSI_DPI_REG(0x08)  /* [2:0] RGB_CONFIG     */
+#define DSI_DPI_PIXEL_FORMAT              DSI_DPI_REG(0x0C)  /* [1:0]                */
+#define DSI_DPI_VSYNC_POLARITY            DSI_DPI_REG(0x10)  /* bit0 (1=active high) */
+#define DSI_DPI_HSYNC_POLARITY            DSI_DPI_REG(0x14)  /* bit0 (1=active high) */
+#define DSI_DPI_VIDEO_MODE                DSI_DPI_REG(0x18)  /* [1:0] VIDEO_MODE     */
+#define DSI_DPI_HFP                       DSI_DPI_REG(0x1C)  /* [15:0] H front porch bytes */
+#define DSI_DPI_HBP                       DSI_DPI_REG(0x20)  /* [15:0] H back porch bytes  */
+#define DSI_DPI_HSA                       DSI_DPI_REG(0x24)  /* [15:0] H sync-active bytes */
+#define DSI_DPI_ENABLE_MULT_PKTS          DSI_DPI_REG(0x28)  /* bit0                 */
+#define DSI_DPI_VBP                       DSI_DPI_REG(0x2C)  /* [7:0] V back porch lines   */
+#define DSI_DPI_VFP                       DSI_DPI_REG(0x30)  /* [7:0] V front porch lines  */
+#define DSI_DPI_BLLP_MODE                 DSI_DPI_REG(0x34)  /* bit0 LP during BLLP  */
+#define DSI_DPI_USE_NULL_PKT_BLLP         DSI_DPI_REG(0x38)  /* bit0                 */
+#define DSI_DPI_VACTIVE                   DSI_DPI_REG(0x3C)  /* [13:0] active lines  */
+/* DPI field masks */
+#define DSI_DPI_INTERFACE_COLOR_CODING_MASK ((uint32_t)0x7u)
+#define DSI_DPI_PIXEL_FORMAT_MASK           ((uint32_t)0x3u)
+#define DSI_DPI_VIDEO_MODE_MASK             ((uint32_t)0x3u)
+#define DSI_DPI_VACTIVE_MASK                ((uint32_t)0x3FFFu)
+
+/* DSI APB packet interface (DCS/generic writes) @ 0x4080C280
+ * -- PERI_DSI_HOST_APB_PKT_IF.h */
+#define DSI_APB_BASE              0x4080C280u
+#define DSI_APB_REG(off)          (*(volatile uint32_t *)(DSI_APB_BASE + (off)))
+#define DSI_APB_TX_PAYLOAD                DSI_APB_REG(0x00)  /* payload FIFO write */
+#define DSI_APB_PKT_CONTROL               DSI_APB_REG(0x04)  /* [26:0] header+flags*/
+#define DSI_APB_SEND_PACKET               DSI_APB_REG(0x08)  /* bit0 TX_SEND       */
+#define DSI_APB_PKT_STATUS                DSI_APB_REG(0x0C)  /* RO [8:0]           */
+#define DSI_APB_PKT_FIFO_WR_LEVEL         DSI_APB_REG(0x10)  /* RO [15:0]          */
+#define DSI_APB_PKT_FIFO_RD_LEVEL         DSI_APB_REG(0x14)  /* RO [15:0]          */
+#define DSI_APB_PKT_RX_PAYLOAD            DSI_APB_REG(0x18)  /* RO                 */
+#define DSI_APB_PKT_RX_PKT_HEADER         DSI_APB_REG(0x1C)  /* RO [23:0]          */
+#define DSI_APB_IRQ_STATUS                DSI_APB_REG(0x20)  /* RO                 */
+#define DSI_APB_IRQ_STATUS2               DSI_APB_REG(0x24)  /* RO [2:0]           */
+#define DSI_APB_IRQ_MASK                  DSI_APB_REG(0x28)
+#define DSI_APB_IRQ_MASK2                 DSI_APB_REG(0x2C)  /* [2:0]              */
+/* PKT_CONTROL packing (word count / virtual channel / data type / flags).
+ * These sub-field positions are not broken out in PERI_DSI_HOST_APB_PKT_IF.h
+ * (which gives only the aggregate [26:0] CTRL field); the layout is
+ * transcribed from the NXP driver fsl_mipi_dsi.c (BSD-3-Clause). */
+#define DSI_APB_PKT_CONTROL_WORD_COUNT(wc) (((uint32_t)(wc)) << 0)   /* [15:0] */
+#define DSI_APB_PKT_CONTROL_VC(vc)         (((uint32_t)(vc)) << 16)  /* [17:16] virtual channel */
+#define DSI_APB_PKT_CONTROL_HEADER_TYPE(t) (((uint32_t)(t)) << 18)   /* [23:18] DSI data type   */
+#define DSI_APB_PKT_CONTROL_HS             ((uint32_t)(1u<<24))      /* send in high-speed      */
+#define DSI_APB_PKT_CONTROL_BTA            ((uint32_t)(1u<<25))      /* bus-turnaround after tx */
+#define DSI_APB_PKT_CONTROL_BTA_ONLY       ((uint32_t)(1u<<26))
+#define DSI_APB_SEND_PACKET_TX_SEND        ((uint32_t)(1u<<0))
+/* PKT_STATUS bits (from fsl_mipi_dsi.h kDSI_Apb* enum, BSD-3-Clause) */
+#define DSI_APB_PKT_STATUS_NOT_IDLE            ((uint32_t)(1u<<0))
+#define DSI_APB_PKT_STATUS_TX_DONE             ((uint32_t)(1u<<1))
+#define DSI_APB_PKT_STATUS_RX_CONTROL          ((uint32_t)(1u<<2))
+#define DSI_APB_PKT_STATUS_TX_OVERFLOW         ((uint32_t)(1u<<3))
+#define DSI_APB_PKT_STATUS_TX_UNDERFLOW        ((uint32_t)(1u<<4))
+#define DSI_APB_PKT_STATUS_RX_OVERFLOW         ((uint32_t)(1u<<5))
+#define DSI_APB_PKT_STATUS_RX_UNDERFLOW        ((uint32_t)(1u<<6))
+#define DSI_APB_PKT_STATUS_RX_HEADER_RECEIVED  ((uint32_t)(1u<<7))
+#define DSI_APB_PKT_STATUS_RX_PACKET_RECEIVED  ((uint32_t)(1u<<8))
+
+/* DSI D-PHY (NXP FDSOI28) @ 0x4080C300 -- PERI_DSI_HOST_NXP_FDSOI28_DPHY_INTFC.h
+ * PLL VCO = (refClk / CN) * CM; CO is the output post-divider. */
+#define DSI_DPHY_BASE             0x4080C300u
+#define DSI_DPHY_REG(off)         (*(volatile uint32_t *)(DSI_DPHY_BASE + (off)))
+#define DSI_DPHY_PD_TX                    DSI_DPHY_REG(0x00)  /* bit0 power-down TX */
+#define DSI_DPHY_M_PRG_HS_PREPARE         DSI_DPHY_REG(0x04)  /* [1:0]  data THS-prepare  */
+#define DSI_DPHY_MC_PRG_HS_PREPARE        DSI_DPHY_REG(0x08)  /* bit0   clock THS-prepare */
+#define DSI_DPHY_M_PRG_HS_ZERO            DSI_DPHY_REG(0x0C)  /* [4:0]  data THS-zero     */
+#define DSI_DPHY_MC_PRG_HS_ZERO           DSI_DPHY_REG(0x10)  /* [5:0]  clock THS-zero    */
+#define DSI_DPHY_M_PRG_HS_TRAIL           DSI_DPHY_REG(0x14)  /* [3:0]  data THS-trail    */
+#define DSI_DPHY_MC_PRG_HS_TRAIL          DSI_DPHY_REG(0x18)  /* [3:0]  clock THS-trail   */
+#define DSI_DPHY_PD_PLL                   DSI_DPHY_REG(0x1C)  /* bit0 power-down PLL */
+#define DSI_DPHY_TST                      DSI_DPHY_REG(0x20)  /* [5:0] test         */
+#define DSI_DPHY_CN                       DSI_DPHY_REG(0x24)  /* [4:0] PLL N divider*/
+#define DSI_DPHY_CM                       DSI_DPHY_REG(0x28)  /* [7:0] PLL M divider*/
+#define DSI_DPHY_CO                       DSI_DPHY_REG(0x2C)  /* [1:0] PLL out div  */
+#define DSI_DPHY_LOCK                     DSI_DPHY_REG(0x30)  /* RO bit0 PLL locked */
+#define DSI_DPHY_LOCK_BYP                 DSI_DPHY_REG(0x34)  /* bit0               */
+#define DSI_DPHY_TX_RCAL                  DSI_DPHY_REG(0x38)  /* [1:0]              */
+#define DSI_DPHY_AUTO_PD_EN               DSI_DPHY_REG(0x3C)  /* bit0               */
+#define DSI_DPHY_RXLPRP                   DSI_DPHY_REG(0x40)  /* [1:0]              */
+#define DSI_DPHY_RXCDRP                   DSI_DPHY_REG(0x44)  /* [1:0]              */
+/* D-PHY field masks */
+#define DSI_DPHY_CN_MASK          ((uint32_t)0x1Fu)
+#define DSI_DPHY_CM_MASK          ((uint32_t)0xFFu)
+#define DSI_DPHY_CO_MASK          ((uint32_t)0x3u)
+#define DSI_DPHY_LOCK_MASK        ((uint32_t)0x1u)
+
+/* --- Display clocks (Task 6 consumes these) --------------------------------
+ * VIDEO PLL in ANATOP (base 0x40C84000, same block as ARM/AUDIO PLL above);
+ * offsets from PERI_ANADIG_PLL.h.  On RT1176 the fractional-N config
+ * (DIV_SELECT/NUM/DENOM) is normally written via the ANATOP AI protocol (cf.
+ * the AUDIO PLL AI regs above) unless PLL_VIDEO_CTRL.CONTROL_MODE selects
+ * direct mode -- Task 6 decides.  CCM CLOCK_ROOT/LPCG addresses follow the
+ * existing conventions: CLOCK_ROOTn @ 0x40CC0000 + n*0x80, LPCGn @ 0x40CC6000
+ * + n*0x20.  Root/gate indices from fsl_clock.h. */
+#define ANADIG_PLL_VIDEO_CTRL         (*(volatile uint32_t *)0x40C84350u) /* ANATOP +0x350 */
+#define ANADIG_PLL_VIDEO_SS           (*(volatile uint32_t *)0x40C84360u) /* +0x360 spread-spectrum */
+#define ANADIG_PLL_VIDEO_DENOMINATOR  (*(volatile uint32_t *)0x40C84370u) /* +0x370 [29:0] */
+#define ANADIG_PLL_VIDEO_NUMERATOR    (*(volatile uint32_t *)0x40C84380u) /* +0x380 [29:0] */
+#define ANADIG_PLL_VIDEO_DIV_SELECT   (*(volatile uint32_t *)0x40C84390u) /* +0x390 [6:0]  */
+#define ANADIG_PLL_VIDEO_CTRL_ENABLE_CLK   (1u<<13)
+#define ANADIG_PLL_VIDEO_CTRL_GATE         (1u<<14)   /* PLL_VIDEO_GATE          */
+#define ANADIG_PLL_VIDEO_CTRL_COUNTER_CLR  (1u<<24)
+#define ANADIG_PLL_VIDEO_CTRL_STABLE       (1u<<29)   /* RO PLL_VIDEO_STABLE     */
+#define ANADIG_PLL_VIDEO_CTRL_AI_BUSY      (1u<<30)   /* RO                      */
+#define ANADIG_PLL_VIDEO_CTRL_CONTROL_MODE (1u<<31)   /* 1=direct-register mode  */
+#define ANADIG_PLL_VIDEO_DIV_SELECT_MASK   ((uint32_t)0x7Fu)
+#define ANADIG_PLL_VIDEO_NUM_MASK          ((uint32_t)0x3FFFFFFFu)
+#define ANADIG_PLL_VIDEO_DENOM_MASK        ((uint32_t)0x3FFFFFFFu)
+#define ANADIG_PLL_VIDEO_SS_STEP(x)        (((uint32_t)(x) << 0) & 0x00007FFFu)
+#define ANADIG_PLL_VIDEO_SS_ENABLE         (1u<<15)
+#define ANADIG_PLL_VIDEO_SS_STOP(x)        (((uint32_t)(x) << 16) & 0xFFFF0000u)
+/* LCDIFv2 clock: CLOCK_ROOT70 (kCLOCK_Root_Lcdifv2) + gate LPCG130 */
+#define CCM_CLOCK_ROOT70_CONTROL      (*(volatile uint32_t *)0x40CC2300u)  /* LCDIFv2 root */
+#define CCM_LPCG130_DIRECT            (*(volatile uint32_t *)0x40CC7040u)  /* LCDIFv2 gate */
+/* MIPI clocks: CLOCK_ROOT71 = MIPI_REF (kCLOCK_Root_Mipi_Ref), CLOCK_ROOT72 =
+ * MIPI_ESC (kCLOCK_Root_Mipi_Esc); DSI-host gate LPCG131 (kCLOCK_Mipi_Dsi).
+ * On both roots the VIDEO PLL output is mux select 7. */
+#define CCM_CLOCK_ROOT71_CONTROL      (*(volatile uint32_t *)0x40CC2380u)  /* MIPI_REF root */
+#define CCM_CLOCK_ROOT72_CONTROL      (*(volatile uint32_t *)0x40CC2400u)  /* MIPI_ESC root */
+#define CCM_LPCG131_DIRECT            (*(volatile uint32_t *)0x40CC7060u)  /* MIPI_DSI gate */
+#define CCM_CLOCK_ROOT_MUX_VIDEO_PLL  7u   /* MUX value: VideoPllOut on LCDIFv2/MIPI_REF/MIPI_ESC roots */
+
 #endif

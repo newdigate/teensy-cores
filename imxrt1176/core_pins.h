@@ -47,7 +47,9 @@ typedef enum IRQ_NUMBER_t {
     IRQ_LPI2C5 = 36,
     IRQ_LPSPI1 = 38, IRQ_LPSPI2, IRQ_LPSPI3, IRQ_LPSPI4, IRQ_LPSPI5, IRQ_LPSPI6, /* = 43 */
     IRQ_CAN1 = 44, IRQ_CAN1_ERROR = 45, IRQ_CAN2 = 46, IRQ_CAN2_ERROR = 47, IRQ_CAN3 = 48, IRQ_CAN3_ERROR = 49,
+    IRQ_LCDIFV2 = 55,   /* LCDIFv2_IRQn (display controller) */
     IRQ_PXP = 57,
+    IRQ_MIPI_DSI = 59,  /* MIPI_DSI_IRQn (DSI host) */
     IRQ_SAI1 = 76,
     IRQ_ADC1 = 88, IRQ_ADC2 = 89,
     /*
