@@ -1088,6 +1088,27 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
 #define ANADIG_AI_TOGGLE      (1u << 8)
 #define ANADIG_AI_TOGGLE_DONE (1u << 9)
 #define ANADIG_AI_RWB         (1u << 16)
+#define ANADIG_AI_ADDR_MASK   (0xFFu)
+
+/* --- VIDEO PLL via ANATOP AI indirect interface + PLL LDO (display clock) ---
+ * The VIDEO PLL's real config (POWER_UP / BYPASS / HOLD_RING_OFF / DIV_SELECT /
+ * NUM / DENOM) is NOT in the bus-visible PLL_VIDEO_CTRL (0x40C84350, in the
+ * display register block below) -- it lives in AI-space CTRL0/CTRL2/CTRL3
+ * reached only through this indirect interface, exactly like the AUDIO PLL
+ * above.  fsl_clock.c CLOCK_InitVideoPll() + fsl_anatop_ai.c (kAI_Itf_Video).
+ * The toggle/done/rwb/addr bits are shared with the audio interface. */
+#define ANADIG_MISC_AI_CTRL_VIDEO  (*(volatile uint32_t *)0x40C848B0u)
+#define ANADIG_MISC_AI_WDATA_VIDEO (*(volatile uint32_t *)0x40C848C0u)
+#define ANADIG_MISC_AI_RDATA_VIDEO (*(volatile uint32_t *)0x40C848D0u)
+/* LDO AI channel (VDDSOC): PMU_StaticEnablePllLdo drives the PHY_LDO through it;
+ * the commit is a toggle of PMU_LDO_PLL[16], not a MISC AI_CTRL bit. */
+#define ANADIG_MISC_AI_CTRL_LDO    (*(volatile uint32_t *)0x40C84820u)
+#define ANADIG_MISC_AI_WDATA_LDO   (*(volatile uint32_t *)0x40C84830u)
+#define ANADIG_MISC_AI_RDATA_LDO   (*(volatile uint32_t *)0x40C84840u)
+#define ANADIG_PMU_LDO_PLL         (*(volatile uint32_t *)0x40C84500u)
+#define ANADIG_PMU_LDO_PLL_AI_TOGGLE (1u << 16)
+#define ANADIG_PMU_REF_CTRL        (*(volatile uint32_t *)0x40C84570u)
+#define ANADIG_PMU_REF_CTRL_EN_PLL_VOL_REF_BUFFER (1u << 4)
 
 /* --- LPI2C5 (codec bus, LPSR domain) base 0x40C34000, IRQ 36 --- */
 #define LPI2C5_MCR    (*(volatile uint32_t *)0x40C34010u)
