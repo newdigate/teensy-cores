@@ -1930,22 +1930,25 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
  * CSC1). */
 #define PXP_CSC1_BYPASS          ((uint32_t)(1u<<30))
 #define PXP_CSC1_YCBCR_MODE      ((uint32_t)(1u<<31))
-/* YUV->RGB colour-matrix coefficients (RM full-range YUV example).  Formula:
+/* YCbCr->RGB colour-matrix coefficients (studio-range, ITU-R BT.601).  Formula:
  *   R = C0*(Y+Yoff) + C1*(V+UVoff)
  *   G = C0*(Y+Yoff) + C3*(U+UVoff) + C2*(V+UVoff)
  *   B = C0*(Y+Yoff) + C4*(U+UVoff)
- * COEF0 = C0=0x100(1.0) | UV_OFFSET=0x180(-128) | Y_OFFSET=0: BYPASS(bit30)=0
- * so the matrix runs, YCBCR_MODE(bit31)=0 (full-range luma), and UV_OFFSET
- * -128 centres the sensor's 0..255 chroma - this is the RM's worked example
- * value 0x0403_0000, NOT the bare reset 0x0400_0000 (whose UV_OFFSET=0 only
- * suits pre-centred chroma).  COEF1/COEF2 are the reset coefficients (C1=1.140,
- * C4=2.032, C2=-0.581, C3=-0.391).  ***COEF2 is 0x076B_079C per RM rev.5 (reset
- * table AND worked example); an earlier 0x079B_076C was a digit transposition.
- * The RGB path clobbers only COEF0 (with BYPASS), so COEF1/COEF2 normally keep
- * their silicon reset value - the YUV path rewrites all three defensively. */
-#define PXP_CSC1_COEF0_YUV2RGB   ((uint32_t)0x04030000u)
-#define PXP_CSC1_COEF1_YUV2RGB   ((uint32_t)0x01230208u)
-#define PXP_CSC1_COEF2_YUV2RGB   ((uint32_t)0x076B079Cu)
+ * ***HW-VERIFIED (pxp_csc_color): these are NXP fsl_pxp's kPXP_Csc1YCbCr2RGB
+ * values.  The OV5640 (and MIPI/CSI YUV422 generally) emits STUDIO-range YCbCr
+ * (Y 16..235, chroma centred at 128), so the conversion needs YCBCR_MODE=1,
+ * Y_OFFSET=-16 and the 1.164 luma gain - NOT the full-range YUV2RGB set.  An
+ * earlier full-range hybrid (C0=1.0/0x0403_0000 + a stray YCbCr C3) DROPPED
+ * luma on silicon and cast everything green (neutral gray -> 0x07E0), which is
+ * what broke the camera preview and the M1 self-checksum.
+ *   COEF0 = YCBCR_MODE(1)<<31 | C0=0x12A(1.164)<<18 | UV_OFFSET=0x180(-128)<<9
+ *           | Y_OFFSET=0x1F0(-16)                      = 0x84AB_01F0
+ *   COEF1 = C1=0x198(1.596)<<16 | C4=0x204(2.017)      = 0x0198_0204
+ *   COEF2 = C2=0x730(-0.813)<<16 | C3=0x79C(-0.392)    = 0x0730_079C
+ * BYPASS(bit30)=0 so the matrix runs; an RGB source must set BYPASS instead. */
+#define PXP_CSC1_COEF0_YUV2RGB   ((uint32_t)0x84AB01F0u)
+#define PXP_CSC1_COEF1_YUV2RGB   ((uint32_t)0x01980204u)
+#define PXP_CSC1_COEF2_YUV2RGB   ((uint32_t)0x0730079Cu)
 #define PXP_POWER                 PXP_REG(0x320)
 #define PXP_NEXT                  PXP_REG(0x400)
 #define PXP_PORTER_DUFF_CTRL      PXP_REG(0x440)
