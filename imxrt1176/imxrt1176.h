@@ -1930,6 +1930,22 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
  * CSC1). */
 #define PXP_CSC1_BYPASS          ((uint32_t)(1u<<30))
 #define PXP_CSC1_YCBCR_MODE      ((uint32_t)(1u<<31))
+/* YUV->RGB colour-matrix coefficients (RM full-range YUV example).  Formula:
+ *   R = C0*(Y+Yoff) + C1*(V+UVoff)
+ *   G = C0*(Y+Yoff) + C3*(U+UVoff) + C2*(V+UVoff)
+ *   B = C0*(Y+Yoff) + C4*(U+UVoff)
+ * COEF0 = C0=0x100(1.0) | UV_OFFSET=0x180(-128) | Y_OFFSET=0: BYPASS(bit30)=0
+ * so the matrix runs, YCBCR_MODE(bit31)=0 (full-range luma), and UV_OFFSET
+ * -128 centres the sensor's 0..255 chroma - this is the RM's worked example
+ * value 0x0403_0000, NOT the bare reset 0x0400_0000 (whose UV_OFFSET=0 only
+ * suits pre-centred chroma).  COEF1/COEF2 are the reset coefficients (C1=1.140,
+ * C4=2.032, C2=-0.581, C3=-0.391).  ***COEF2 is 0x076B_079C per RM rev.5 (reset
+ * table AND worked example); an earlier 0x079B_076C was a digit transposition.
+ * The RGB path clobbers only COEF0 (with BYPASS), so COEF1/COEF2 normally keep
+ * their silicon reset value - the YUV path rewrites all three defensively. */
+#define PXP_CSC1_COEF0_YUV2RGB   ((uint32_t)0x04030000u)
+#define PXP_CSC1_COEF1_YUV2RGB   ((uint32_t)0x01230208u)
+#define PXP_CSC1_COEF2_YUV2RGB   ((uint32_t)0x076B079Cu)
 #define PXP_POWER                 PXP_REG(0x320)
 #define PXP_NEXT                  PXP_REG(0x400)
 #define PXP_PORTER_DUFF_CTRL      PXP_REG(0x440)
