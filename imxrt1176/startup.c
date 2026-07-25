@@ -366,11 +366,37 @@ void set_arm_clock_rt1176(void)
 	__asm__ volatile("dsb":::"memory");
 	__asm__ volatile("isb":::"memory");
 
-	/* --- 5. AHB/bus CLOCK_ROOT — keep on a safe OSC-derived source ----- */
-	/* The SDK routes BUS off SYS_PLL3 (not brought up in this Phase-0 subset);
-	 * leave the bus root on its boot-ROM-safe slow source (mux 0, div 1). */
-	CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(0) |
-	                          CCM_CLOCK_ROOT_CONTROL_DIV(0);
+	/* --- 5. AHB/bus CLOCK_ROOT — SYS_PLL2_OUT/3 = 176 MHz -------------- */
+	/* BUS_CLK_ROOT (CLOCK_ROOT2) is the LCDIFv2 data-fetch clock (b_clk /
+	 * apb_clk, RM 48.3.3 + AN12940 §3.3: "higher b_clk ... avoids FIFO
+	 * under-run"), and the ipg_clk of the AHB peripheral bus generally.  It
+	 * used to be left on the boot-ROM-safe OSC/2 source (24 MHz); that starves
+	 * the LCDIFv2 scanout on silicon (RPi-7" display: persistent output-FIFO
+	 * underrun, HW-verified cleared by this raise).  NXP's BOARD_BootClockRUN
+	 * runs it at SYS_PLL3_OUT/2 = 240 MHz, but SYS_PLL3 is left BYPASSED on
+	 * this board's boot; SYS_PLL2 (528 MHz) IS brought up by the boot ROM (it
+	 * feeds the SEMC SDRAM via PFD1), so use SYS_PLL2_OUT/3 = 176 MHz — under
+	 * the 240 MHz BUS_CLK_ROOT ceiling and HW-verified to clear the underrun.
+	 *
+	 * Guarded: only switch if SYS_PLL2 is actually usable (powered, not gated,
+	 * not bypassed, stable).  If it is not (should never happen on this board),
+	 * fall back to the OSC/2 source so a bad boot cannot leave the bus dead.
+	 * SYS_PLL2_CTRL @ ANADIG 0x40C84240: GATE bit30, STABLE bit29, BYPASS bit0. */
+	{
+		volatile uint32_t *const sys_pll2_ctrl =
+		    (volatile uint32_t *)0x40C84240u;
+		const uint32_t p2 = *sys_pll2_ctrl;
+		const uint32_t GATE = (1u << 30), STABLE = (1u << 29), BYPASS = 1u;
+		if (!(p2 & GATE) && !(p2 & BYPASS) && (p2 & STABLE)) {
+			/* mux 6 = SYS_PLL2_OUT, DIV field 2 = divide-by-3. */
+			CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(6) |
+			                          CCM_CLOCK_ROOT_CONTROL_DIV(2);
+		} else {
+			/* Fallback: OSC/2 (mux 0, div 1) — the old safe-slow source. */
+			CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(0) |
+			                          CCM_CLOCK_ROOT_CONTROL_DIV(0);
+		}
+	}
 	__asm__ volatile("dsb":::"memory");
 	__asm__ volatile("isb":::"memory");
 
