@@ -366,29 +366,57 @@ void set_arm_clock_rt1176(void)
 	__asm__ volatile("dsb":::"memory");
 	__asm__ volatile("isb":::"memory");
 
-	/* --- 5. AHB/bus CLOCK_ROOT — SYS_PLL2_OUT/3 = 176 MHz -------------- */
+	/* --- 5. AHB/bus CLOCK_ROOT — SYS_PLL3_OUT/2 = 240 MHz -------------- */
 	/* BUS_CLK_ROOT (CLOCK_ROOT2) is the LCDIFv2 data-fetch clock (b_clk /
 	 * apb_clk, RM 48.3.3 + AN12940 §3.3: "higher b_clk ... avoids FIFO
 	 * under-run"), and the ipg_clk of the AHB peripheral bus generally.  It
 	 * used to be left on the boot-ROM-safe OSC/2 source (24 MHz); that starves
 	 * the LCDIFv2 scanout on silicon (RPi-7" display: persistent output-FIFO
-	 * underrun, HW-verified cleared by this raise).  NXP's BOARD_BootClockRUN
-	 * runs it at SYS_PLL3_OUT/2 = 240 MHz, but SYS_PLL3 is left BYPASSED on
-	 * this board's boot; SYS_PLL2 (528 MHz) IS brought up by the boot ROM (it
-	 * feeds the SEMC SDRAM via PFD1), so use SYS_PLL2_OUT/3 = 176 MHz — under
-	 * the 240 MHz BUS_CLK_ROOT ceiling and HW-verified to clear the underrun.
+	 * underrun, HW-verified cleared by raising it).
 	 *
-	 * Guarded: only switch if SYS_PLL2 is actually usable (powered, not gated,
-	 * not bypassed, stable).  If it is not (should never happen on this board),
-	 * fall back to the OSC/2 source so a bad boot cannot leave the bus dead.
-	 * SYS_PLL2_CTRL @ ANADIG 0x40C84240: GATE bit30, STABLE bit29, BYPASS bit0. */
+	 * This now matches NXP's own BOARD_BootClockRUN exactly:
+	 * SYS_PLL3_OUT / 2 = 240 MHz (mcuxsdk _boards/evkbmimxrt1170/
+	 * project_template/clock_config.c: kCLOCK_BUS_ClockRoot_MuxSysPll3Out = 4,
+	 * .div = 2 -- and CLOCK_SetRootClock() writes DIV field = div-1, so the
+	 * field value here is 1).  240 MHz is wanted because the RK055HDMIPI4MA0
+	 * panel (720x1280 RGB565 @ 58.7 Hz) needs ~108 MB/s of sustained scanout,
+	 * 2.4x what the 800x480 RPi panel needed.
+	 *
+	 * ★ An earlier revision of this comment claimed SYS_PLL3 is "left BYPASSED
+	 * on this board's boot", citing CTRL bit0 = 1, and used SYS_PLL2_OUT/3 =
+	 * 176 MHz instead.  That was a MISREAD OF THE WRONG BIT.  Per
+	 * mcuxsdk devices/RT/RT1170/periph/PERI_ANADIG_PLL.h, SYS_PLL3_CTRL has NO
+	 * field at bit 0 -- BYPASS is bit 16.  The OV5640 camera bring-up read
+	 * SYS_PLL3_CTRL @ 0x40C84210 = 0x2020201B on this board at boot, in which
+	 * bit 16 is 0 and bit 29 (STABLE) is 1: SysPll3 is LOCKED at 480 MHz before
+	 * any firmware runs.  The same misread was baked into the guard below,
+	 * which tested bit 0 as BYPASS and only worked because SYS_PLL2_CTRL bit 0
+	 * happens to read 0.  Both are corrected here.
+	 *
+	 * Guarded three-deep so a boot that leaves a PLL down degrades instead of
+	 * leaving the AHB bus dead:
+	 *     SYS_PLL3_OUT / 2 = 240 MHz   preferred; NXP's value
+	 *     SYS_PLL2_OUT / 3 = 176 MHz   previous value; PLL2 feeds SEMC via PFD1
+	 *     OSC / 2          =  24 MHz   the old safe-slow source
+	 * A PLL counts as usable when it is stable, not gated and not bypassed.
+	 * SYS_PLL3_CTRL @ ANADIG 0x40C84210, SYS_PLL2_CTRL @ 0x40C84240; both use
+	 * STABLE bit29, GATE bit30, BYPASS bit16 (PERI_ANADIG_PLL.h). */
 	{
+		volatile uint32_t *const sys_pll3_ctrl =
+		    (volatile uint32_t *)0x40C84210u;
 		volatile uint32_t *const sys_pll2_ctrl =
 		    (volatile uint32_t *)0x40C84240u;
+		const uint32_t GATE   = (1u << 30);
+		const uint32_t STABLE = (1u << 29);
+		const uint32_t BYPASS = (1u << 16);
+		const uint32_t p3 = *sys_pll3_ctrl;
 		const uint32_t p2 = *sys_pll2_ctrl;
-		const uint32_t GATE = (1u << 30), STABLE = (1u << 29), BYPASS = 1u;
-		if (!(p2 & GATE) && !(p2 & BYPASS) && (p2 & STABLE)) {
-			/* mux 6 = SYS_PLL2_OUT, DIV field 2 = divide-by-3. */
+		if (!(p3 & GATE) && !(p3 & BYPASS) && (p3 & STABLE)) {
+			/* mux 4 = SYS_PLL3_OUT, DIV field 1 = divide-by-2 -> 240 MHz. */
+			CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(4) |
+			                          CCM_CLOCK_ROOT_CONTROL_DIV(1);
+		} else if (!(p2 & GATE) && !(p2 & BYPASS) && (p2 & STABLE)) {
+			/* mux 6 = SYS_PLL2_OUT, DIV field 2 = divide-by-3 -> 176 MHz. */
 			CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(6) |
 			                          CCM_CLOCK_ROOT_CONTROL_DIV(2);
 		} else {
