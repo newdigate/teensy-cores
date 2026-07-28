@@ -2315,4 +2315,30 @@ static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)ad
  * the MIPI D-PHY reference clock. */
 #define CCM_CLOCK_ROOT_MUX_OSC_24M    1u
 
+/* --- MIPI-DSI panel control pads (EVKB J48 40-pin FPC connector) ------------
+ * The three plain digital outputs a MIPI panel board needs out-of-band: reset,
+ * backlight enable and panel power.  Register facts from
+ *   mcuxsdk devices/RT/RT1170/MIMXRT1176/drivers/fsl_iomuxc.h
+ * whose IOMUXC_<pad>_<signal> macros expand to
+ *   muxRegister, muxMode, inputRegister, inputDaisy, configRegister:
+ *   IOMUXC_GPIO_AD_02_GPIO9_IO01        0x400E8114, 0xA, 0, 0, 0x400E8358
+ *   IOMUXC_GPIO_AD_30_GPIO9_IO29        0x400E8184, 0xA, 0, 0, 0x400E83C8
+ *   IOMUXC_GPIO_DISP_B2_15_GPIO11_IO16  0x400E8250, 0xA, 0, 0, 0x400E8494
+ * and the signal->GPIO assignment from
+ *   mcuxsdk examples/_boards/evkbmimxrt1170/board.h
+ *   BOARD_MIPI_PANEL_RST_GPIO/PIN   = GPIO9,  1
+ *   BOARD_MIPI_PANEL_BL_GPIO/PIN    = GPIO9,  29
+ *   BOARD_MIPI_PANEL_POWER_GPIO/PIN = GPIO11, 16
+ * GPIO9_* / GPIO11_* register accessors are defined near the top of this file.
+ * GPIO_AD_30's two registers are already defined above in the LPSPI1 block --
+ * the same pad is LPSPI1_SOUT in ALT0 and the panel backlight in ALT10, so an
+ * SPI-on-the-Arduino-header sketch and a MIPI panel cannot both have it. */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_02       (*(volatile uint32_t *)0x400E8114u) /* GPIO9_IO01  ALT0xA (MIPI panel reset)     */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_02       (*(volatile uint32_t *)0x400E8358u)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_15  (*(volatile uint32_t *)0x400E8250u) /* GPIO11_IO16 ALT0xA (MIPI panel power)     */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_15  (*(volatile uint32_t *)0x400E8494u)
+/* IOMUXC_SW_MUX/PAD_CTL_PAD_GPIO_AD_30 already defined above (LPSPI1 block) --
+ * GPIO9_IO29 ALT0xA is the MIPI panel backlight. */
+#define IOMUXC_MUX_MODE_ALT10                  0xAu   /* GPIO on every pad above */
+
 #endif
