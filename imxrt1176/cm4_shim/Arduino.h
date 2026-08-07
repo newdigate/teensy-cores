@@ -7,9 +7,27 @@
 #include <stddef.h>
 #include <string.h>   // freestanding prototypes; impls from runtime_stubs.c
 #include <stdlib.h>   // abs()/labs() — mirrors the real core (wiring.h:35). Node
-                      // code (e.g. analyze_peak.h read()) uses Arduino's abs();
-                      // GCC lowers abs(int) to __builtin_abs, so this stays a
-                      // pure declaration with no -nostdlib link dependency.
+                      // code (e.g. analyze_peak.h read()) uses Arduino's abs().
+                      //
+                      // ★ THIS IS A DECLARATION ONLY — AN IMAGE THAT CALLS
+                      // abs() MUST DEFINE IT in its own runtime_stubs.c, the
+                      // same way it defines memset/memcpy.
+                      //
+                      // A previous version of this comment claimed GCC lowers
+                      // abs(int) to __builtin_abs so no definition is needed.
+                      // That is FALSE here: teensy_add_cm4_image compiles with
+                      // -ffreestanding (teensy-cmake-macros/
+                      // CMakeLists.include.txt, _cm4_flags), which implies
+                      // -fno-builtin for everything except mem*, so abs() is
+                      // emitted as a genuine call and the link fails with
+                      // `undefined reference to abs'.
+                      //
+                      // The wrong version cost two phases before being fixed.
+                      // Both are in tree and both say so in their own comments:
+                      //   examples/dualcore/cm4_audio_test/cm4/runtime_stubs.c
+                      //   examples/dualcore/cm4_graph_usb_capstone/cm4/
+                      //       runtime_stubs.c
+                      // Copy the one-liner from either.
 
 #define EVKB_CM4_WORLD 1
 
