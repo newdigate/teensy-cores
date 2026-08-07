@@ -13,6 +13,68 @@
 
 #define EVKB_CM4_WORLD 1
 
+// --- OPT-IN: the SoC register map --------------------------------------------
+//
+// OFF BY DEFAULT. An image asks for it with -DEVKB_CM4_SOC_REGS (the macro's
+// DEFINES list). README.md's never-list says "no blind copies of imxrt1176.h
+// content" and "never from CM7 headers" -- that rule stands for every image
+// that does not name this flag, and the flag is greppable so the exceptions
+// are countable.
+//
+// Why the exception exists. Up to Phase 7.1 every CM4 gate drove peripherals
+// from a handful of probe-backed literals in its own main, which is fine for a
+// ~100-line register sequence. Phase 7.2 compiles a whole Arduino LIBRARY --
+// USBHost_t36 -- and that library reaches the USB block through the Teensy-idiom
+// macros the real Arduino.h supplies: utility/imxrt_usbhs.h is nothing but
+// USBHS_* -> USB2_* aliases, and ehci.cpp's RT1176 branch names USBPHY2_*,
+// USBPHY_CTRL_SFTRST, USBPHY_PLL_SIC_* and CCM_LPCG115_DIRECT directly.
+// Re-spelling ~70 registers and bit masks as CM4-local literals would create a
+// second source of truth for exactly the addresses that must not drift -- the
+// duplication the 3.3 shared-core consolidation exists to end.
+//
+// What makes it defensible: imxrt1176.h is #defines plus two no-op cache
+// inlines. It emits no code, encodes no ownership, and peripheral MMIO answers
+// at the same system addresses from either core (RM Table 3-1 vs 3-2). It is a
+// memory map, not a driver.
+//
+// ★ And the never-list was NOT paranoia -- the four #undefs below are it being
+// right. Read them before assuming the rest of the header is inert.
+//
+// TCM is the one place the two cores' views genuinely differ, and nothing here
+// relies on that: see the DMAMEM note at the foot of this file.
+#if defined(EVKB_CM4_SOC_REGS)
+#include "imxrt1176.h"
+
+// imxrt1176.h defines the CM7's DMAMEM (".dmabuffers", gathered into .bss.dma
+// by imxrt1176.ld). The CM4 image world names its OUTPUT section directly and
+// links it somewhere else entirely, so drop the CM7 spelling here rather than
+// let the redefinition below decide it by ordering. See the DMAMEM block at the
+// foot of this file for why the section differs.
+#undef DMAMEM
+
+// ★ The NVIC accessors below are this world's, not the core's. imxrt1176.h
+// spells them as function-like MACROS (NVIC_ENABLE_IRQ(n) etc.); the shim
+// spells them as inline FUNCTIONS, and a macro of the same name mangles the
+// function's own definition into nonsense at the point of declaration --
+// dozens of "expected ')' before 'volatile'" errors pointing at the CORE
+// header, which is a thoroughly misleading place to start debugging.
+// Same registers, same arithmetic: this picks a spelling, it does not change
+// behaviour, and dropping the core's keeps existing CM4 images byte-identical.
+#undef NVIC_ENABLE_IRQ
+#undef NVIC_DISABLE_IRQ
+#undef NVIC_SET_PENDING
+#undef NVIC_SET_PRIORITY
+
+// External interrupt numbers this world needs BY NAME. The CM7 gets them from
+// core_pins.h, which is the pin/GPIO API and unusable here. 135 = USB OTG2 in
+// RM Table 4-2 (the CM4 domain interrupt summary) -- the line Phase 7.1
+// HW-proved reaches the CM4's own NVIC. These literals must stay identical to
+// core_pins.h:70/74; a divergence would put the handler in the wrong vector
+// slot, which shows up as silence, not as an error.
+#define IRQ_USB_OTG2 135
+#define IRQ_USB2     IRQ_USB_OTG2   // the name utility/imxrt_usbhs.h expects
+#endif // EVKB_CM4_SOC_REGS
+
 // --- interrupt control (CM4 = same ARMv7-M primitives) ---
 static inline void __disable_irq(void) { __asm volatile ("cpsid i" ::: "memory"); }
 static inline void __enable_irq(void)  { __asm volatile ("cpsie i" ::: "memory"); }
@@ -150,6 +212,81 @@ static inline void delayMicroseconds(uint32_t us) {
     uint32_t cycles = us * CM4_CYCLES_PER_US;
     while ((uint32_t)(ARM_DWT_CYCCNT - start) < cycles) { }
 }
+
+// --- OPT-IN: Arduino C++ types a LIBRARY HEADER needs to PARSE ---------------
+//
+// OFF BY DEFAULT. An image asks for it with -DEVKB_CM4_ARDUINO_CXX.
+// README.md's never-list says "no Print/Stream/String", and that rule stands
+// for every image that does not name this flag.
+//
+// ★ Read what this is before reusing it: it is a PARSE fix, not a port.
+// Nothing below is ever called, instantiated, or linked by a CM4 image. The
+// types exist because USBHost_t36.h declares its whole driver family in one
+// header, and three of those declarations need complete types even when the
+// corresponding .cpp is not compiled:
+//
+//   USBHost_t36.h:1189   elapsedMicros em_sw_;              (a MEMBER: needs a size)
+//   USBHost_t36.h:1595   class USBSerialBase : ... Stream   (a BASE: needs a definition)
+//   USBHost_t36.h:2014   class USBSerialEmu  : ... Stream
+//
+// Neither serial class's vtable is emitted -- their virtuals are defined in
+// serial.cpp and SerEMU.cpp, which a CM4 image does not build -- so this costs
+// nothing at link time and cannot make a CM4 image print.
+//
+// The moment anyone wants a WORKING Print on the CM4, this is the wrong file:
+// take it to the coordinator. No UART belongs to the CM4 in this tree;
+// observations leave over the MU mailbox.
+#if defined(EVKB_CM4_ARDUINO_CXX) && defined(__cplusplus)
+
+// Print/Stream, deliberately ABSTRACT so they cannot be instantiated even by
+// accident, and deliberately tiny. `using Print::write;` in both serial classes
+// is the only thing that constrains the shape: it needs the two write overloads
+// to name something.
+class Print {
+public:
+    virtual size_t write(uint8_t) = 0;
+    virtual size_t write(const uint8_t *buffer, size_t size) = 0;
+};
+class Stream : public Print {
+public:
+    virtual int available() = 0;
+    virtual int read() = 0;
+    virtual int peek() = 0;
+};
+
+// elapsedMillis/elapsedMicros: the same shape as the core's elapsedMillis.h
+// (PJRC, MIT -- the file this tree already carries), reduced to the operations
+// a complete type needs. Nothing in the CM4 world constructs or reads one; the
+// type exists so USBHost_t36.h's `elapsedMicros em_sw_` member has a size.
+//
+// ★ The core header is NOT #included, and the reason is a trap worth naming:
+// elapsedMillis.h lives in cores/imxrt1176/ and opens with a QUOTED
+// `#include "Arduino.h"`. A quoted include searches the including FILE's own
+// directory first, ahead of every -I, so from there "Arduino.h" resolves to the
+// CM7 core header -- which drags in core_pins.h and collides head-on with this
+// shim (IRQ_NUMBER_t re-declared as an enum, attachInterruptVector/__enable_irq
+// redeclared with C linkage). The INCLUDE_DIRS ordering that makes the shim win
+// for <Arduino.h> cannot help: it is out-ranked by the includer's directory.
+class elapsedMillis {
+private:
+    unsigned long ms;
+public:
+    elapsedMillis(void) { ms = millis(); }
+    elapsedMillis(unsigned long val) { ms = millis() - val; }
+    operator unsigned long () const { return millis() - ms; }
+    elapsedMillis & operator = (unsigned long val) { ms = millis() - val; return *this; }
+};
+class elapsedMicros {
+private:
+    unsigned long us;
+public:
+    elapsedMicros(void) { us = micros(); }
+    elapsedMicros(unsigned long val) { us = micros() - val; }
+    operator unsigned long () const { return micros() - us; }
+    elapsedMicros & operator = (unsigned long val) { us = micros() - val; return *this; }
+};
+
+#endif // EVKB_CM4_ARDUINO_CXX && __cplusplus
 
 // --- DMAMEM: memory a bus master can actually reach --------------------------
 //
