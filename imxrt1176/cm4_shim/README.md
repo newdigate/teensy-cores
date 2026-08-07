@@ -52,9 +52,45 @@ unmodified is a design decision for the coordinator, not a shim patch).
   in the gate — never from CM7 headers, which assume CM7-side ownership,
   clocking and the CM7 NVIC/vector world.
 - CM7-world facilities: RAM vector table, `F_CPU_ACTUAL` runtime clock
-  bookkeeping, EventResponder/yield, the allocator, Print/Stream/String.
+  bookkeeping, EventResponder/yield, the allocator, `String`, and any
+  *implementation* of Print/Stream — `HardwareSerial`, buffering, a `printf`.
 - Blind copies of `core_pins.h`/`imxrt1176.h` content. Every line here is
   either architecture-defined or an explicit, commented CM4-world decision.
+
+### The line between a facility and a declaration (amended 2026-08-07)
+
+The rule above used to read "Print/Stream/String" flat, and Phase 7.2 hit it
+head-on: `USBHost_t36.h` declares `USBSerialBase : public Stream` and a
+`JoystickController` member of type `elapsedMicros`, so the header will not
+*parse* without those names — even for an image that compiles none of those
+drivers.
+
+The distinction that matters is **runtime facility vs. type declaration**:
+
+- **Banned, unchanged.** Anything that brings CM7 machinery: an implementation
+  of `write()`, a buffer, `String` and its allocator, `HardwareSerial`.
+- **Allowed, opt-in, greppable.** Purely ABSTRACT declarations that exist only
+  so a real library's header parses. They cannot be instantiated, they own no
+  state, and they must cost the linked image nothing.
+
+`EVKB_CM4_ARDUINO_CXX` is the one such block today: `Print`/`Stream` as five
+pure-virtual methods, plus `elapsedMillis`/`elapsedMicros` over the shim's own
+clock. **Measured on `cm4_usb_enum_probe`: no vtables, no symbols, image size
+unchanged at 10,608 B.** Off by default, so the shim's default surface is
+exactly what it was.
+
+**Why not fix it in the library instead**, which is what was done for
+`<FS.h>`/`<SdFat.h>` (`USBHOST_NO_MASSSTORAGE`) — the fair comparison, and it
+came out the other way. That guard was one contiguous block and removed three
+include directories from *every* consumer of the header. Print/Stream would be
+two scattered blocks (`USBSerialBase`..`USBSerial_BigBuffer`, and
+`USBSerialEmu`), would still not cover `JoystickController`'s `elapsedMicros`,
+and would buy back fifty lines of zero-cost scaffolding. Fragmenting a shared
+cross-platform header twice more to avoid that is the worse trade.
+
+If a future addition here needs *state* or an *implementation*, that is the
+signal the library should be guarded instead. This exception is for
+declarations only.
 - `#ifdef`-for-CM4 edits to core sources. If a core file cannot compile
   against this shim unmodified, STOP and take it to the coordinator.
 
