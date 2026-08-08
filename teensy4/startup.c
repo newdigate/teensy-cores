@@ -315,7 +315,37 @@ FLASHMEM void configure_cache(void)
 	SCB_MPU_RASR = SCB_MPU_RASR_TEX(0) | NOACCESS | NOEXEC | SIZE_32B;
 
 	SCB_MPU_RBAR = 0x20200000 | REGION(i++); // RAM (AXI bus)
+#if defined(ARDUINO_MIMXRT1060_EVKB)
+	// MIMXRT1060-EVKB: OCRAM is NON-CACHED here, unlike on Teensy 4.x above.
+	//
+	// This core enables the D-cache (SCB_CCR below) and maps this region
+	// write-back/write-allocate, so a CPU write to a DMAMEM buffer can sit in
+	// the cache while a bus master reads stale physical memory. Upstream
+	// USBHost_t36 never trips over that because its descriptors live in plain
+	// .bss = DTCM, which is MEM_NOCACHE above -- but on this board DTCM is
+	// unreachable by the OTG2 DMA master (it raises USBSTS.SEI and halts), so
+	// those descriptors HAVE to move to OCRAM, and once there the coherency
+	// problem is real.
+	//
+	// Measured on silicon 2026-08-08 with a USB audio adapter in J47: with this
+	// region cached, the EHCI walked a periodic list full of stale garbage and
+	// halted one frame after start (HCH=1, FRINDEX frozen at 8, no error bit --
+	// the fatal-error status had already been acked by the port-connect ISR).
+	// A debug probe read of periodictable showed garbage where the CPU had
+	// written T-bits, which is the tell: the probe sees physical memory, the
+	// CPU sees its cache. Non-cached here, the same board enumerates a real
+	// GeneralPlus UAC1 device and walks all 244 descriptor bytes.
+	//
+	// Scoped to this board deliberately. Teensy 4.x keeps WBWA: it does not
+	// need this (its USB host descriptors are in DTCM) and DMAMEM throughput
+	// matters there. The cost here is that ALL DMAMEM on the EVKB is uncached;
+	// if that ever hurts (Phase 4 audio is the likely first case), the
+	// refinement is a dedicated non-cached section for USBHOST_DMAMEM only,
+	// with its own MPU region, rather than reverting this.
+	SCB_MPU_RASR = MEM_NOCACHE | READWRITE | NOEXEC | SIZE_1M;
+#else
 	SCB_MPU_RASR = MEM_CACHE_WBWA | READWRITE | NOEXEC | SIZE_1M;
+#endif
 
 	SCB_MPU_RBAR = 0x40000000 | REGION(i++); // Peripherals
 	SCB_MPU_RASR = DEV_NOCACHE | READWRITE | NOEXEC | SIZE_64M;
