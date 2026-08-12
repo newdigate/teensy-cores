@@ -45,7 +45,20 @@ SECTIONS
 	} > FLASH
 
 	.text.itcm : {
-		. = . + 32; /* MPU to trap NULL pointer deref */
+		/* Silicon needs only 32 here: startup.c's MPU region 2 is a 32-byte
+		 * NOACCESS trap at 0x0 for NULL pointer derefs.  This script keeps the
+		 * WHOLE first 1 KB empty because of how QEMU models that trap: its
+		 * PMSAv7 walk refuses to TLB-cache any 1 KB page partially covered by
+		 * an MPU region, so code linked at 0x020-0x3FF executes as one fresh,
+		 * never-cached, single-instruction translation block per instruction,
+		 * forever.  Measured on audiooutput_i2s_test 2026-08-12: the sine
+		 * update loop landed at 0x3ae and the emulated CPU spent ~100% of its
+		 * host time retranslating (~150k TBs/s, avg 3 bytes), starving thread
+		 * mode so badly that delay(5) took minutes.  Which image trips this is
+		 * a link-order lottery, so the hole removes the whole class.  On
+		 * silicon the only cost is 1 KB of ITCM -- and a NULL function-pointer
+		 * call to 0x020-0x3FF now lands in empty space instead of live code. */
+		. = . + 1024;
 		*(.fastrun)
 		*(.text*)
 		. = ALIGN(16);
