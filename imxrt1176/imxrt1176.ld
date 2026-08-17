@@ -43,6 +43,17 @@ SECTIONS
 
 	.text.progmem : {
 		*(.progmem*)
+		/* An LVGL built for the VG_LITE GPU path is archived as
+		 * libLVGL_flash.a (evkb.cmake, import_evkb_lvgl(VGLITE)) so its
+		 * code runs XIP instead of claiming ~150K of the 256K ITCM --
+		 * enabling LV_USE_VECTOR_GRAPHIC overflowed ITCM by 25K. On the
+		 * GPU path LVGL executes per draw-call, not per pixel, so flash
+		 * residency is cheap there. This input pattern is inert for every
+		 * other build: only VGLITE mode produces an archive of this name,
+		 * and first-match means the .text.itcm rule below never sees these
+		 * sections. Software LVGL builds keep the default ITCM placement
+		 * (and their fps baseline). */
+		*libLVGL_flash.a:(.text*)
 		. = ALIGN(4);
 	} > FLASH
 
