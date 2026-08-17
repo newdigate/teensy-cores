@@ -767,6 +767,23 @@ typedef struct {
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_10 (*(volatile uint32_t *)0x400E8480u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_11 (*(volatile uint32_t *)0x400E8484u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_12 (*(volatile uint32_t *)0x400E8488u)
+
+/* LPUART2 = the M.2 (J54) Bluetooth HCI UART on the MIMXRT1170-EVKB.
+ * TXD GPIO_DISP_B2_10 ALT2, RXD GPIO_DISP_B2_11 ALT2.
+ *
+ * CTS_B/RTS_B (DISP_B2_12/13, ALT3) are deliberately NOT brought up: on this
+ * board RTS is also ETHPHY_RST_B and CTS is RGMII1_PHY_INTB, so enabling
+ * hardware flow control holds the gigabit PHY in reset.  See
+ * docs/m2-evkb-revc3.md in the rt1176-evkb repo.
+ *
+ * LPUART2 has NO *_SELECT_INPUT daisy register -- the IOMUXC daisy list covers
+ * only LPUART1/7/8/10 (plus 11/12 in the LPSR block), so each LPUART2 signal
+ * has exactly one pad option and no routing write is possible or needed.
+ * Root/LPCG follow the strides documented further down this file
+ * (ROOT n @ 0x40CC0000 + n*0x80; LPCG n DIRECT @ 0x40CC6000 + n*0x20), one
+ * index past LPUART1's ROOT25/LPCG86. */
+#define CCM_CLOCK_ROOT26_CONTROL (*(volatile uint32_t *)0x40CC0D00u)
+#define CCM_LPCG87_DIRECT        (*(volatile uint32_t *)0x40CC6AE0u)
 #define IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_04 (*(volatile uint32_t *)0x40C08010u)
 #define IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_05 (*(volatile uint32_t *)0x40C08014u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_04 (*(volatile uint32_t *)0x40C08050u)

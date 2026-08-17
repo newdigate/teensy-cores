@@ -36,6 +36,11 @@
 
 volatile uint32_t serial1_rx_isr_count = 0;
 
+// Write target for instances with no IOMUXC *_SELECT_INPUT daisy register.
+// LPUART2's signals each have exactly one pad option, so there is no routing
+// register to write; configure_hardware() writes here instead of branching.
+volatile uint32_t iomuxc_no_daisy = 0;
+
 #define CTRL_ENABLE 		(LPUART_CTRL_TE | LPUART_CTRL_RE | LPUART_CTRL_RIE | LPUART_CTRL_ILIE)
 #define CTRL_TX_ACTIVE		(CTRL_ENABLE | LPUART_CTRL_TIE)
 #define CTRL_TX_COMPLETING	(CTRL_ENABLE | LPUART_CTRL_TCIE)
@@ -243,7 +248,10 @@ void HardwareSerialIMXRT::IRQHandler()
 
 	// See if we have stuff to read in.
 	if (port->STAT & (LPUART_STAT_RDRF | LPUART_STAT_IDLE)) {
-		serial1_rx_isr_count++;   // diagnostic: an RX-servicing pass ran in the ISR
+		// diagnostic: an RX-servicing pass ran in the ISR.  Guarded by index so
+		// this stays a SERIAL1 counter now that a second instance exists --
+		// serial_test_rx asserts on it.
+		if (hardware->serial_index == 0) serial1_rx_isr_count++;
 		// See how many bytes are pending.
 		uint8_t avail = (port->WATER >> 24) & 0x7;
 		if (avail) {

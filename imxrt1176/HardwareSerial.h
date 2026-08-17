@@ -95,6 +95,7 @@ typedef struct {
 
 extern "C" {
 	extern void IRQHandler_Serial1();
+	extern void IRQHandler_Serial2();
 }
 
 // HardwareSerial is now an abstract class, intended to allow FlexIO and USB Host
@@ -193,6 +194,7 @@ private:
 
 	void IRQHandler();
 	friend void IRQHandler_Serial1();
+	friend void IRQHandler_Serial2();
 };
 // Serial1 hardware serial port (LPUART1 = EVKB VCOM console).  More detail at
 // https://www.pjrc.com/teensy/td_uart.html
@@ -201,6 +203,12 @@ extern HardwareSerialIMXRT Serial1;
 // interrupt fired, vs. bytes drained by an available()/read() FIFO peek).
 extern volatile uint32_t serial1_rx_isr_count;
 extern void serialEvent1(void);
+// Serial2 hardware serial port (LPUART2 = the M.2 socket J54 Bluetooth HCI
+// UART; TXD/RXD on GPIO_DISP_B2_10/11, which are also Arduino header D1/D0).
+// No flow control: CTS/RTS would mux DISP_B2_12/13, which on the EVKB are the
+// gigabit PHY's interrupt and RESET lines.
+extern HardwareSerialIMXRT Serial2;
+extern void serialEvent2(void);
 
 #endif // __cplusplus
 
