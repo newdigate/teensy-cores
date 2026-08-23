@@ -159,6 +159,14 @@ public:
 	// Returns the number of bytes which may be transmitted by write() or print()
 	// without waiting.
 	virtual int availableForWrite(void);
+	// Extend the receive / transmit ring with caller-owned storage (the
+	// Teensy 4 idiom).  The built-in 64-byte ring suits a console, not a
+	// bursty peer with no flow control: an HCI Extended Inquiry Result event
+	// is 257 bytes and LPUART2 cannot ask the card to wait.  May be called
+	// before or after begin(); the ring is emptied either way.  Pass nullptr
+	// to drop back to the built-in ring.
+	void addMemoryForRead(void *buffer, size_t length);
+	void addMemoryForWrite(void *buffer, size_t length);
 
 	using Print::write;
 	// Transmit a single byte

@@ -134,6 +134,26 @@ int HardwareSerialIMXRT::availableForWrite(void)
 	return tail - head - 1;
 }
 
+void HardwareSerialIMXRT::addMemoryForRead(void *buffer, size_t length)
+{
+	__disable_irq();
+	rx_buffer_storage_ = (BUFTYPE *)buffer;
+	rx_buffer_total_size_ = buffer ? rx_buffer_size_ + length : rx_buffer_size_;
+	rx_buffer_head_ = 0;
+	rx_buffer_tail_ = 0;
+	__enable_irq();
+}
+
+void HardwareSerialIMXRT::addMemoryForWrite(void *buffer, size_t length)
+{
+	__disable_irq();
+	tx_buffer_storage_ = (BUFTYPE *)buffer;
+	tx_buffer_total_size_ = buffer ? tx_buffer_size_ + length : tx_buffer_size_;
+	tx_buffer_head_ = 0;
+	tx_buffer_tail_ = 0;
+	__enable_irq();
+}
+
 int HardwareSerialIMXRT::available(void)
 {
 	IMXRT_LPUART_t *port = (IMXRT_LPUART_t *)port_addr;
