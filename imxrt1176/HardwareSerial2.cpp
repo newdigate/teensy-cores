@@ -44,9 +44,10 @@ extern volatile uint32_t iomuxc_no_daisy;
 //   RXD  GPIO_DISP_B2_11 ALT2  <- J54 pin 22 (card UART_TXD)
 //
 // Two board facts worth knowing before using this port:
-//   * RX IS DEAD AS BUILT.  R1901 (module->MCU) is DNP on the EVKB RevC3, so
-//     the card's TX reaches the level shifter and stops there.  Transmit works;
-//     nothing is ever received.
+//   * RX needs a hand bridge.  R1901 (module->MCU) is DNP on a stock EVKB
+//     RevC3, so the card's TX reaches the level shifter and stops there; with
+//     R1901 bridged (0402, 0 ohm -- done on this bench 2026-08-18) the port is
+//     fully bidirectional.  Transmit works either way.
 //   * No flow control is offered.  CTS/RTS would mux GPIO_DISP_B2_12/13, which
 //     on this board are RGMII1_PHY_INTB and ETHPHY_RST_B -- asserting RTS holds
 //     the gigabit PHY in reset.
