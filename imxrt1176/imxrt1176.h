@@ -336,9 +336,6 @@
 #define LPUART_FIFO_TXFE   (1u << 7)
 #define LPUART_WATER_TXWATER(n) ((uint32_t)(n) & 0x3u)
 #define LPUART_WATER_RXWATER(n) (((uint32_t)(n) << 16) & 0x30000u)
-#define LPUART_MODIR_RXRTSE      ((uint32_t)(1u << 3))
-#define LPUART_MODIR_TXRTSE      ((uint32_t)(1u << 1))
-#define LPUART_MODIR_RTSWATER(n) ((uint32_t)(((n) & 0x3u) << 8))
 
 /* LPUART1 console clock + input select (EVKB VCOM) */
 #define CCM_CLOCK_ROOT25_CONTROL (*(volatile uint32_t *)0x40CC0C80u)

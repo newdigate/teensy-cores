@@ -48,9 +48,10 @@ extern volatile uint32_t iomuxc_no_daisy;
 //     RevC3, so the card's TX reaches the level shifter and stops there; with
 //     R1901 bridged (0402, 0 ohm -- done on this bench 2026-08-18) the port is
 //     fully bidirectional.  Transmit works either way.
-//   * No flow control is offered.  CTS/RTS would mux GPIO_DISP_B2_12/13, which
-//     on this board are RGMII1_PHY_INTB and ETHPHY_RST_B -- asserting RTS holds
-//     the gigabit PHY in reset.
+//   * Hardware receiver RTS flow control is available (opt-in) via attachRts().
+//     RTS muxes GPIO_DISP_B2_13, which on this board is also ETHPHY_RST_B --
+//     the gigabit PHY reset (R1866).  Do not attachRts() this port in an ENET
+//     example, or the PHY will be held in reset for as long as RTS is driven.
 // Both are documented in docs/m2-evkb-revc3.md in the rt1176-evkb repo.
 const HardwareSerialIMXRT::hardware_t UART2_Hardware = {
 	1, IRQ_LPUART2, &IRQHandler_Serial2, &serialEvent2,

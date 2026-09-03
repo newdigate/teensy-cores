@@ -177,6 +177,7 @@ public:
 	// ★ Board side effect on Serial2 (MIMXRT1170-EVKB): the RTS pad also drives
 	// the gigabit ENET PHY reset (R1866) -- do NOT use in an ENET example.
 	bool attachRts(uint8_t rtswater = 1);
+	// Disable RXRTSE flow control (no-op if attachRts was never called on this port).
 	void detachRts();
 
 	using Print::write;
@@ -212,6 +213,7 @@ private:
 	volatile uint16_t 	rx_buffer_tail_ = 0;
 
 	void configure_hardware(void);
+	void applyRts(void *port);   // mux the RTS pad + write MODIR (caller ensures RE=0)
 
 	void IRQHandler();
 	friend void IRQHandler_Serial1();

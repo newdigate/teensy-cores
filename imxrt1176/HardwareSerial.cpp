@@ -116,9 +116,11 @@ void HardwareSerialIMXRT::begin(uint32_t baud, uint16_t format)
 	// the receiver disabled, RM 71.5.1.11), so flow control survives the 3 Mbaud
 	// switch instead of being silently dropped.
 	if (rts_enabled_) {
-		hardware->rts_mux_reg = hardware->rts_mux_val;   // ALT3 = LPUART_RTS_B
-		hardware->rts_pad_reg = 0x02u;
-		port->MODIR = lpuart_rts::modir(rts_water_);
+		// MODIR must be written with the receiver disabled (RM 71.5.1.11).  begin()
+		// is normally reached with RE=0 (fresh, or via end()), but a direct re-begin()
+		// without end() would leave RE set -- clear it here so the write is always safe.
+		port->CTRL &= ~LPUART_CTRL_RE;
+		applyRts(port);   // see Fix 4: shared mux+MODIR helper
 	}
 
 	// Enable the transmitter, receiver, and RX interrupt.
@@ -135,6 +137,16 @@ void HardwareSerialIMXRT::end(void)
 	rx_buffer_tail_ = 0;
 }
 
+// Mux the dedicated RTS pad and program MODIR for receiver flow control.  The
+// caller MUST have the receiver disabled (RE=0): MODIR is write-restricted (RM
+// 71.5.1.11).  Shared by attachRts() and begin()'s re-apply path.
+void HardwareSerialIMXRT::applyRts(void *port)
+{
+	hardware->rts_mux_reg = hardware->rts_mux_val;   // ALT3 = LPUART_RTS_B
+	hardware->rts_pad_reg = 0x02u;
+	((IMXRT_LPUART_t *)port)->MODIR = lpuart_rts::modir(rts_water_);
+}
+
 bool HardwareSerialIMXRT::attachRts(uint8_t rtswater)
 {
 	// Ports with no RTS pad (Serial1) leave rts_mux_reg at the iomuxc_no_daisy
@@ -143,13 +155,11 @@ bool HardwareSerialIMXRT::attachRts(uint8_t rtswater)
 	IMXRT_LPUART_t *port = (IMXRT_LPUART_t *)port_addr;
 	rts_enabled_ = true;
 	rts_water_ = rtswater & 0x3u;
-	hardware->rts_mux_reg = hardware->rts_mux_val;   // ALT3 = LPUART_RTS_B
-	hardware->rts_pad_reg = 0x02u;
 	// MODIR "should be changed only when the receiver is disabled" (RM 71.5.1.11).
 	__disable_irq();
 	uint32_t ctrl = port->CTRL;
 	port->CTRL = ctrl & ~LPUART_CTRL_RE;
-	port->MODIR = lpuart_rts::modir(rts_water_);
+	applyRts(port);
 	port->CTRL = ctrl;
 	__enable_irq();
 	return true;
@@ -157,6 +167,7 @@ bool HardwareSerialIMXRT::attachRts(uint8_t rtswater)
 
 void HardwareSerialIMXRT::detachRts()
 {
+	if (!rts_enabled_) return;   // never attached (incl. Serial1) -> true no-op
 	IMXRT_LPUART_t *port = (IMXRT_LPUART_t *)port_addr;
 	rts_enabled_ = false;
 	__disable_irq();
