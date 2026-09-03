@@ -37,6 +37,8 @@ void IRQHandler_Serial1();
 static uint8_t tx_buffer1[64];
 static uint8_t rx_buffer1[64];
 
+extern volatile uint32_t iomuxc_no_daisy;
+
 const HardwareSerialIMXRT::hardware_t UART1_Hardware = {
 	0, IRQ_LPUART1, &IRQHandler_Serial1, &serialEvent1,
 	CCM_LPCG86_DIRECT,                        // lpcg_register  (0x40CC6AC0)
@@ -45,6 +47,7 @@ const HardwareSerialIMXRT::hardware_t UART1_Hardware = {
 	IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_24, 0u, IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_24, // TX
 	IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_25, 0u, IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_25, // RX
 	IOMUXC_LPUART1_RXD_SELECT_INPUT, 0u,      // rx daisy -> GPIO_AD_25
+	iomuxc_no_daisy, 0u, iomuxc_no_daisy,     // Serial1/LPUART1 has no usable RTS pad on this board
 	IRQ_PRIORITY,
 };
 

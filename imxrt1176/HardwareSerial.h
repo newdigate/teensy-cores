@@ -130,6 +130,7 @@ public:
 		volatile uint32_t &tx_mux_reg;	uint32_t tx_mux_val;	volatile uint32_t &tx_pad_reg;
 		volatile uint32_t &rx_mux_reg;	uint32_t rx_mux_val;	volatile uint32_t &rx_pad_reg;
 		volatile uint32_t &rx_select_input_reg;	uint32_t rx_select_input_val;
+		volatile uint32_t &rts_mux_reg;	uint32_t rts_mux_val;	volatile uint32_t &rts_pad_reg;
 		uint16_t irq_priority;
 	} hardware_t;
 public:
@@ -168,6 +169,16 @@ public:
 	void addMemoryForRead(void *buffer, size_t length);
 	void addMemoryForWrite(void *buffer, size_t length);
 
+	// Enable hardware RECEIVER RTS flow control (RXRTSE) on this port's dedicated
+	// LPUART RTS pad: the receiver auto-deasserts RTS as the RX FIFO nears full,
+	// pausing the peer before overrun.  rtswater = MODIR RTSWATER (0..3; FIFO is
+	// 4 deep).  Returns false if this port has no RTS pad.  Opt-in: begin() never
+	// enables RTS on its own; once attached, begin()/rebaud re-apply it.
+	// ★ Board side effect on Serial2 (MIMXRT1170-EVKB): the RTS pad also drives
+	// the gigabit ENET PHY reset (R1866) -- do NOT use in an ENET example.
+	bool attachRts(uint8_t rtswater = 1);
+	void detachRts();
+
 	using Print::write;
 	// Transmit a single byte
 	size_t write(unsigned long n) { return write((uint8_t)n); }
@@ -193,6 +204,8 @@ private:
 	size_t				tx_buffer_total_size_;
 	size_t				rx_buffer_total_size_;
 	volatile uint8_t 	transmitting_ = 0;
+	bool				rts_enabled_ = false;
+	uint8_t				rts_water_ = 0;
 	volatile uint16_t 	tx_buffer_head_ = 0;
 	volatile uint16_t 	tx_buffer_tail_ = 0;
 	volatile uint16_t 	rx_buffer_head_ = 0;

@@ -31,6 +31,7 @@
 #include "HardwareSerial.h"
 #include "core_pins.h"
 #include "Arduino.h"
+#include "lpuart_rts.h"
 
 #define UART_CLOCK 24000000
 
@@ -110,6 +111,16 @@ void HardwareSerialIMXRT::begin(uint32_t baud, uint16_t format)
 	port->WATER = LPUART_WATER_RXWATER(rx_water) | LPUART_WATER_TXWATER(tx_water);
 	port->FIFO |= LPUART_FIFO_TXFE | LPUART_FIFO_RXFE;
 
+	// Re-apply hardware RTS if attachRts() enabled it: rebaud() is end()+begin(),
+	// and this is the only point where RE is still 0 (MODIR must be written with
+	// the receiver disabled, RM 71.5.1.11), so flow control survives the 3 Mbaud
+	// switch instead of being silently dropped.
+	if (rts_enabled_) {
+		hardware->rts_mux_reg = hardware->rts_mux_val;   // ALT3 = LPUART_RTS_B
+		hardware->rts_pad_reg = 0x02u;
+		port->MODIR = lpuart_rts::modir(rts_water_);
+	}
+
 	// Enable the transmitter, receiver, and RX interrupt.
 	port->CTRL = LPUART_CTRL_TE | LPUART_CTRL_RE | LPUART_CTRL_RIE;
 };
@@ -122,6 +133,38 @@ void HardwareSerialIMXRT::end(void)
 
 	rx_buffer_head_ = 0;
 	rx_buffer_tail_ = 0;
+}
+
+bool HardwareSerialIMXRT::attachRts(uint8_t rtswater)
+{
+	// Ports with no RTS pad (Serial1) leave rts_mux_reg at the iomuxc_no_daisy
+	// sentinel -- refuse rather than mux a wrong pad.
+	if (&hardware->rts_mux_reg == &iomuxc_no_daisy) return false;
+	IMXRT_LPUART_t *port = (IMXRT_LPUART_t *)port_addr;
+	rts_enabled_ = true;
+	rts_water_ = rtswater & 0x3u;
+	hardware->rts_mux_reg = hardware->rts_mux_val;   // ALT3 = LPUART_RTS_B
+	hardware->rts_pad_reg = 0x02u;
+	// MODIR "should be changed only when the receiver is disabled" (RM 71.5.1.11).
+	__disable_irq();
+	uint32_t ctrl = port->CTRL;
+	port->CTRL = ctrl & ~LPUART_CTRL_RE;
+	port->MODIR = lpuart_rts::modir(rts_water_);
+	port->CTRL = ctrl;
+	__enable_irq();
+	return true;
+}
+
+void HardwareSerialIMXRT::detachRts()
+{
+	IMXRT_LPUART_t *port = (IMXRT_LPUART_t *)port_addr;
+	rts_enabled_ = false;
+	__disable_irq();
+	uint32_t ctrl = port->CTRL;
+	port->CTRL = ctrl & ~LPUART_CTRL_RE;
+	port->MODIR = 0;                                  // RXRTSE off; RM: RTS then stays deasserted
+	port->CTRL = ctrl;
+	__enable_irq();
 }
 
 int HardwareSerialIMXRT::availableForWrite(void)

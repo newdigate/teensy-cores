@@ -336,6 +336,9 @@
 #define LPUART_FIFO_TXFE   (1u << 7)
 #define LPUART_WATER_TXWATER(n) ((uint32_t)(n) & 0x3u)
 #define LPUART_WATER_RXWATER(n) (((uint32_t)(n) << 16) & 0x30000u)
+#define LPUART_MODIR_RXRTSE      ((uint32_t)(1u << 3))
+#define LPUART_MODIR_TXRTSE      ((uint32_t)(1u << 1))
+#define LPUART_MODIR_RTSWATER(n) ((uint32_t)(((n) & 0x3u) << 8))
 
 /* LPUART1 console clock + input select (EVKB VCOM) */
 #define CCM_CLOCK_ROOT25_CONTROL (*(volatile uint32_t *)0x40CC0C80u)
@@ -767,6 +770,8 @@ typedef struct {
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_10 (*(volatile uint32_t *)0x400E8480u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_11 (*(volatile uint32_t *)0x400E8484u)
 #define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_12 (*(volatile uint32_t *)0x400E8488u)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_13 (*(volatile uint32_t *)0x400E8248u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_13 (*(volatile uint32_t *)0x400E848Cu)
 
 /* LPUART2 = the M.2 (J54) Bluetooth HCI UART on the MIMXRT1170-EVKB.
  * TXD GPIO_DISP_B2_10 ALT2, RXD GPIO_DISP_B2_11 ALT2.
