@@ -158,6 +158,20 @@
 #define ARM_DEMCR      (*(volatile uint32_t *)0xE000EDFCu)
 #define ARM_DEMCR_TRCENA (1u << 24)
 
+/* ---- Cortex-M7 L1 caches: SCB cache-control surface (ARM DDI0403E §B3.2) ----
+ * The INSTRUCTION cache is enabled by ResetHandler (startup.c, NEW-36).  The DATA
+ * cache is NOT: it needs MPU regions plus a DMA-coherency review (the rt1062
+ * DMAMEM/uncached-OCRAM lesson) -- see the arm_dcache_* no-ops further down. */
+#define SCB_CCR            (*(volatile uint32_t *)0xE000ED14u)        /* Configuration and Control */
+#define SCB_CCR_BP         (1u << 18)   /* branch prediction enable (not written by this core) */
+#define SCB_CCR_IC         (1u << 17)   /* L1 instruction cache enable */
+#define SCB_CCR_DC         (1u << 16)   /* L1 data cache enable -- never set by this core */
+#define SCB_ID_CLIDR       (*(const volatile uint32_t *)0xE000ED78u)  /* Cache Level ID */
+#define SCB_ID_CTR         (*(const volatile uint32_t *)0xE000ED7Cu)  /* Cache Type */
+#define SCB_ID_CCSIDR      (*(const volatile uint32_t *)0xE000ED80u)  /* Cache Size ID (of the cache CSSELR selects) */
+#define SCB_ID_CSSELR      (*(volatile uint32_t *)0xE000ED84u)        /* Cache Size Selection: bit0 InD (1 = I-cache), bits3:1 level-1 */
+#define SCB_CACHE_ICIALLU  (*(volatile uint32_t *)0xE000EF50u)        /* I-cache invalidate all to PoU (write-only) */
+
 /* --- Cortex-M7 NVIC (Task: interrupt infrastructure) --- */
 #define NVIC_ISER(n) (*(volatile uint32_t *)(0xE000E100u + ((n) << 2)))
 #define NVIC_ICER(n) (*(volatile uint32_t *)(0xE000E180u + ((n) << 2)))
@@ -883,6 +897,48 @@ typedef struct {
  * future build enables the D-cache, replace these with real CMSIS operations. */
 static inline void arm_dcache_delete(void *addr, uint32_t size) { (void)addr; (void)size; }
 static inline void arm_dcache_flush_delete(void *addr, uint32_t size) { (void)addr; (void)size; }
+
+/* L1 INSTRUCTION cache -- 32 KB on the RT1176 CM7.  ResetHandler enables it
+ * (NEW-36, 2026-09-05).  The sequences are ARM's (DDI0403E §B2.2; CMSIS
+ * SCB_EnableICache / SCB_DisableICache): barriers on both sides of every CCR
+ * change so no fetch straddles the switch; invalidate-all BEFORE enable so no
+ * line from a previous run (or from the ROM) is ever hit; invalidate-all again
+ * AFTER disable so a later enable starts clean.  ITCM and DTCM are TCM ports and
+ * never pass through this cache -- only AXIM fetches do (FLASH XIP at
+ * 0x30000000, OCRAM, SDRAM).  Nothing in the tree writes code it later
+ * executes, so no caller needs arm_icache_invalidate_all() today; it exists for
+ * a loader that would.  static inline: usable from C (startup.c) and C++. */
+static inline void arm_icache_invalidate_all(void)
+{
+	__asm__ volatile("dsb" ::: "memory");
+	__asm__ volatile("isb" ::: "memory");
+	SCB_CACHE_ICIALLU = 0;
+	__asm__ volatile("dsb" ::: "memory");
+	__asm__ volatile("isb" ::: "memory");
+}
+static inline void arm_icache_enable(void)
+{
+	if (SCB_CCR & SCB_CCR_IC) return;          /* already on: nothing to invalidate */
+	arm_icache_invalidate_all();
+	SCB_CCR |= SCB_CCR_IC;
+	__asm__ volatile("dsb" ::: "memory");
+	__asm__ volatile("isb" ::: "memory");
+}
+static inline void arm_icache_disable(void)
+{
+	__asm__ volatile("dsb" ::: "memory");
+	__asm__ volatile("isb" ::: "memory");
+	SCB_CCR &= ~SCB_CCR_IC;
+	__asm__ volatile("dsb" ::: "memory");
+	__asm__ volatile("isb" ::: "memory");
+	arm_icache_invalidate_all();
+}
+/* SCB_CCR exactly as the boot ROM handed it over -- captured by ResetHandler
+ * (startup.c) immediately before its arm_icache_enable().  A reading, not an
+ * inference: rt1176-evkb examples/timing/icache_bench_hw prints it as ccr_reset=.  (A global
+ * variable's symbol is not mangled by C++, so this one declaration serves
+ * both the C definition and C++ sketches -- imxrt1176.h has no extern "C" block.) */
+extern uint32_t startup_ccr_at_reset;
 
 #define USBPHY1_BASE           0x40434000u
 #define USBPHY1_PWD            (*(volatile uint32_t *)(USBPHY1_BASE + 0x00))

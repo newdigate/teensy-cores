@@ -49,7 +49,8 @@
  * touching the stack, since _estack now lives at DTCM-top: required on both QEMU
  * (which resizes the TCM RAMBlock on the GPR16/17 writes) and silicon (the
  * BootROM-default DTCM is too small to back DTCM-top). Other RT1062-specific
- * bring-up (DCDC, USB PHY, temp sensor, external RAM, MPU/cache, printf debug)
+ * bring-up (USB PHY, temp sensor, MPU/D-cache, printf debug) -- the I-cache IS
+ * enabled below (NEW-36, 2026-09-05); DCDC and SEMC SDRAM have since landed --
  * remains removed, to be re-added in proper RT1176 form in later phases.
  * ========================================================================== */
 
@@ -144,6 +145,7 @@ void (* volatile _VectorsRam[16 + NVIC_NUM_INTERRUPTS])(void);
 
 uint8_t external_psram_size = 0;        /* reported external RAM size in MB (fixed 64) */
 struct smalloc_pool extmem_smalloc_pool; /* the EXTMEM heap pool (declared extern in smalloc.h) */
+uint32_t startup_ccr_at_reset;           /* SCB_CCR as the boot ROM left it -- read in ResetHandler before the I-cache enable */
 
 /* ----------------------------------------------------------------------------
  * ResetHandler — boot-ROM entry. Bring RAM up and reach main().
@@ -194,6 +196,43 @@ void ResetHandler(void)
 	 * contents, so clearing is strictly safe; runs before __libc_init_array so
 	 * C++ constructors see zeroed members. */
 	memory_clear(&_sbss_dma, &_ebss_dma);
+
+	/* L1 INSTRUCTION cache ON (NEW-36, 2026-09-05).  First a reading: what the
+	 * boot ROM left in SCB_CCR.  Nothing above touches CCR, so this IS the
+	 * hand-off state (rt1176-evkb examples/timing/icache_bench_hw prints it as
+	 * ccr_reset=).  It is stored after the .bss zero so memory_clear cannot erase
+	 * it -- which is also why the enable sits here rather than at the top.  What
+	 * the cache covers is AXIM instruction fetch only: this .startup code itself
+	 * (the rest of ResetHandler: the vector loop, the DCDC wait, the SNVS and
+	 * SEMC glue) and every flash-resident function reached later -- .progmem*,
+	 * libLVGL_flash.a in VGLite builds, anything an example's derived linker
+	 * script routes to FLASH.  The copy/clear loops above are three-instruction
+	 * loops the FlexSPI AHB prefetch buffer already covers, and
+	 * set_arm_clock_rt1176, semc_sdram_init, __libc_init_array and main are
+	 * ITCM-resident (imxrt1176.ld sends .text* to ITCM), so they run at TCM speed
+	 * with or without this.  ITCM/DTCM are TCM ports and never pass through the
+	 * L1.  The DCDC STS_DC_OK wait below is a bounded TIMEOUT, not a beneficiary:
+	 * a cached loop spends its 200000-iteration guard slightly faster (each pass
+	 * is dominated by an AIPS read the cache does not touch) -- keep that in mind
+	 * if the guard is ever retuned.  The invalidate is UNCONDITIONAL: ARMv7-M
+	 * resets CCR.IC to 0, so every reset path (SW4, SYSRESETREQ, LinkServer's
+	 * VECTRESET) reaches here with IC=0 and arm_icache_enable() would invalidate
+	 * anyway -- but a debugger flow that halts, re-flashes and jumps to
+	 * ResetHandler WITHOUT a reset arrives with IC=1 and the previous image's
+	 * lines, and arm_icache_enable()'s early return would keep them.  The M7 does
+	 * not clear cache RAM on reset, so "invalidate before enable" is the only
+	 * thing standing between a re-flash and stale instruction fetch.  Nothing in
+	 * the tree writes code it later executes; a loader that did would need
+	 * arm_icache_invalidate_all() too (the FlexSPI SWRESET in eeprom.c purges
+	 * the AHB prefetch buffer, NOT this cache).  The D-cache stays OFF (MPU
+	 * regions + a DMA-coherency review, the rt1062 lesson); every "D-cache is
+	 * off" comment in this core remains true.  Measured on silicon before this:
+	 * flash-resident code ran at raw QSPI speed, 5-30 us per small call (NEW-33
+	 * finding (a)); the numbers after are in rt1176-evkb
+	 * examples/timing/icache_bench_hw/transcript_hw_evkb.txt. */
+	startup_ccr_at_reset = SCB_CCR;
+	arm_icache_invalidate_all();
+	arm_icache_enable();
 
 	/* Build the RAM vector table: copy the 16 architectural + 16 flash NVIC-tail
 	 * entries, default the remaining external IRQs to unused_isr, then repoint

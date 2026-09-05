@@ -246,6 +246,11 @@ static void flash_wait()
 		asm("":::"memory");
 		status = *(uint8_t *)&FLEXSPI_RFDR0;
 	} while (status & 1);
+	/* NEW-36 (2026-09-05): the L1 I-CACHE, enabled in ResetHandler, is a second
+	 * buffer on this AHB read path that the SWRESET below does NOT reach.
+	 * Harmless here -- it holds instruction fetches only and the EEPROM region
+	 * holds no code -- but a flash writer that programs CODE must call
+	 * arm_icache_invalidate_all() (imxrt1176.h) after programming. */
 	FLEXSPI_MCR0 |= FLEXSPI_MCR0_SWRESET; // purge stale data from FlexSPI's AHB FIFO
 	while (FLEXSPI_MCR0 & FLEXSPI_MCR0_SWRESET) ; // wait
 	__enable_irq();
