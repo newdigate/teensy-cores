@@ -18,20 +18,39 @@ static void ai_write(uint8_t aiAddr, uint32_t wdata) {
 /* AI register sub-addresses (fsl_anatop_ai.h kAI_PLLAUDIO_*): CTRL0=0x00,
  * CTRL0_SET=0x04, CTRL0_CLR=0x08, CTRL2(num)=0x20, CTRL3(denom)=0x30.
  * CTRL0 bits: loopDiv[6:0], HOLD_RING_OFF b13, POWER_UP b14, ENABLE b15,
- * BYPASS b16, PLL_REG_EN b22, POST_DIV[27:25]. Values below are the encoding
- * for {loopDiv=32, num=768000, den=1000000, postDiv=1 -> divide-by-2 ->
- * 393.216 MHz}.  The fraction is 0.768 either way -- the denominator is 1e6
- * rather than 1e3 purely so audioPllTrimPpm() below has a fine enough step
- * (one numerator count is 1/32768 of the loop ratio at den=1e3, i.e. ~30.5 ppm;
- * at den=1e6 it is ~0.0305 ppm).  Both fields are 30 bits wide (RM 15.9.4.18/19
- * PLL_AUDIO_DENOMINATOR/NUMERATOR, bits 29-0), so 1e6 fits with room to spare. */
-static void sai1_audio_pll_init(void) {
+ * BYPASS b16, PLL_REG_EN b22, POST_DIV[27:25]. postDiv=1 -> divide by 2.
+ *
+ * The DENOMINATOR is fixed at 1e6 for every caller, so a fraction is named by
+ * its numerator alone and audioPllTrimPpm() below always knows what it is
+ * trimming.  1e6 (rather than the 1e3/1e4 the SDK tables use) is what gives
+ * the trim a fine enough step: one numerator count is 1/den of the loop ratio,
+ * i.e. ~30 ppm at den=1e3 but ~0.03 ppm at den=1e6.  Both NUM and DENOM are
+ * 30-bit fields (RM 15.9.4.18/19), so 1e6 fits with room to spare.
+ *
+ * Known fractions (24 MHz OSC reference, postDiv=1 -> VCO/2, clock root /16):
+ *   48   kHz: audioPllConfigure(32, 768000)  -- 24*32.768   = 786.432 MHz;
+ *             /2 = 393.216 MHz; /16 = 24.576 MHz = 48000*512.
+ *   44.1 kHz: audioPllConfigure(30, 105600)  -- 24*30.1056  = 722.5344 MHz;
+ *             /2 = 361.2672 MHz; /16 = 22.5792 MHz = 44100*512.
+ *             (0.1056 exactly -- the same ratio the Audio library's
+ *             AudioOutputI2S::config_i2s() used to program as 1056/10000.)
+ *
+ * The running fraction is recorded so audioPllTrimPpm() trims whichever one
+ * is live rather than assuming 48 kHz. */
+static uint32_t audio_pll_loop_div = 0;
+static uint32_t audio_pll_nom_num  = 0;
+static bool     audio_pll_running  = false;
+
+void audioPllConfigure(uint32_t loopDiv, uint32_t num1e6) {
+    audio_pll_loop_div = loopDiv;
+    audio_pll_nom_num  = num1e6;
+    audio_pll_running  = true;
     ai_write(0x04, (1u << 16));                 // CTRL0_SET: BYPASS
     ANADIG_PLL_AUDIO_CTRL |= ANADIG_PLL_AUDIO_CTRL_ENABLE_CLK;
-    ai_write(0x30, 1000000);                    // denominator (1e6: see audioPllTrimPpm)
-    ai_write(0x20, 768000);                     // numerator   (768000/1e6 = 0.768)
+    ai_write(0x30, 1000000);                    // denominator (always 1e6)
+    ai_write(0x20, num1e6);                     // numerator
     ai_write(0x08, 0x7Fu);                      // CTRL0_CLR: clear loopDiv field
-    ai_write(0x04, 32u & 0x7Fu);                // CTRL0_SET: loopDiv=32
+    ai_write(0x04, loopDiv & 0x7Fu);            // CTRL0_SET: loopDiv
     ai_write(0x08, 0x7u << 25);                 // CTRL0_CLR: clear postDiv field
     ai_write(0x04, (1u << 25));                 // CTRL0_SET: postDiv=1 (div by 2)
     ai_write(0x04, (1u << 22));                 // CTRL0_SET: PLL_REG_EN
@@ -46,37 +65,48 @@ static void sai1_audio_pll_init(void) {
     ai_write(0x08, (1u << 16));                 // CTRL0_CLR: clear BYPASS
 }
 
+/* This core's own 48 kHz template (unchanged register writes). */
+static void sai1_audio_pll_init(void) {
+    audioPllConfigure(32, 768000);
+}
+
 /* NEW-41: trim the running audio PLL by `ppm` (clamped to +-500) -- the A2DP
  * sink servos its SAI clock onto the source's delivery rate with this.
- * Numerator only (the denominator stays at the 1e6 sai1_audio_pll_init()
+ * Numerator only (the denominator stays at the 1e6 audioPllConfigure()
  * programmed); the fractional divider takes the new value without a
  * re-power/re-lock, which is the same single CTRL2 write the SDK's
  * ANATOP_PllConfigure() uses to load the numerator (fsl_clock.c:694-695,
  * PLL_AI_CTRL3_REG=0x30 denom then PLL_AI_CTRL2_REG=0x20 num).
  *
- * Arithmetic: the loop ratio is R = loopDiv + num/den = 32 + 768000/1e6 =
- * 32.768.  A relative change of `ppm` parts per million is
- *   dR = R * ppm * 1e-6 = 32.768e-6 * ppm
- * and since num = R_frac * den,
- *   d(num) = dR * den = 32.768e-6 * ppm * 1e6 = 32.768 counts per ppm.
- * At the +-500 clamp num spans 751616..784384, comfortably inside the 30-bit
- * NUM field.
+ * Arithmetic: the loop ratio is R = loopDiv + num/1e6.  A relative change of
+ * `ppm` parts per million is dR = R * ppm * 1e-6, and since num = R_frac*1e6,
+ *   d(num) = dR * 1e6 = R * ppm.
+ * So the counts-per-ppm step IS the loop ratio: 32.768 for the 48 kHz
+ * fraction, 30.1056 for the 44.1 kHz one.  At the +-500 clamp the numerator
+ * moves by at most ~16400 counts, comfortably inside the 30-bit NUM field
+ * either way.
  *
- * PRECONDITION: the audio PLL must already be running this file's
- * configuration.  sai1_audio_pll_init() is called lazily from
- * I2SClass::configureSAI() (i.e. on the first I2S.begin()/beginDMA()/
- * beginReceiveDMA()), so call this only after the I2S has been started, and
- * only when the SAI clock comes from THIS init -- the Audio library's
- * AudioOutputI2S::config_i2s() programs the same PLL with its own 44.1 kHz
- * constants (loopDiv=30, num=1056, den=10000) and a numerator written here
- * would be meaningless against that denominator.
+ * PRECONDITION: the audio PLL must already have been brought up through
+ * audioPllConfigure(), which is what records the nominal fraction.  That
+ * happens lazily from I2SClass::configureSAI() (first I2S.begin()/beginDMA()/
+ * beginReceiveDMA()) for the core's own 48 kHz path, and from
+ * AudioOutputI2S::config_i2s() (Audio library) for the 44.1 kHz one.  If
+ * nothing has been configured yet this writes NOTHING and returns 0 --
+ * writing a numerator against an unknown denominator is worse than not
+ * trimming.  Note the Audio library's interrupt-driven nodes
+ * (AudioOutputI2SInt/AudioInputI2SInt) bring the same PLL up through their own
+ * freestanding copy in Audio/sai1176.c (it must compile for bare-metal CM4
+ * images, so it cannot call in here); a graph built on those is NOT trimmable
+ * and this function correctly declines rather than guessing.
  *
- * Returns the ppm actually applied (i.e. after clamping).
+ * Returns the ppm actually applied (i.e. after clamping), or 0 if declined.
  */
 int32_t audioPllTrimPpm(int32_t ppm) {
+    if (!audio_pll_running) return 0;
     if (ppm > 500) ppm = 500;
     if (ppm < -500) ppm = -500;
-    int32_t num = 768000 + (int32_t)((ppm * 32768LL) / 1000);   // 32.768 counts per ppm
+    int64_t ratio1e6 = (int64_t)audio_pll_loop_div * 1000000 + (int64_t)audio_pll_nom_num;
+    int32_t num = (int32_t)audio_pll_nom_num + (int32_t)((ppm * ratio1e6) / 1000000);
     ai_write(0x20, (uint32_t)num);
     return ppm;
 }

@@ -38,5 +38,20 @@ private:
     const hardware_t *hw;
 };
 extern I2SClass I2S;
-int32_t audioPllTrimPpm(int32_t ppm);   // NEW-41: +-500 ppm on the running audio PLL (0 = nominal)
+/* Audio PLL (ANATOP AI) bring-up, denominator FIXED at 1e6 so the running
+ * fraction is named by its numerator alone and audioPllTrimPpm() below always
+ * knows what it is trimming.  Known fractions (24 MHz OSC, postDiv /2, clock
+ * root /16 -> MCLK = fs*512):
+ *     48   kHz: audioPllConfigure(32, 768000)   -- 24*32.768  /2/16 = 24.576 MHz
+ *     44.1 kHz: audioPllConfigure(30, 105600)   -- 24*30.1056 /2/16 = 22.5792 MHz
+ * The 44.1 kHz one is what the Audio library's AudioOutputI2S::config_i2s()
+ * programs on this board (it used to spell the same ratio 1056/10000). */
+void audioPllConfigure(uint32_t loopDiv, uint32_t num1e6);
+
+/* NEW-41: +-500 ppm trim of the RUNNING audio PLL (0 = nominal), numerator
+ * only -- no re-lock.  Trims whichever fraction audioPllConfigure() last
+ * programmed: 32.768 numerator counts per ppm at 48 kHz, 30.1056 at 44.1 kHz.
+ * Writes nothing and returns 0 if the PLL was never brought up through
+ * audioPllConfigure().  Returns the ppm actually applied (after clamping). */
+int32_t audioPllTrimPpm(int32_t ppm);
 #endif
