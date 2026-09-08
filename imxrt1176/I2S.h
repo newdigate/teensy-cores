@@ -38,4 +38,5 @@ private:
     const hardware_t *hw;
 };
 extern I2SClass I2S;
+int32_t audioPllTrimPpm(int32_t ppm);   // NEW-41: +-500 ppm on the running audio PLL (0 = nominal)
 #endif

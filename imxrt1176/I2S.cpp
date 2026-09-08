@@ -19,12 +19,17 @@ static void ai_write(uint8_t aiAddr, uint32_t wdata) {
  * CTRL0_SET=0x04, CTRL0_CLR=0x08, CTRL2(num)=0x20, CTRL3(denom)=0x30.
  * CTRL0 bits: loopDiv[6:0], HOLD_RING_OFF b13, POWER_UP b14, ENABLE b15,
  * BYPASS b16, PLL_REG_EN b22, POST_DIV[27:25]. Values below are the encoding
- * for {loopDiv=32, num=768, den=1000, postDiv=1 -> divide-by-2 -> 393.216 MHz}. */
+ * for {loopDiv=32, num=768000, den=1000000, postDiv=1 -> divide-by-2 ->
+ * 393.216 MHz}.  The fraction is 0.768 either way -- the denominator is 1e6
+ * rather than 1e3 purely so audioPllTrimPpm() below has a fine enough step
+ * (one numerator count is 1/32768 of the loop ratio at den=1e3, i.e. ~30.5 ppm;
+ * at den=1e6 it is ~0.0305 ppm).  Both fields are 30 bits wide (RM 15.9.4.18/19
+ * PLL_AUDIO_DENOMINATOR/NUMERATOR, bits 29-0), so 1e6 fits with room to spare. */
 static void sai1_audio_pll_init(void) {
     ai_write(0x04, (1u << 16));                 // CTRL0_SET: BYPASS
     ANADIG_PLL_AUDIO_CTRL |= ANADIG_PLL_AUDIO_CTRL_ENABLE_CLK;
-    ai_write(0x30, 1000);                       // denominator
-    ai_write(0x20, 768);                        // numerator
+    ai_write(0x30, 1000000);                    // denominator (1e6: see audioPllTrimPpm)
+    ai_write(0x20, 768000);                     // numerator   (768000/1e6 = 0.768)
     ai_write(0x08, 0x7Fu);                      // CTRL0_CLR: clear loopDiv field
     ai_write(0x04, 32u & 0x7Fu);                // CTRL0_SET: loopDiv=32
     ai_write(0x08, 0x7u << 25);                 // CTRL0_CLR: clear postDiv field
@@ -39,6 +44,41 @@ static void sai1_audio_pll_init(void) {
     ai_write(0x04, (1u << 15));                 // CTRL0_SET: ENABLE (clk out)
     ANADIG_PLL_AUDIO_CTRL &= ~ANADIG_PLL_AUDIO_CTRL_GATE;  // ungate
     ai_write(0x08, (1u << 16));                 // CTRL0_CLR: clear BYPASS
+}
+
+/* NEW-41: trim the running audio PLL by `ppm` (clamped to +-500) -- the A2DP
+ * sink servos its SAI clock onto the source's delivery rate with this.
+ * Numerator only (the denominator stays at the 1e6 sai1_audio_pll_init()
+ * programmed); the fractional divider takes the new value without a
+ * re-power/re-lock, which is the same single CTRL2 write the SDK's
+ * ANATOP_PllConfigure() uses to load the numerator (fsl_clock.c:694-695,
+ * PLL_AI_CTRL3_REG=0x30 denom then PLL_AI_CTRL2_REG=0x20 num).
+ *
+ * Arithmetic: the loop ratio is R = loopDiv + num/den = 32 + 768000/1e6 =
+ * 32.768.  A relative change of `ppm` parts per million is
+ *   dR = R * ppm * 1e-6 = 32.768e-6 * ppm
+ * and since num = R_frac * den,
+ *   d(num) = dR * den = 32.768e-6 * ppm * 1e6 = 32.768 counts per ppm.
+ * At the +-500 clamp num spans 751616..784384, comfortably inside the 30-bit
+ * NUM field.
+ *
+ * PRECONDITION: the audio PLL must already be running this file's
+ * configuration.  sai1_audio_pll_init() is called lazily from
+ * I2SClass::configureSAI() (i.e. on the first I2S.begin()/beginDMA()/
+ * beginReceiveDMA()), so call this only after the I2S has been started, and
+ * only when the SAI clock comes from THIS init -- the Audio library's
+ * AudioOutputI2S::config_i2s() programs the same PLL with its own 44.1 kHz
+ * constants (loopDiv=30, num=1056, den=10000) and a numerator written here
+ * would be meaningless against that denominator.
+ *
+ * Returns the ppm actually applied (i.e. after clamping).
+ */
+int32_t audioPllTrimPpm(int32_t ppm) {
+    if (ppm > 500) ppm = 500;
+    if (ppm < -500) ppm = -500;
+    int32_t num = 768000 + (int32_t)((ppm * 32768LL) / 1000);   // 32.768 counts per ppm
+    ai_write(0x20, (uint32_t)num);
+    return ppm;
 }
 
 void I2SClass::configureSAI() {
