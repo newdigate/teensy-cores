@@ -6,13 +6,23 @@ static inline void ai_udelay(volatile uint32_t n) { while (n--) __asm__ volatile
 /* One ANATOP AI indirect write to the Audio PLL register file. Matches the
  * SDK ANATOP_AI_Write (fsl_anatop_ai.c) and the QEMU imxrt_anadig AI model
  * (toggle bit8 -> done bit9). */
-static void ai_write(uint8_t aiAddr, uint32_t wdata) {
+/* BOUNDED, like the PLL-STABLE wait in audioPllConfigure() below: the DONE bit
+ * is a synchroniser round trip of a handful of cycles, so 100000 iterations is
+ * four orders of magnitude of slack and still a bound.  It has to be one:
+ * audioPllTrimPpm() calls this from the SAI ISR at up to 344 Hz (the A2DP
+ * sink's clock servo), and an unbounded spin on a handshake that never
+ * completes hangs the audio interrupt -- and with it the whole graph -- rather
+ * than dropping one trim.  Returns false if it timed out; the caller decides
+ * what a lost write means. */
+static bool ai_write(uint8_t aiAddr, uint32_t wdata) {
     uint32_t pre = ANADIG_MISC_AI_CTRL_AUDIO & ANADIG_AI_TOGGLE_DONE;
     ANADIG_MISC_AI_CTRL_AUDIO &= ~ANADIG_AI_RWB;                 // write mode
     ANADIG_MISC_AI_CTRL_AUDIO = (ANADIG_MISC_AI_CTRL_AUDIO & ~0xFFu) | aiAddr;
     ANADIG_MISC_AI_WDATA_AUDIO = wdata;
     ANADIG_MISC_AI_CTRL_AUDIO ^= ANADIG_AI_TOGGLE;              // request
-    while ((ANADIG_MISC_AI_CTRL_AUDIO & ANADIG_AI_TOGGLE_DONE) == pre) { }
+    uint32_t guard = 100000;
+    while ((ANADIG_MISC_AI_CTRL_AUDIO & ANADIG_AI_TOGGLE_DONE) == pre && guard--) { }
+    return guard != 0xFFFFFFFFu;                                 // false: the handshake never reported DONE
 }
 
 /* AI register sub-addresses (fsl_anatop_ai.h kAI_PLLAUDIO_*): CTRL0=0x00,
@@ -40,11 +50,13 @@ static void ai_write(uint8_t aiAddr, uint32_t wdata) {
 static uint32_t audio_pll_loop_div = 0;
 static uint32_t audio_pll_nom_num  = 0;
 static bool     audio_pll_running  = false;
+static int32_t  audio_pll_trim_ppm = 0;      // the last trim the hardware actually took
 
 void audioPllConfigure(uint32_t loopDiv, uint32_t num1e6) {
     audio_pll_loop_div = loopDiv;
     audio_pll_nom_num  = num1e6;
     audio_pll_running  = true;
+    audio_pll_trim_ppm = 0;                     // a fresh fraction is the nominal one: no trim is applied to it
     ai_write(0x04, (1u << 16));                 // CTRL0_SET: BYPASS
     ANADIG_PLL_AUDIO_CTRL |= ANADIG_PLL_AUDIO_CTRL_ENABLE_CLK;
     ai_write(0x30, 1000000);                    // denominator (always 1e6)
@@ -100,6 +112,10 @@ static void sai1_audio_pll_init(void) {
  * and this function correctly declines rather than guessing.
  *
  * Returns the ppm actually applied (i.e. after clamping), or 0 if declined.
+ * A numerator write that times out applies NOTHING, so it returns the trim
+ * still standing in the hardware rather than the one it was asked for: the
+ * servo integrates on what it believes is applied, and reporting an unapplied
+ * value would make it correct for an offset that is not there.
  */
 int32_t audioPllTrimPpm(int32_t ppm) {
     if (!audio_pll_running) return 0;
@@ -107,7 +123,8 @@ int32_t audioPllTrimPpm(int32_t ppm) {
     if (ppm < -500) ppm = -500;
     int64_t ratio1e6 = (int64_t)audio_pll_loop_div * 1000000 + (int64_t)audio_pll_nom_num;
     int32_t num = (int32_t)audio_pll_nom_num + (int32_t)((ppm * ratio1e6) / 1000000);
-    ai_write(0x20, (uint32_t)num);
+    if (!ai_write(0x20, (uint32_t)num)) return audio_pll_trim_ppm;   // AI handshake timed out: nothing was written
+    audio_pll_trim_ppm = ppm;
     return ppm;
 }
 
