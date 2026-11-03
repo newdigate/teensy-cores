@@ -63,6 +63,7 @@ typedef enum IRQ_NUMBER_t {
     IRQ_DAC = 63,
     IRQ_GPIO2_0_15 = 102, IRQ_GPIO2_16_31 = 103,
     IRQ_GPIO3_0_15 = 104, IRQ_GPIO3_16_31 = 105,
+    IRQ_GPIO4_0_15 = 106, IRQ_GPIO4_16_31 = 107,   /* GPIO_AD_33..35 (ALT5) and the SD banks; Nosh SD card-detect lives here */
     IRQ_GPIO5_0_15 = 108, IRQ_GPIO5_16_31 = 109,
     IRQ_MU = 118,   /* CM7<->CM4 messaging unit (ORed tx/rx/gp) */
     IRQ_PIT1 = 155, IRQ_PIT2 = 156,

@@ -28,10 +28,15 @@
  */
 
 /* ============================================================================
- * semc.c — SEMC SDRAM controller init for the MIMXRT1170-EVKB.
+ * semc.c — SEMC SDRAM controller init for the MIMXRT1170-EVKB and Nosh.
  *
- * Brings up the 64 MB SDRAM (two 16-bit chips -> 32-bit port) at CS0 /
- * 0x80000000 so the .externalram (EXTMEM) region is live before C++ ctors run.
+ * Brings up the SDRAM (two 16-bit chips -> 32-bit port) at CS0 / 0x80000000 so
+ * the .externalram (EXTMEM) region is live before C++ ctors run.  The board
+ * axis (clock root, size, column bits, ns timings) comes from imxrt1176.h
+ * SEMC_* macros and the T_* table below, keyed on ARDUINO_NOSH:
+ *   EVKB: 2x W9825G6KH-5I, 64 MB, 9-bit column, 198 MHz (SYS_PLL2_PFD1 / 3)
+ *   Nosh: 2x AS4C32M16SC-7TIN, 128 MB, 10-bit column, 132 MHz (SYS_PLL2 / 4),
+ *         DQS pad loopback with NO 10 pF cap (C145 DNP; EVKB fits C91)
  * Called from ResetHandler() (startup.c) after the clocks are up and before
  * __libc_init_array().
  *
@@ -148,7 +153,9 @@ void semc_sdram_init(void)
 	 * UpdateSemcClock() value 0x602.  NB: requires SYS_PLL2 + PFD1 powered by the
 	 * clock task (see file header) — harmless/idempotent otherwise.
 	 */
-	CCM_CLOCK_ROOT4_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(6) | CCM_CLOCK_ROOT_CONTROL_DIV(2);
+	/* Board axis (imxrt1176.h): EVKB MUX 6 / DIV 2 = 594/3 = 198 MHz;
+	 * Nosh MUX 5 (SYS_PLL2 528 MHz) / DIV 3 = 132 MHz for the -7 (133 MHz) SDRAM. */
+	CCM_CLOCK_ROOT4_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(SEMC_ROOT_MUX) | CCM_CLOCK_ROOT_CONTROL_DIV(SEMC_ROOT_DIV);
 	__asm__ volatile("dsb" ::: "memory");
 
 	/* Ungate the SEMC peripheral clock (LPCG33 / kCLOCK_Semc). */
@@ -225,12 +232,14 @@ void semc_sdram_init(void)
 	/* Base region 0: base 0x80000000, MS = 14 (64 MB), valid.
 	 * SEMC_CovertMemorySize(65536 KB): 65536/8 = 8192 = 2^13 -> 14 shifts to 0
 	 * -> MS field = 14.  BR0 = 0x8000001D. */
-	SEMC_BR(0) = (0x80000000u & SEMC_BR_BA_MASK) | SEMC_BR_MS(14u) | SEMC_BR_VLD_MASK;
+	/* Nosh: MS = 15 (128 MB), BR0 = 0x8000001F. */
+	SEMC_BR(0) = (0x80000000u & SEMC_BR_BA_MASK) | SEMC_BR_MS(SEMC_SDRAM_MS) | SEMC_BR_VLD_MASK;
 
-	/* SDRAMCR0: portSize 32-bit(2), burstLen 8(3), column 9-bit(3), CAS 3(3).
+	/* SDRAMCR0: portSize 32-bit(2), burstLen 8(3), column 9-bit(3) on the EVKB /
+	 * 10-bit(2) on Nosh (AS4C32M16: 13 row x 10 col), CAS 3(3).
 	 * (columnAddrBitNum = kSEMC_SdramColunm_9bit uses the COL field, not COL8.) */
 	SEMC_SDRAMCR0 = SEMC_SDRAMCR0_PS(2u) | SEMC_SDRAMCR0_BL(3u) |
-	                SEMC_SDRAMCR0_COL(3u) | SEMC_SDRAMCR0_CL(3u);
+	                SEMC_SDRAMCR0_COL(SEMC_SDRAM_COL) | SEMC_SDRAMCR0_CL(3u);
 
 	/* CS0: no CSX IOMUX remap (that path is only for cs != CS0).  Clear the
 	 * SEMC-internal A8 mux, per SEMC_ConfigureSDRAM. */
@@ -241,19 +250,32 @@ void semc_sdram_init(void)
 	SEMC_DCCR = (SEMC_DCCR & ~(SEMC_DCCR_SDRAMVAL_MASK | SEMC_DCCR_SDRAMEN_MASK)) |
 	            SEMC_DCCR_SDRAMVAL(5u) | SEMC_DCCR_SDRAMEN_MASK;
 
+	/* SDRAM timings in ns, per board (converted to cycles @ SEMC_CLOCK_HZ below).
+	 * EVKB: the SDK evkbmimxrt1170 BOARD_InitSEMC values for the W9825G6KH-5I.
+	 * Nosh: AS4C32M16SC-7TIN datasheet (-7 grade, CL3 at 133 MHz): tRP/tRCD/
+	 * tRRD 15, tRAS 44 min, tRC/tRFC 66, tWR 15 (2 clk), tXSR 75, tREF 64 ms/8192.
+	 * At 132 MHz these become 2/2/2, 6, 9, 2, 10 clocks (README "SEMC clock"). */
+#if defined(ARDUINO_NOSH)
+	enum { T_RP = 15u, T_RCD = 15u, T_RFC = 66u, T_WR = 15u, T_CKEOFF = 42u, T_RAS = 44u,
+	       T_SRR = 75u, T_REF2REF = 66u, T_RRD = 15u };
+#else
+	enum { T_RP = 15u, T_RCD = 15u, T_RFC = 70u, T_WR = 10u, T_CKEOFF = 42u, T_RAS = 40u,
+	       T_SRR = 70u, T_REF2REF = 60u, T_RRD = 10u };
+#endif
+
 	/* SDRAMCR1 timings (ns -> cycles @ SEMC_CLOCK_HZ). */
-	timing  = SEMC_SDRAMCR1_PRE2ACT(semc_convert_timing(15u, SEMC_CLOCK_HZ)); /* tRP  */
-	timing |= SEMC_SDRAMCR1_ACT2RW (semc_convert_timing(15u, SEMC_CLOCK_HZ)); /* tRCD */
-	timing |= SEMC_SDRAMCR1_RFRC   (semc_convert_timing(70u, SEMC_CLOCK_HZ)); /* tRFC/tXSR */
-	timing |= SEMC_SDRAMCR1_WRC    (semc_convert_timing(10u, SEMC_CLOCK_HZ)); /* tWR  */
-	timing |= SEMC_SDRAMCR1_CKEOFF (semc_convert_timing(42u, SEMC_CLOCK_HZ)); /* tCKEoff */
-	timing |= SEMC_SDRAMCR1_ACT2PRE(semc_convert_timing(40u, SEMC_CLOCK_HZ)); /* tRAS */
+	timing  = SEMC_SDRAMCR1_PRE2ACT(semc_convert_timing(T_RP,     SEMC_CLOCK_HZ)); /* tRP  */
+	timing |= SEMC_SDRAMCR1_ACT2RW (semc_convert_timing(T_RCD,    SEMC_CLOCK_HZ)); /* tRCD */
+	timing |= SEMC_SDRAMCR1_RFRC   (semc_convert_timing(T_RFC,    SEMC_CLOCK_HZ)); /* tRFC/tXSR */
+	timing |= SEMC_SDRAMCR1_WRC    (semc_convert_timing(T_WR,     SEMC_CLOCK_HZ)); /* tWR  */
+	timing |= SEMC_SDRAMCR1_CKEOFF (semc_convert_timing(T_CKEOFF, SEMC_CLOCK_HZ)); /* tCKEoff */
+	timing |= SEMC_SDRAMCR1_ACT2PRE(semc_convert_timing(T_RAS,    SEMC_CLOCK_HZ)); /* tRAS */
 	SEMC_SDRAMCR1 = timing;
 
 	/* SDRAMCR2 timings.  tIdleTimeout_Ns = 0 -> ITO = 0. */
-	timing  = SEMC_SDRAMCR2_SRRC   (semc_convert_timing(70u, SEMC_CLOCK_HZ)); /* selfRefRecovery */
-	timing |= SEMC_SDRAMCR2_REF2REF(semc_convert_timing(60u, SEMC_CLOCK_HZ));
-	timing |= SEMC_SDRAMCR2_ACT2ACT(semc_convert_timing(10u, SEMC_CLOCK_HZ)); /* tRRD */
+	timing  = SEMC_SDRAMCR2_SRRC   (semc_convert_timing(T_SRR,     SEMC_CLOCK_HZ)); /* selfRefRecovery / tXSR */
+	timing |= SEMC_SDRAMCR2_REF2REF(semc_convert_timing(T_REF2REF, SEMC_CLOCK_HZ));
+	timing |= SEMC_SDRAMCR2_ACT2ACT(semc_convert_timing(T_RRD,     SEMC_CLOCK_HZ)); /* tRRD */
 	timing |= SEMC_SDRAMCR2_ITO(0u);
 	SEMC_SDRAMCR2 = timing;
 

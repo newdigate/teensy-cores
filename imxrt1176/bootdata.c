@@ -63,8 +63,12 @@ const uint32_t ImageVectorTable[8] = {
 };
 
 /*
- * FlexSPI NOR Configuration Block (FCB) for NXP MIMXRT1170-EVKB
- * Flash: ISSI IS25WP128 quad SPI NOR (128 Mbit / 16 MB)
+ * FlexSPI NOR Configuration Block (FCB) for NXP MIMXRT1170-EVKB and Nosh
+ * Flash: written for the ISSI IS25WP128 (128 Mbit / 16 MB) of the early EVKBs.
+ * The RevC3 EVKB netlist carries a Winbond W25Q512NWEIQ (1.8 V, 64 MB) and Nosh
+ * its 3.3 V twin W25Q512JVEIQ; both accept the same 0xEB/0x02/0x20/0x60 command
+ * set, so this FCB boots all three. sflashA1Size below already says 64 MB; the
+ * image and the EEPROM region stay inside the first 16 MB (3-byte addressing).
  *
  * These exact bytes are taken from the proven-working Zephyr boot image for
  * the EVKB (build-hello/zephyr/zephyr.bin at offset 0x400, 512 bytes).

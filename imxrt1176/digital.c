@@ -55,6 +55,46 @@
  * QEMU ignores this and any reasonable value works on hardware for an LED. */
 #define PAD_CTL_DEFAULT  0x0008u   /* DSE field set; pull/keeper off */
 
+#if defined(ARDUINO_NOSH)
+const struct digital_pin_info_struct digital_pin_to_info[CORE_NUM_DIGITAL] = {
+	/*
+	 * Nosh dev board. Normal GPIO ports at ALT5: AD_00 -> GPIO2.31, AD_01..31 ->
+	 * GPIO3.0..30, AD_32 -> GPIO3.31, AD_33..35 -> GPIO4.0..2, DISP_B2 -> GPIO5,
+	 * LPSR -> GPIO6. Roles per pin are the NOSH_PIN_* macros in pins_arduino.h;
+	 * nets from nosh-dev-board/Kicad (U1 ball -> net, see docs/evkb-vs-nosh-
+	 * firmware-porting.md). Peripheral-owned pads are left out on purpose.
+	 */
+	[0]  = { .gpio=GPIO3_BASE, .bit=2,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_03, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_03 },  /* spare, no connection */
+	[1]  = { .gpio=GPIO3_BASE, .bit=25, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_26, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_26 },  /* spare */
+	[2]  = { .gpio=GPIO3_BASE, .bit=31, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_32, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_32 },  /* spare */
+	[3]  = { .gpio=GPIO3_BASE, .bit=3,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_04, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_04 },  /* USER_LED */
+	[4]  = { .gpio=GPIO3_BASE, .bit=5,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_06, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_06 },  /* USB2_OC (in) */
+	[5]  = { .gpio=GPIO3_BASE, .bit=4,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_05, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_05 },  /* LCD_TE (not wired) */
+	[6]  = { .gpio=GPIO2_BASE, .bit=31, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_00, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_00 },  /* CTP_INT (in) */
+	[7]  = { .gpio=GPIO3_BASE, .bit=13, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_14, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_14 },  /* spare */
+	[8]  = { .gpio=GPIO3_BASE, .bit=6,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_07, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_07 },  /* WL_DEV_WAKE */
+	[9]  = { .gpio=GPIO3_BASE, .bit=0,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_01, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_01 },  /* CTP_RST */
+	[10] = { .gpio=GPIO3_BASE, .bit=28, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_29, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_29 },  /* WIFI_WAKE (in) */
+	[11] = { .gpio=GPIO3_BASE, .bit=29, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_30, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_30 },  /* LCD_BL */
+	[12] = { .gpio=GPIO3_BASE, .bit=30, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_31, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_31 },  /* WL_RST */
+	[13] = { .gpio=GPIO3_BASE, .bit=27, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_28, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_28 },  /* BT_DEV_WAKE */
+	[14] = { .gpio=GPIO6_BASE, .bit=4,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_04, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_04 }, /* I2C5 SDA */
+	[15] = { .gpio=GPIO6_BASE, .bit=5,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_LPSR_05, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_LPSR_05 }, /* I2C5 SCL */
+	[16] = { .gpio=GPIO3_BASE, .bit=9,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_10, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_10 },  /* spare (A0) */
+	[17] = { .gpio=GPIO3_BASE, .bit=10, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_11, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_11 },  /* spare (A1) */
+	[18] = { .gpio=GPIO3_BASE, .bit=11, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_12, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_12 },  /* spare (A2) */
+	[19] = { .gpio=GPIO3_BASE, .bit=12, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_13, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_13 },  /* spare (A3) */
+	[20] = { .gpio=GPIO3_BASE, .bit=8,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_09, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_09 },  /* spare (A4) */
+	[21] = { .gpio=GPIO3_BASE, .bit=7,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_08, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_08 },  /* USB2_ID (in) */
+	[22] = { .gpio=GPIO4_BASE, .bit=1,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_34, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_34 },  /* SD_CD (in, low = card) */
+	[23] = { .gpio=GPIO4_BASE, .bit=2,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_35, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_35 },  /* SD_PWREN (low = on) */
+	[24] = { .gpio=GPIO3_BASE, .bit=14, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_15, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_15 },  /* BT_RST */
+	[25] = { .gpio=GPIO3_BASE, .bit=15, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_16, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_16 },  /* SDIO_RST */
+	[26] = { .gpio=GPIO3_BASE, .bit=26, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_27, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_27 },  /* BT_WAKE (in) */
+	[27] = { .gpio=GPIO5_BASE, .bit=16, .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_15, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_15 }, /* LCD_PWR */
+	[28] = { .gpio=GPIO3_BASE, .bit=1,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_02, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_02 },  /* LCD_RST */
+};
+#else
 const struct digital_pin_info_struct digital_pin_to_info[CORE_NUM_DIGITAL] = {
 	/*
 	 * .gpio = normal GPIO port base (ALT5 / GPIO_MUXn), .mux_mode = 0x5.
@@ -90,6 +130,7 @@ const struct digital_pin_info_struct digital_pin_to_info[CORE_NUM_DIGITAL] = {
 	[20] = { .gpio=GPIO3_BASE, .bit=8,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_09, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_09 },
 	[21] = { .gpio=GPIO3_BASE, .bit=7,  .mux_mode=0x5u, .mux=&IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_08, .pad=&IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_08 },
 };
+#endif /* ARDUINO_NOSH / MIMXRT1170_EVKB */
 
 void pinMode(uint8_t pin, uint8_t mode)
 {

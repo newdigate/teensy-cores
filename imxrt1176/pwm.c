@@ -44,12 +44,21 @@ struct pwm_pin { uint8_t pin; uint32_t base; uint8_t sm; uint8_t chan; uint8_t a
                  volatile uint32_t *mux; volatile uint32_t *pad; };
 
 static const struct pwm_pin pwm_pins[] = {
+#if defined(ARDUINO_NOSH)
+	/* Nosh: only pads that are free or already an output. Pin 9 (CTP_RST), 4
+	 * (USB2 over-current input) and 8 (WL_DEV_WAKE) are board signals and are
+	 * left out; the backlight pad GPIO_AD_30 has no FlexPWM alternate. */
+	{ 3, FLEXPWM1_BASE, 2, CH_A, 4,   &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_04, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_04 },  /* USER_LED */
+	{ 5, FLEXPWM1_BASE, 2, CH_B, 4,   &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_05, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_05 },  /* LCD_TE pad, not wired */
+	{ 7, FLEXPWM3_BASE, 0, CH_X, 0xB, &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_14, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_14 },  /* spare pad */
+#else
 	{ 9, FLEXPWM1_BASE, 0, CH_B, 4,   &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_01, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_01 },
 	{ 3, FLEXPWM1_BASE, 2, CH_A, 4,   &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_04, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_04 },
 	{ 5, FLEXPWM1_BASE, 2, CH_B, 4,   &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_05, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_05 },
 	{ 4, FLEXPWM1_BASE, 0, CH_X, 0xB, &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_06, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_06 },
 	{ 8, FLEXPWM1_BASE, 1, CH_X, 0xB, &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_07, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_07 },
 	{ 7, FLEXPWM3_BASE, 0, CH_X, 0xB, &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_14, &IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_14 },
+#endif
 };
 #define NPWM (sizeof(pwm_pins) / sizeof(pwm_pins[0]))
 

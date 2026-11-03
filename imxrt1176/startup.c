@@ -303,7 +303,7 @@ void ResetHandler(void)
 	 * of the FLASH+0x2000 vector region. extmem.c initialises the pool lazily on first
 	 * extmem_malloc/calloc/realloc instead (application context, SDRAM long live). */
 	memory_clear(&_extram_start, &_extram_end);
-	external_psram_size = 64;                       /* soldered 64 MB SDRAM — no probe */
+	external_psram_size = SEMC_SDRAM_MB;            /* soldered SDRAM (EVKB 64 MB, Nosh 128 MB) — no probe */
 
 	/* C++ static constructors, then the application */
 	__libc_init_array();

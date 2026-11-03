@@ -37,7 +37,7 @@
 
 #if defined(__IMXRT1176__)
 #define HAS_EXTRAM
-// MIMXRT1170-EVKB: 64 MB SEMC SDRAM at 0x80000000..0x83FFFFFF
+// SEMC SDRAM at 0x80000000: EVKB 64 MB (..0x83FFFFFF), Nosh 128 MB (..0x87FFFFFF); SEMC_SDRAM_MB in imxrt1176.h
 #define IS_EXTMEM(addr) (((uint32_t)(addr) >> 28) == 8)
 // smalloc.h only declares extmem_smalloc_pool for TEENSY41/MIMXRT1060_EVKB; our
 // board defines __IMXRT1176__, so declare it here (defined in startup.c). Keeps
@@ -66,7 +66,7 @@ static void extmem_ensure_pool(void)
 {
 	if (extmem_smalloc_pool.pool == 0) {
 		sm_set_pool(&extmem_smalloc_pool, &_extram_end,
-			64u * 0x100000u - ((uint32_t)&_extram_end - (uint32_t)&_extram_start),
+			SEMC_SDRAM_MB * 0x100000u - ((uint32_t)&_extram_end - (uint32_t)&_extram_start),
 			1, NULL);
 	}
 }

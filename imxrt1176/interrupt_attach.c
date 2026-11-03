@@ -21,7 +21,7 @@
 static void (*volatile isr_callback[CORE_NUM_DIGITAL])(void);
 
 // The CM7-interrupt-capable "normal" GPIO ports the pin table targets.
-static const uint32_t irq_ports[] = { GPIO2_BASE, GPIO3_BASE, GPIO5_BASE, GPIO6_BASE };
+static const uint32_t irq_ports[] = { GPIO2_BASE, GPIO3_BASE, GPIO4_BASE, GPIO5_BASE, GPIO6_BASE };
 
 // Service every pending+enabled interrupt bit on one GPIO port.
 static void dispatch_port(uint32_t base) {
@@ -49,6 +49,7 @@ static int irq_for(uint32_t base, uint8_t bit) {
 	int lo, hi;
 	if      (base == GPIO2_BASE) { lo = IRQ_GPIO2_0_15; hi = IRQ_GPIO2_16_31; }
 	else if (base == GPIO3_BASE) { lo = IRQ_GPIO3_0_15; hi = IRQ_GPIO3_16_31; }
+	else if (base == GPIO4_BASE) { lo = IRQ_GPIO4_0_15; hi = IRQ_GPIO4_16_31; }
 	else if (base == GPIO5_BASE) { lo = IRQ_GPIO5_0_15; hi = IRQ_GPIO5_16_31; }
 	else if (base == GPIO6_BASE) { lo = IRQ_GPIO6_0_15; hi = IRQ_GPIO6_16_31; }
 	else return -1;

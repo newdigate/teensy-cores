@@ -673,6 +673,53 @@ typedef struct {
 #define CCM_CLOCK_ROOT58_CONTROL (*(volatile uint32_t *)0x40CC1D00u)
 #define CCM_LPCG117_DIRECT       (*(volatile uint32_t *)0x40CC6EA0u)
 
+/* USDHC2 (Nosh microSD J5): CMD/CLK/DATA0-3 = GPIO_SD_B2_05/04/03/02/01/00, ALT0.
+ * The SD2 bank (NVCC_SD2) is fixed at 3.3 V on Nosh (shared with the FlexSPI
+ * flash), so no VSELECT and no UHS-I 1.8 V modes. Card detect is a plain GPIO on
+ * GPIO_AD_34 (low = card, 10k pull-up); card power is GPIO_AD_35, active low,
+ * pulled on at reset. IOMUXC register order: SD_B1_05 is followed by SD_B2_00..11. */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B2_00 (*(volatile uint32_t *)0x400E81B4u) /* USDHC2_DATA3 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B2_01 (*(volatile uint32_t *)0x400E81B8u) /* USDHC2_DATA2 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B2_02 (*(volatile uint32_t *)0x400E81BCu) /* USDHC2_DATA1 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B2_03 (*(volatile uint32_t *)0x400E81C0u) /* USDHC2_DATA0 */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B2_04 (*(volatile uint32_t *)0x400E81C4u) /* USDHC2_CLK   */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_SD_B2_05 (*(volatile uint32_t *)0x400E81C8u) /* USDHC2_CMD   */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B2_00 (*(volatile uint32_t *)0x400E83F8u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B2_01 (*(volatile uint32_t *)0x400E83FCu)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B2_02 (*(volatile uint32_t *)0x400E8400u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B2_03 (*(volatile uint32_t *)0x400E8404u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B2_04 (*(volatile uint32_t *)0x400E8408u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_SD_B2_05 (*(volatile uint32_t *)0x400E840Cu)
+/* USDHC2 clock root 59 (same SYS_PLL2_PFD2 source as root 58) + gate LPCG118 */
+#define CCM_CLOCK_ROOT59_CONTROL (*(volatile uint32_t *)0x40CC1D80u)
+#define CCM_LPCG118_DIRECT       (*(volatile uint32_t *)0x40CC6EC0u)
+
+/* GPIO_AD pads the board tables need beyond the EVKB Arduino-header set.
+ * AD_n: mux 0x400E810C + 4n, pad 0x400E8350 + 4n (contiguous IOMUXC blocks). */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_02 (*(volatile uint32_t *)0x400E8114u) /* Nosh LCD_RST_B */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_03 (*(volatile uint32_t *)0x400E8118u)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_15 (*(volatile uint32_t *)0x400E8148u) /* Nosh BT_RST_B (M.2 W_DISABLE2) */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_16 (*(volatile uint32_t *)0x400E814Cu) /* WIFI_RST_B / M.2 SDIO_RESET */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_26 (*(volatile uint32_t *)0x400E8174u)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_27 (*(volatile uint32_t *)0x400E8178u) /* BT_WAKE_B (M.2 UART_WAKE) */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_32 (*(volatile uint32_t *)0x400E818Cu)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_33 (*(volatile uint32_t *)0x400E8190u)
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_34 (*(volatile uint32_t *)0x400E8194u) /* Nosh SD_CD_B; EVKB SD1 VSELECT */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_35 (*(volatile uint32_t *)0x400E8198u) /* SD_PWREN_B */
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_02 (*(volatile uint32_t *)0x400E8358u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_03 (*(volatile uint32_t *)0x400E835Cu)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_15 (*(volatile uint32_t *)0x400E838Cu)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_16 (*(volatile uint32_t *)0x400E8390u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_26 (*(volatile uint32_t *)0x400E83B8u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_27 (*(volatile uint32_t *)0x400E83BCu)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_32 (*(volatile uint32_t *)0x400E83D0u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_33 (*(volatile uint32_t *)0x400E83D4u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_34 (*(volatile uint32_t *)0x400E83D8u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_AD_35 (*(volatile uint32_t *)0x400E83DCu)
+/* GPIO_DISP_B2_15 = LCM_PWR_EN (MIPI panel power) on both boards; last DISP_B2 pad. */
+#define IOMUXC_SW_MUX_CTL_PAD_GPIO_DISP_B2_15 (*(volatile uint32_t *)0x400E8250u)
+#define IOMUXC_SW_PAD_CTL_PAD_GPIO_DISP_B2_15 (*(volatile uint32_t *)0x400E8494u)
+
 /* USDHC register-block overlay (for the SdFat SdioTeensy __IMXRT1176__ port).
  * Layout matches cores/teensy4/imxrt.h IMXRT_USDHC_t; only the base addresses
  * differ from the 1062 (0x40418000/0x4041C000 vs 0x402C0000/0x402C4000). */
@@ -1755,7 +1802,24 @@ extern uint32_t startup_ccr_at_reset;
  * gate LPCG33 (kCLOCK_Semc). semc_clock_hz = 198000000 for Task 2 timing. */
 #define CCM_CLOCK_ROOT4_CONTROL (*(volatile uint32_t *)0x40CC0200u) /* kCLOCK_Root_Semc */
 #define CCM_LPCG33_DIRECT       (*(volatile uint32_t *)0x40CC6420u) /* kCLOCK_Semc gate */
-#define SEMC_CLOCK_HZ 198000000u  /* SYS_PLL2_PFD1 (594 MHz) / 3 */
+#if defined(ARDUINO_NOSH)
+/* Nosh: 2x AS4C32M16SC-7TIN (512 Mb, 13 row x 10 col, 133 MHz grade) = 128 MB.
+ * SEMC root = SYS_PLL2 (528 MHz) / 4 = 132 MHz, the reset-default source (mux 5). */
+#define SEMC_CLOCK_HZ    132000000u
+#define SEMC_ROOT_MUX    5u   /* kCLOCK_SEMC_ClockRoot_MuxSysPll2Out */
+#define SEMC_ROOT_DIV    3u   /* DIV field = divide by 4 */
+#define SEMC_SDRAM_MB    128u
+#define SEMC_SDRAM_MS    15u  /* BR0 MS: 4 KB << 15 = 128 MB */
+#define SEMC_SDRAM_COL   2u   /* SDRAMCR0 COL: 10-bit column */
+#else
+/* MIMXRT1170-EVKB: 2x W9825G6KH-5I (256 Mb, 13 row x 9 col) = 64 MB at 198 MHz. */
+#define SEMC_CLOCK_HZ    198000000u  /* SYS_PLL2_PFD1 (594 MHz) / 3 */
+#define SEMC_ROOT_MUX    6u   /* kCLOCK_SEMC_ClockRoot_MuxSysPll2Pfd1 */
+#define SEMC_ROOT_DIV    2u   /* DIV field = divide by 3 */
+#define SEMC_SDRAM_MB    64u
+#define SEMC_SDRAM_MS    14u  /* BR0 MS: 4 KB << 14 = 64 MB */
+#define SEMC_SDRAM_COL   3u   /* SDRAMCR0 COL: 9-bit column */
+#endif
 
 /* External SDRAM attribute -> .externalram (imxrt1176.ld ERAM @ 0x80000000) */
 #ifndef EXTMEM

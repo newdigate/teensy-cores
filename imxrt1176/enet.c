@@ -23,6 +23,12 @@
  * would double-swap and the frames would not move.  Verified against the QEMU
  * model + FNET; see the task report.)
  */
+#if defined(ARDUINO_NOSH)
+/* Nosh has no Ethernet PHY. The RMII pads are the BT_CFG8..11 boot straps,
+ * GPIO_AD_32/33 are unconnected and GPIO_LPSR_12 (the EVKB PHY reset) is TDI on
+ * the SWD header, so this driver must not run there: calling enet_init() on a
+ * Nosh build is a link error by design. */
+#else
 #include "imxrt1176.h"
 #include "core_pins.h"   /* delayMicroseconds() */
 #include "enet.h"
@@ -498,3 +504,4 @@ int enet_phy_link_up(uint32_t timeout_ms) {
     } while ((millis() - t0) < timeout_ms);
     return 0;
 }
+#endif /* !ARDUINO_NOSH */
