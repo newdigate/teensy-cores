@@ -8,7 +8,14 @@ static bool    pit_used[PIT_NUM_CH];
 static bool    pit_isr_installed = false;
 
 /* Effective PIT1 input clock = BUS root (CLOCK_ROOT2), derived at runtime so it
- * tracks whatever startup/clocks program. Mirror of imxrt_ccm's bus_root_clk. */
+ * tracks whatever startup/clocks program. Mirror of imxrt_ccm's bus_root_clk.
+ *
+ * The mux table is the RM's BUS clock root (fsl_clock.h kCLOCK_BUS_ClockRoot_Mux*).
+ * Until 2026-11-16 only mux 0 was decoded and every other source was taken as
+ * 24 MHz; startup.c routes BUS to SYS_PLL3/2 = 240 MHz, so on silicon the PIT ran
+ * 20x faster than every IntervalTimer/tone() period asked for (Nosh bench:
+ * tone(1000) measured 20 kHz). QEMU's imxrt_ccm had the same gap, so the gates
+ * agreed with the firmware while both were wrong by the same factor. */
 static uint32_t pit_clock_hz(void)
 {
     uint32_t ctrl = CCM_CLOCK_ROOT2_CONTROL;
@@ -16,8 +23,19 @@ static uint32_t pit_clock_hz(void)
     uint32_t div  = (ctrl & 0xFFu) + 1u;
     uint32_t src;
     switch (mux) {
-    case 0:  src = 24000000u; break;   /* OscRC48MDiv2 (BUS mux 0) */
-    default: src = 24000000u; break;   /* only mux 0 modelled; extend when BUS is re-routed */
+    case 0:  src = 24000000u;  break;  /* OSC_RC_48M / 2 */
+    case 1:  src = 24000000u;  break;  /* OSC_24M (crystal) */
+    case 2:  src = 400000000u; break;  /* OSC_RC_400M */
+    case 3:  src = 16000000u;  break;  /* OSC_RC_16M */
+    case 4:  src = 480000000u; break;  /* SYS_PLL3_OUT (startup.c's choice -> /2 = 240 MHz) */
+    case 5:  src = 200000000u; break;  /* SYS_PLL1_DIV5 (1 GHz / 5) */
+    case 6:  src = 528000000u; break;  /* SYS_PLL2_OUT */
+    default: {                         /* 7: SYS_PLL2_PFD3 = 528 MHz * 18 / FRAC */
+        uint32_t frac = (*(volatile uint32_t *)0x40C84270u >> 24) & 0x3Fu; /* ANADIG SYS_PLL2_PFD, PFD3_FRAC */
+        if (frac < 12u) frac = 12u;    /* RM: FRAC 12..35 */
+        src = (uint32_t)(528000000ull * 18u / frac);
+        break;
+    }
     }
     return src / div;
 }
