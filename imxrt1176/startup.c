@@ -159,7 +159,17 @@ void ResetHandler(void)
 	 * (SRC_SRSR.M4_LOCKUP_M7, bit12) -> intermittent full boot resets.  Tell SRC
 	 * not to reset on a CM4 lockup or CM4 reset-request.  Plain register store,
 	 * no stack; must precede anything that a stray CM4 reset would disturb.
-	 * (Verified on EVKB: SRMR reads 0x3CC0, SRSR stays clean.) */
+	 * (Verified on EVKB: SRMR reads 0x3CC0, SRSR stays clean.)
+	 *
+	 * The 0x3C00 that is already in SRMR when a debugger is attached is NOT the
+	 * ROM's doing: pyocd's built-in MIMXRT1176 target ORs M4REQ|M7REQ = 0b11 into
+	 * it on every connect (update_sbmr), parks both cores on trap vectors
+	 * (CM7 -> 0x223105 via IOMUXC_LPSR_GPR26, CM4 -> 0x23F041) and releases the
+	 * CM4 -- which is why `pyocd reset` never reboots this firmware and why a
+	 * freshly flashed image needs the RESET button (Nosh bench 2026-11-16).
+	 * Clearing M7REQ here does not help: pyocd re-arms it on the next attach, and
+	 * a warm M7-request reset lands the ROM in its own park loop (0x223104, FCB
+	 * readable, reason unknown) rather than in the image. Leave M7REQ alone. */
 	SRC_SRMR |= (0x3u << 6) | (0x3u << 10);   /* M4LOCKUP + M4REQ reset mode = 0b11 (do not reset) */
 
 	/* Configure the FlexRAM ITCM/DTCM bank split BEFORE using the stack: the

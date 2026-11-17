@@ -429,7 +429,7 @@
 
 /* SRC (System Reset Controller, base 0x40C04000) - dual-core reset control.
  * SRSR bitmap (nxp PERI_SRC.h): bit2 M7_LOCKUP, bit12 M4_LOCKUP_M7, bit0/16 POR. */
-#define SRC_SRMR (*(volatile uint32_t *)0x40C04004u)  /* [7:6] M4LOCKUP_RESET_MODE, [11:10] M4REQ_RESET_MODE */
+#define SRC_SRMR (*(volatile uint32_t *)0x40C04004u)  /* [7:6] M4LOCKUP, [9:8] M7LOCKUP, [11:10] M4REQ, [13:12] M7REQ _RESET_MODE; 0b00 reset system, 0b11 do not reset (pyocd's RT1176 target sets 0x3C00 on every connect) */
 #define SRC_SRSR (*(volatile uint32_t *)0x40C04010u)  /* reset status (write 1 to clear) */
 
 /* --- Dual-core (CM7 boots CM4): SRC core-release + IOMUXC_LPSR_GPR CM4 VTOR
