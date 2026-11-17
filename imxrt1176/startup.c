@@ -448,6 +448,8 @@ void set_arm_clock_rt1176(void)
 	 *     SYS_PLL2_OUT / 3 = 176 MHz   previous value; PLL2 feeds SEMC via PFD1
 	 *     OSC / 2          =  24 MHz   the old safe-slow source
 	 * A PLL counts as usable when it is stable, not gated and not bypassed.
+	 * Each branch records its result in F_BUS_ACTUAL (delay.c), so sketches
+	 * and libraries that scale by the bus clock see the real IPG rate.
 	 * SYS_PLL3_CTRL @ ANADIG 0x40C84210, SYS_PLL2_CTRL @ 0x40C84240; both use
 	 * STABLE bit29, GATE bit30, BYPASS bit16 (PERI_ANADIG_PLL.h). */
 	{
@@ -464,14 +466,17 @@ void set_arm_clock_rt1176(void)
 			/* mux 4 = SYS_PLL3_OUT, DIV field 1 = divide-by-2 -> 240 MHz. */
 			CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(4) |
 			                          CCM_CLOCK_ROOT_CONTROL_DIV(1);
+			F_BUS_ACTUAL = 240000000u;
 		} else if (!(p2 & GATE) && !(p2 & BYPASS) && (p2 & STABLE)) {
 			/* mux 6 = SYS_PLL2_OUT, DIV field 2 = divide-by-3 -> 176 MHz. */
 			CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(6) |
 			                          CCM_CLOCK_ROOT_CONTROL_DIV(2);
+			F_BUS_ACTUAL = 176000000u;
 		} else {
 			/* Fallback: OSC/2 (mux 0, div 1) — the old safe-slow source. */
 			CCM_CLOCK_ROOT2_CONTROL = CCM_CLOCK_ROOT_CONTROL_MUX(0) |
 			                          CCM_CLOCK_ROOT_CONTROL_DIV(0);
+			F_BUS_ACTUAL = 24000000u;
 		}
 	}
 	__asm__ volatile("dsb":::"memory");

@@ -21,7 +21,12 @@ volatile uint32_t systick_millis_count = 0;
 
 /* Live core clock (Hz).  Set to 996 MHz; set_arm_clock_rt1176() may update it. */
 volatile uint32_t F_CPU_ACTUAL  = 996000000u;
-volatile uint32_t F_BUS_ACTUAL  = 996000000u;
+/* Live AHB/IPG bus clock (Hz) = BUS_CLK_ROOT (CCM CLOCK_ROOT2).  The default
+ * is NXP's BOARD_BootClockRUN value, SYS_PLL3_OUT/2 = 240 MHz; the guarded
+ * route in set_arm_clock_rt1176() writes whichever source it actually took
+ * (240 / 176 / 24 MHz).  It is NOT the core clock: until 2026-11-17 this read
+ * 996000000 and the Nosh bring-up banner printed it as fact. */
+volatile uint32_t F_BUS_ACTUAL  = 240000000u;
 volatile uint32_t scale_cpu_cycles_to_microseconds = 0;
 
 /* ---------------------------------------------------------------------------
