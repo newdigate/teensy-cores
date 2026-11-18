@@ -50,10 +50,22 @@
 #define GPIO_DR_SET(base)    (*(volatile uint32_t *)((base) + 0x84))
 #define GPIO_DR_CLEAR(base)  (*(volatile uint32_t *)((base) + 0x88))
 
-/* A sane default pad-control value for a general-purpose output (drive
- * enabled, medium drive strength).  Exact electrical tuning is deferred;
- * QEMU ignores this and any reasonable value works on hardware for an LED. */
-#define PAD_CTL_DEFAULT  0x0008u   /* DSE field set; pull/keeper off */
+/* Pad-control values.  Every pad in both tables below is a GPIO_AD, GPIO_LPSR
+ * or GPIO_DISP_B2 pad, and those groups share the pull fields (RT1170 RM; NXP
+ * pin_mux.c for the EVKB):
+ *   bit 0 SRE   slew rate          bit 1 DSE  drive strength
+ *   bit 2 PUE   pull enable        bit 3 PUS  1 = pull-up, 0 = pull-down
+ *   ODE (open drain) is bit 4 on GPIO_AD / DISP_B2 but bit 5 on GPIO_LPSR.
+ * GPIO_EMC_B*, GPIO_DISP_B1 and GPIO_SD_B* pads are DIFFERENT: bits 3:2 there
+ * are a PULL field (01 up, 10 down, 11 none, 00 forbidden), so a pin on one of
+ * those groups would need its own values before it is added to a table.
+ *
+ * PAD_CTL_DEFAULT keeps the value pinMode() has always written for INPUT and
+ * OUTPUT: PUE=0, so no pull (PUS=1 is ignored), normal drive, fast slew.
+ * QEMU ignores pads entirely. */
+#define PAD_CTL_DEFAULT   0x0008u   /* PUE=0: no pull */
+#define PAD_CTL_PULLUP    0x000Cu   /* PUE=1, PUS=1: weak pull-up */
+#define PAD_CTL_PULLDOWN  0x0004u   /* PUE=1, PUS=0: weak pull-down */
 
 #if defined(ARDUINO_NOSH)
 const struct digital_pin_info_struct digital_pin_to_info[CORE_NUM_DIGITAL] = {
@@ -140,8 +152,14 @@ void pinMode(uint8_t pin, uint8_t mode)
 
 	/* Route the pad to GPIO: write the ALT value into the mux register. */
 	if (p->mux) *p->mux = p->mux_mode;
-	/* Apply a sane pad configuration. */
-	if (p->pad) *p->pad = PAD_CTL_DEFAULT;
+	/* Pad configuration: the pull for INPUT_PULLUP / INPUT_PULLDOWN, else
+	 * none.  (OUTPUT_OPENDRAIN still gets no ODE bit -- see PAD_CTL_DEFAULT
+	 * for why its position differs by pad group.) */
+	if (p->pad) {
+		*p->pad = (mode == INPUT_PULLUP)   ? PAD_CTL_PULLUP
+		        : (mode == INPUT_PULLDOWN) ? PAD_CTL_PULLDOWN
+		        : PAD_CTL_DEFAULT;
+	}
 
 	if (mode == OUTPUT || mode == OUTPUT_OPENDRAIN) {
 		GPIO_GDIR(p->gpio) |= (1u << p->bit);
