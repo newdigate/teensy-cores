@@ -150,6 +150,49 @@ uint32_t startup_ccr_at_reset;           /* SCB_CCR as the boot ROM left it -- r
 /* ----------------------------------------------------------------------------
  * ResetHandler — boot-ROM entry. Bring RAM up and reach main().
  * -------------------------------------------------------------------------- */
+#if defined(ARDUINO_NOSH)
+/*
+ * Nosh: put the FlexSPI1 read strobe on GPIO_EMC_B2_18 and run the flash at
+ * 132 MHz.
+ *
+ * The flash has no DQS pin; above 60 MHz the controller must sample read data
+ * on a clock looped back through a floating DQS *pad*.  The pad the boot ROM
+ * knows, GPIO_SD_B2_05, is the microSD CMD line on Nosh, so the boot header
+ * (bootdata.c) starts the flash on the internal loopback at 49.5 MHz.  Ball N3,
+ * GPIO_EMC_B2_18, is the alternate FLEXSPI1_A_DQS pad (ALT6, select-input
+ * value 0) and is unconnected on the board for exactly this.
+ *
+ * Runs from ITCM (plain .text, noinline; called from the flash-resident
+ * ResetHandler after the ITCM copy) because the flash cannot be read between
+ * the module disable and the end of the software reset.  Interrupts are still
+ * off this early.  Values: CLOCK_ROOT20 = mux 5 (SYS_PLL2, 528 MHz) / 4, and
+ * DLLCRA = override enable with zero delay -- both exactly what the ROM
+ * programs for the EVKB's 133 MHz header, read back from a running board.
+ */
+__attribute__((noinline))
+static void flexspi1_dqs_to_emc_b2_18(void)
+{
+	volatile uint32_t *const mcr0   = (volatile uint32_t *)0x400CC000u;
+	volatile uint32_t *const dllcra = (volatile uint32_t *)0x400CC0C0u;
+	volatile uint32_t *const sts0   = (volatile uint32_t *)0x400CC0E0u;
+	volatile uint32_t *const root20 = (volatile uint32_t *)0x40CC0A00u;   /* FLEXSPI1 clock root */
+	volatile uint32_t i;
+
+	while ((*sts0 & 3u) != 3u) { }                 /* sequence and arbitration idle */
+	*mcr0 |= 2u;                                   /* MDIS */
+	IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_B2_18 = 0x16u;  /* ALT6 FLEXSPI1_A_DQS + SION */
+	IOMUXC_SW_PAD_CTL_PAD_GPIO_EMC_B2_18 = 0x0Cu;  /* no pull, high drive */
+	*(volatile uint32_t *)0x400E8550u = 0u;        /* FLEXSPI1_A_DQS select input: GPIO_EMC_B2_18 */
+	*root20 = 0x503u;                              /* SYS_PLL2 / 4 = 132 MHz */
+	for (i = 0; i < 2000u; i++) { }
+	*mcr0 = (*mcr0 & ~(3u << 4)) | (1u << 4);      /* RXCLKSRC 1: loopback from the DQS pad */
+	*dllcra = 0x100u;
+	*mcr0 &= ~2u;
+	*mcr0 |= 1u;                                   /* SWRESET */
+	while (*mcr0 & 1u) { }
+}
+#endif
+
 __attribute__((section(".startup"), naked))
 void ResetHandler(void)
 {
@@ -206,6 +249,11 @@ void ResetHandler(void)
 	 * contents, so clearing is strictly safe; runs before __libc_init_array so
 	 * C++ constructors see zeroed members. */
 	memory_clear(&_sbss_dma, &_ebss_dma);
+
+#if defined(ARDUINO_NOSH)
+	/* Flash back to 133 MHz: needs ITCM (copied above), nothing else. */
+	flexspi1_dqs_to_emc_b2_18();
+#endif
 
 	/* L1 INSTRUCTION cache ON (NEW-36, 2026-09-05).  First a reading: what the
 	 * boot ROM left in SCB_CCR.  Nothing above touches CCR, so this IS the

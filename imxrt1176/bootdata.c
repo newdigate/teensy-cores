@@ -91,14 +91,37 @@ const uint32_t ImageVectorTable[8] = {
  *   [113] 0x00001000  sectorSize=4096
  *   [114] 0x00000001  ipCmdSerialClkFreq
  *   [116] 0x00010000  blockSize=65536
+ *
+ * NOSH differs in two fields.  The EVKB values sample read data on a clock
+ * looped back through the DQS pad, GPIO_SD_B2_05, which must float; Nosh wires
+ * that pad to the microSD CMD line (uSDHC2).  With the EVKB values the card's
+ * pull-up and capacitance sit on the loopback from reset, and the moment
+ * SD.begin() takes the pad every read from flash returns junk (seen
+ * 2026-11-19 as a UsageFault in the first flash-resident function called
+ * after it; firmware that runs wholly from RAM never notices).  So Nosh uses
+ * the internal loopback, which needs no pad and is limited to 60 MHz:
+ *   [3]  0x00030300  readSampleClkSrc=0 (loopback internally)
+ *   [17] 0x00020401  serialClkFreq=2 (50 MHz)
+ * The ROM's "60 MHz" step (3) was measured on the board as SYS_PLL2 / 8 =
+ * 66 MHz, over the limit; step 2 gives SYS_PLL2_PFD2 / 8 = 49.5 MHz
+ * (CLOCK_ROOT20 = 0x607).  That is only the boot setting: startup.c's
+ * flexspi1_dqs_to_emc_b2_18() moves the strobe to a free pad and returns the
+ * flash to 132 MHz before main().
  */
+#if defined(ARDUINO_NOSH)
+#define FCB_READ_SAMPLE	0x00030300	/* readSampleClkSrc=0,dataHold=3,dataSetup=3 */
+#define FCB_DEVICE	0x00020401	/* deviceType=1,sflashPadType=4,serialClkFreq=2 (50 MHz) */
+#else
+#define FCB_READ_SAMPLE	0x00030301	/* readSampleClkSrc=1,dataHold=3,dataSetup=3 */
+#define FCB_DEVICE	0x00070401	/* deviceType=1,sflashPadType=4,serialClkFreq=7 (133 MHz) */
+#endif
 __attribute__ ((section(".flashconfig"), used))
 uint32_t FlexSPI_NOR_Config[128] = {
 	/* ---- common FlexSPI configuration block (offset 0x000..0x1BF) ---- */
 	0x42464346,	/* [0]   tag 'FCFB'                                    */
 	0x56010400,	/* [1]   version 0x56010400                            */
 	0x00000000,	/* [2]   reserved                                      */
-	0x00030301,	/* [3]   readSampleClkSrc=1,dataHold=3,dataSetup=3     */
+	FCB_READ_SAMPLE,	/* [3]   readSampleClkSrc, dataHold, dataSetup         */
 
 	0x00000000,	/* [4]   waitTimeCfgCommands / deviceModeCfgEnable     */
 	0x00000000,	/* [5]   deviceModeSeq                                 */
@@ -116,7 +139,7 @@ uint32_t FlexSPI_NOR_Config[128] = {
 	0x00000000,	/* [15]  cfgCmdArgs[3]                                 */
 
 	0x00000010,	/* [16]  controllerMiscOption (SafeConfigFreqEnable)   */
-	0x00070401,	/* [17]  deviceType=1,sflashPadType=4,serialClkFreq=7 */
+	FCB_DEVICE,	/* [17]  deviceType, sflashPadType, serialClkFreq     */
 	0x00000000,	/* [18]  reserved                                      */
 	0x00000000,	/* [19]  reserved                                      */
 
